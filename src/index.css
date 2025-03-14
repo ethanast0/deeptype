@@ -1,3 +1,7 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,19 +39,12 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -96,6 +93,77 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-monkey-bg text-monkey-text font-sans antialiased;
+  }
+}
+
+@layer components {
+  .caret {
+    @apply inline-block w-[2px] h-[1.2em] bg-monkey-caret align-text-bottom animate-caret-blink;
+    margin-right: -2px;
+  }
+
+  .character {
+    @apply transition-colors duration-100;
+  }
+
+  .character-correct {
+    @apply text-monkey-text;
+  }
+
+  .character-incorrect {
+    @apply text-monkey-error;
+  }
+
+  .character-current {
+    @apply relative;
+  }
+
+  .character-current::before {
+    content: "";
+    @apply absolute bottom-0 left-0 w-full h-[2px] bg-monkey-caret;
+  }
+
+  .typing-area-container {
+    @apply flex flex-col items-center justify-center max-w-4xl mx-auto my-10;
+  }
+
+  .typing-area {
+    @apply p-4 rounded-md bg-opacity-10 bg-monkey-subtle relative w-full font-mono text-lg leading-8;
+    word-break: keep-all;
+    white-space: pre-wrap;
+  }
+
+  .typing-input {
+    @apply absolute opacity-0 top-0 left-0 w-full h-full cursor-default;
+  }
+
+  .stats-container {
+    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle my-6;
+  }
+
+  .stat-box {
+    @apply flex flex-col items-center;
+  }
+
+  .stat-value {
+    @apply text-2xl font-medium text-monkey-text;
+  }
+
+  .stat-label {
+    @apply text-sm uppercase tracking-wider;
+  }
+
+  .button {
+    @apply px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
+           transition-all duration-300 hover:bg-opacity-30;
+  }
+
+  .button-accent {
+    @apply bg-monkey-accent bg-opacity-20 hover:bg-opacity-30;
+  }
+
+  .mono-text {
+    @apply font-mono;
   }
 }
