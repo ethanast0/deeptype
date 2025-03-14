@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -33,14 +32,12 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Initialize with a random quote
   useEffect(() => {
     if (quotes.length > 0) {
       loadNewQuote();
     }
   }, [quotes]);
 
-  // Process the quote into words and characters
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
       characters: [...word].map((char, idx) => ({
@@ -53,12 +50,10 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     setCurrentWordIndex(0);
     setCurrentCharIndex(0);
     
-    // Calculate total characters (including spaces)
     const totalChars = quote.length;
     setStats(prev => ({ ...prev, totalChars }));
   }, [currentWordIndex]);
 
-  // Load a new random quote
   const loadNewQuote = useCallback(() => {
     const randomIndex = Math.floor(Math.random() * quotes.length);
     const quote = quotes[randomIndex];
@@ -68,7 +63,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     focusInput();
   }, [quotes, processQuote]);
 
-  // Start the timer
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
     
@@ -87,7 +81,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     }, 200);
   }, []);
 
-  // Stop the timer
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -95,7 +88,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     }
   }, []);
 
-  // Reset the test
   const resetTest = useCallback(() => {
     stopTimer();
     setIsActive(false);
@@ -112,7 +104,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       elapsedTime: 0,
     });
     
-    // Reset character states
     setWords(prevWords => {
       return prevWords.map((word, wordIdx) => ({
         characters: word.characters.map((char, charIdx) => ({
@@ -123,39 +114,30 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     });
   }, [currentQuote, stopTimer]);
 
-  // Handle user input
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     
-    // Start timer on first input
     if (!isActive && !isFinished) {
       setIsActive(true);
       startTimer();
     }
     
-    // Clear input field
     e.target.value = '';
     
-    // Get the last character typed
     const typedChar = input.charAt(input.length - 1);
     if (!typedChar) return;
     
-    // Get current word and character
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
     
-    // Check if we're at the end of a word and user typed space
-    if (currentCharIndex >= currentWord.characters.length && typedChar === ' ') {
+    if (currentCharIndex === currentWord.characters.length && typedChar === ' ') {
       if (currentWordIndex < words.length - 1) {
-        // Move to next word
         setCurrentWordIndex(prev => prev + 1);
         setCurrentCharIndex(0);
         
-        // Update character states
         setWords(prevWords => {
           const newWords = [...prevWords];
           
-          // Set first character of next word as current
           if (newWords[currentWordIndex + 1]?.characters.length > 0) {
             newWords[currentWordIndex + 1].characters[0].state = 'current';
           }
@@ -166,14 +148,11 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       return;
     }
     
-    // If it's not a space at the end of a word, process the character
     const currentChar = currentWord.characters[currentCharIndex];
     if (!currentChar) return;
     
-    // Check if character is correct
     const isCorrect = typedChar === currentChar.char;
     
-    // Update stats
     setStats(prev => ({
       ...prev,
       correctChars: prev.correctChars + (isCorrect ? 1 : 0),
@@ -184,19 +163,15 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       )
     }));
     
-    // Update character states
     setWords(prevWords => {
       const newWords = [...prevWords];
       
-      // Update current character
       newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
       
-      // Set next character as current if exists
       if (currentCharIndex < currentWord.characters.length - 1) {
         newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
       } else if (currentWordIndex === words.length - 1 && 
                  currentCharIndex === currentWord.characters.length - 1) {
-        // Test is complete if this is the last character of the last word
         setIsFinished(true);
         stopTimer();
       }
@@ -204,21 +179,17 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       return newWords;
     });
     
-    // Move to next character
     if (currentCharIndex < currentWord.characters.length - 1) {
       setCurrentCharIndex(prev => prev + 1);
     } else if (currentWordIndex === words.length - 1 && 
                currentCharIndex === currentWord.characters.length - 1) {
-      // Test is complete if this is the last character of the last word
       setIsFinished(true);
       stopTimer();
     }
   }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
 
-  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Shift + Enter for new quote
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         loadNewQuote();
@@ -232,7 +203,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     };
   }, [loadNewQuote]);
 
-  // Clean up timer on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -241,7 +211,6 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     };
   }, []);
 
-  // Focus the input element
   const focusInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.focus();
