@@ -53,12 +53,12 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Add custom monkey type colors
+        // Monkey type colors
         monkey: {
           bg: "#323437",
           text: "#d1d0c5",
           subtle: "#646669",
-          accent: "#e2b714",
+          accent: "#35B853",  // Changed to green for correct characters
           error: "#ca4754",
           caret: "#e2b714",
         },

@@ -53,8 +53,8 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     setCurrentWordIndex(0);
     setCurrentCharIndex(0);
     
-    // Calculate total characters
-    const totalChars = quote.replace(/\s+/g, '').length;
+    // Calculate total characters (including spaces)
+    const totalChars = quote.length;
     setStats(prev => ({ ...prev, totalChars }));
   }, [currentWordIndex]);
 
@@ -65,6 +65,7 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     setCurrentQuote(quote);
     processQuote(quote);
     resetTest();
+    focusInput();
   }, [quotes, processQuote]);
 
   // Start the timer
@@ -107,7 +108,7 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       accuracy: 100,
       correctChars: 0,
       incorrectChars: 0,
-      totalChars: currentQuote.replace(/\s+/g, '').length,
+      totalChars: currentQuote.length,
       elapsedTime: 0,
     });
     
@@ -124,7 +125,7 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
 
   // Handle user input
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value.trim();
+    const input = e.target.value;
     
     // Start timer on first input
     if (!isActive && !isFinished) {
@@ -135,8 +136,16 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     // Clear input field
     e.target.value = '';
     
-    // Handle space (word completion)
-    if (input === ' ') {
+    // Get the last character typed
+    const typedChar = input.charAt(input.length - 1);
+    if (!typedChar) return;
+    
+    // Get current word and character
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return;
+    
+    // Check if we're at the end of a word and user typed space
+    if (currentCharIndex >= currentWord.characters.length && typedChar === ' ') {
       if (currentWordIndex < words.length - 1) {
         // Move to next word
         setCurrentWordIndex(prev => prev + 1);
@@ -157,15 +166,12 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       return;
     }
     
-    // Get current word and character
-    const currentWord = words[currentWordIndex];
-    if (!currentWord) return;
-    
+    // If it's not a space at the end of a word, process the character
     const currentChar = currentWord.characters[currentCharIndex];
     if (!currentChar) return;
     
     // Check if character is correct
-    const isCorrect = input === currentChar.char;
+    const isCorrect = typedChar === currentChar.char;
     
     // Update stats
     setStats(prev => ({
@@ -188,13 +194,9 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
       // Set next character as current if exists
       if (currentCharIndex < currentWord.characters.length - 1) {
         newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
-      } else if (currentWordIndex < words.length - 1) {
-        // If end of word, set first character of next word as current
-        if (newWords[currentWordIndex + 1]?.characters.length > 0) {
-          newWords[currentWordIndex + 1].characters[0].state = 'current';
-        }
-      } else {
-        // Test is complete
+      } else if (currentWordIndex === words.length - 1 && 
+                 currentCharIndex === currentWord.characters.length - 1) {
+        // Test is complete if this is the last character of the last word
         setIsFinished(true);
         stopTimer();
       }
@@ -205,16 +207,30 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     // Move to next character
     if (currentCharIndex < currentWord.characters.length - 1) {
       setCurrentCharIndex(prev => prev + 1);
-    } else if (currentWordIndex < words.length - 1) {
-      // If end of word, move to next word
-      setCurrentWordIndex(prev => prev + 1);
-      setCurrentCharIndex(0);
-    } else {
-      // Test is complete
+    } else if (currentWordIndex === words.length - 1 && 
+               currentCharIndex === currentWord.characters.length - 1) {
+      // Test is complete if this is the last character of the last word
       setIsFinished(true);
       stopTimer();
     }
   }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Shift + Enter for new quote
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        loadNewQuote();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loadNewQuote]);
 
   // Clean up timer on unmount
   useEffect(() => {

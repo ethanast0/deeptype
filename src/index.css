@@ -107,14 +107,6 @@
     @apply transition-colors duration-100;
   }
 
-  .character-correct {
-    @apply text-monkey-text;
-  }
-
-  .character-incorrect {
-    @apply text-monkey-error;
-  }
-
   .character-current {
     @apply relative;
   }

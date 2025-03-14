@@ -48,8 +48,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                   className={cn(
                     "character",
                     {
-                      "character-correct": char.state === 'correct',
-                      "character-incorrect": char.state === 'incorrect',
+                      "text-monkey-accent": char.state === 'correct',
+                      "text-monkey-error": char.state === 'incorrect',
                       "character-current": char.state === 'current'
                     }
                   )}
@@ -90,7 +90,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           className="button button-accent" 
           onClick={loadNewQuote}
         >
-          New Quote
+          New Quote (Shift + Enter)
         </button>
       </div>
     </div>
