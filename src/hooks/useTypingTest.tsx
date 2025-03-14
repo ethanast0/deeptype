@@ -130,61 +130,58 @@ const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
     
-    if (currentCharIndex === currentWord.characters.length && typedChar === ' ') {
-      if (currentWordIndex < words.length - 1) {
-        setCurrentWordIndex(prev => prev + 1);
-        setCurrentCharIndex(0);
-        
-        setWords(prevWords => {
-          const newWords = [...prevWords];
+    if (typedChar === ' ') {
+      if (currentCharIndex === currentWord.characters.length) {
+        if (currentWordIndex < words.length - 1) {
+          setCurrentWordIndex(prev => prev + 1);
+          setCurrentCharIndex(0);
           
-          if (newWords[currentWordIndex + 1]?.characters.length > 0) {
-            newWords[currentWordIndex + 1].characters[0].state = 'current';
-          }
-          
-          return newWords;
-        });
+          setWords(prevWords => {
+            const newWords = [...prevWords];
+            
+            if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+              newWords[currentWordIndex + 1].characters[0].state = 'current';
+            }
+            
+            return newWords;
+          });
+        }
       }
       return;
     }
     
-    const currentChar = currentWord.characters[currentCharIndex];
-    if (!currentChar) return;
-    
-    const isCorrect = typedChar === currentChar.char;
-    
-    setStats(prev => ({
-      ...prev,
-      correctChars: prev.correctChars + (isCorrect ? 1 : 0),
-      incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
-      accuracy: calculateAccuracy(
-        prev.correctChars + (isCorrect ? 1 : 0), 
-        prev.incorrectChars + (isCorrect ? 0 : 1)
-      )
-    }));
-    
-    setWords(prevWords => {
-      const newWords = [...prevWords];
+    if (currentCharIndex < currentWord.characters.length) {
+      const currentChar = currentWord.characters[currentCharIndex];
       
-      newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+      const isCorrect = typedChar === currentChar.char;
       
-      if (currentCharIndex < currentWord.characters.length - 1) {
-        newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
-      } else if (currentWordIndex === words.length - 1 && 
-                 currentCharIndex === currentWord.characters.length - 1) {
-        setIsFinished(true);
-        stopTimer();
-      }
+      setStats(prev => ({
+        ...prev,
+        correctChars: prev.correctChars + (isCorrect ? 1 : 0),
+        incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+        accuracy: calculateAccuracy(
+          prev.correctChars + (isCorrect ? 1 : 0), 
+          prev.incorrectChars + (isCorrect ? 0 : 1)
+        )
+      }));
       
-      return newWords;
-    });
-    
-    if (currentCharIndex < currentWord.characters.length - 1) {
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+        
+        if (currentCharIndex < currentWord.characters.length - 1) {
+          newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
+        } else if (currentWordIndex === words.length - 1 && 
+                   currentCharIndex === currentWord.characters.length - 1) {
+          setIsFinished(true);
+          stopTimer();
+        }
+        
+        return newWords;
+      });
+      
       setCurrentCharIndex(prev => prev + 1);
-    } else if (currentWordIndex === words.length - 1 && 
-               currentCharIndex === currentWord.characters.length - 1) {
-      setIsFinished(true);
-      stopTimer();
     }
   }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
 
