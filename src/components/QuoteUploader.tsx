@@ -1,140 +1,73 @@
 
-import React, { useState } from 'react';
-import { parseQuotesFromJSON } from '../utils/typingUtils';
+import React, { useRef } from 'react';
 import { cn } from '../lib/utils';
-import { useToast } from '../hooks/use-toast';
 
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
   className?: string;
 }
 
-const QuoteUploader: React.FC<QuoteUploaderProps> = ({ onQuotesLoaded, className }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const { toast } = useToast();
-  
-  const handleFileUpload = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    
-    // Check if file is JSON
-    if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-      toast({
-        title: "Invalid file format",
-        description: "Please upload a valid JSON file.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+const QuoteUploader: React.FC<QuoteUploaderProps> = ({ 
+  onQuotesLoaded,
+  className 
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     const reader = new FileReader();
-    
     reader.onload = (e) => {
       try {
-        const jsonContent = e.target?.result as string;
-        const quotes = parseQuotesFromJSON(jsonContent);
+        const content = e.target?.result as string;
+        const quotesData = JSON.parse(content);
         
-        if (quotes.length === 0) {
-          toast({
-            title: "Empty quotes file",
-            description: "The file doesn't contain any quotes.",
-            variant: "destructive",
-          });
-          return;
+        // Validate that we have an array of strings
+        if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
+          onQuotesLoaded(quotesData);
+        } else {
+          alert('Invalid quotes format. Please upload a JSON array of strings.');
         }
-        
-        onQuotesLoaded(quotes);
-        toast({
-          title: "Quotes loaded successfully",
-          description: `${quotes.length} quotes have been loaded.`,
-        });
       } catch (error) {
-        toast({
-          title: "Error parsing file",
-          description: "The file contains invalid JSON or doesn't have the expected format.",
-          variant: "destructive",
-        });
+        console.error('Error parsing JSON file:', error);
+        alert('Error parsing file. Please ensure it is a valid JSON file.');
       }
     };
     
-    reader.onerror = () => {
-      toast({
-        title: "Error reading file",
-        description: "There was an error reading the file.",
-        variant: "destructive",
-      });
-    };
-    
     reader.readAsText(file);
-  };
-  
-  // Drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-  
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
     
-    const files = e.dataTransfer.files;
-    handleFileUpload(files);
+    // Reset the input so the same file can be uploaded again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
-  
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
-    <div className={cn("mt-10 max-w-md mx-auto", className)}>
-      <div
-        className={cn(
-          "border-2 border-dashed rounded-md p-6 text-center transition-colors duration-300",
-          {
-            "border-monkey-accent bg-monkey-accent bg-opacity-5": isDragging,
-            "border-monkey-subtle": !isDragging,
-          }
-        )}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+    <div className={cn("mt-12 text-center", className)}>
+      <p className="text-monkey-subtle mb-4">
+        Upload custom quotes (JSON array of strings)
+      </p>
+      
+      <button 
+        onClick={handleButtonClick}
+        className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
+                   transition-all duration-300 hover:bg-opacity-30"
       >
-        <div className="text-lg mb-2">Upload Custom Quotes</div>
-        <p className="text-monkey-subtle text-sm mb-4">
-          Drag & drop a JSON file or click to browse
-        </p>
-        
-        <input
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          id="file-upload"
-          onChange={(e) => handleFileUpload(e.target.files)}
-        />
-        
-        <label
-          htmlFor="file-upload"
-          className="button button-accent cursor-pointer inline-block"
-        >
-          Select File
-        </label>
-        
-        <p className="text-xs text-monkey-subtle mt-4">
-          File should contain a JSON array of strings or an object with a "quotes" property containing an array of strings.
-        </p>
-      </div>
+        Upload Quotes
+      </button>
+      
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelection}
+        accept=".json"
+        className="hidden"
+      />
     </div>
   );
 };
