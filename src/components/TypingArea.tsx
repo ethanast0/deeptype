@@ -56,7 +56,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 >
                   {char.char}
                   {/* Show caret at current character position */}
-                  {char.state === 'current' && <span className="caret" />}
+                  {wordIndex === currentWordIndex && charIndex === currentCharIndex && <span className="caret" />}
                 </span>
               ))}
             </div>
