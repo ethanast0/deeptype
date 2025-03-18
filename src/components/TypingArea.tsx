@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
@@ -33,7 +34,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   return <div className={cn("typing-area-container", className)}>
       <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
       
-      <div className="typing-area flex flex-wrap" onClick={focusInput}>
+      <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
         {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
             {/* Word with characters */}
             <div className="flex">

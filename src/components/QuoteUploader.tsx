@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import { cn } from '../lib/utils';
 interface QuoteUploaderProps {
@@ -39,7 +40,7 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
-  return <div className={cn("mt-12 text-center", className)}>
+  return <div className={cn("mt-24 text-center fixed bottom-8 left-0 right-0", className)}>
       <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
       
       <button onClick={handleButtonClick} className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 

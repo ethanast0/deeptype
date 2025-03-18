@@ -123,7 +123,7 @@
   }
 
   .typing-area {
-    @apply p-4 rounded-md bg-opacity-10 bg-monkey-subtle relative w-full font-mono text-lg leading-8;
+    @apply p-4 rounded-md bg-opacity-10 bg-monkey-subtle relative w-full font-mono leading-10;
     word-break: keep-all;
     white-space: pre-wrap;
   }
@@ -141,11 +141,11 @@
   }
 
   .stat-value {
-    @apply text-2xl font-medium text-monkey-text;
+    @apply font-medium text-monkey-text;
   }
 
   .stat-label {
-    @apply text-sm uppercase tracking-wider;
+    @apply uppercase tracking-wider;
   }
 
   .button {
