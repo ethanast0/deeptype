@@ -57,7 +57,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       <div className="flex gap-4 mt-8">
         <button onClick={resetTest} className="button font-normal bg-inherit text-monkey-subtle rounded-none">reset</button>
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-950 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        <button onClick={loadNewQuote} className="button button-accent bg-slate-900 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
       </div>
     </div>;
 };
