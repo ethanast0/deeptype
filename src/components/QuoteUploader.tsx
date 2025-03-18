@@ -43,9 +43,7 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
       <p className="text-monkey-subtle mb-4 text-base font-extralight">Upload custom script (JSON array of strings)</p>
       
       <button onClick={handleButtonClick} className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
-                   transition-all duration-300 hover:bg-opacity-30">
-        Upload Quotes
-      </button>
+                   transition-all duration-300 hover:bg-opacity-30">upload script</button>
       
       <input type="file" ref={fileInputRef} onChange={handleFileSelection} accept=".json" className="hidden" />
     </div>;
