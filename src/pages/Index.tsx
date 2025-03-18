@@ -9,7 +9,7 @@ const Index = () => {
   const handleQuotesLoaded = (newQuotes: string[]) => {
     setQuotes(newQuotes);
   };
-  return <div className="min-h-screen flex flex-col">
+  return <div className="min-h-screen flex flex-col bg-slate-900">
       <Header />
       
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
