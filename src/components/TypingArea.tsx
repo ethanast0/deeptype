@@ -52,7 +52,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           </React.Fragment>)}
         
         {/* Hidden input to capture keystrokes */}
-        <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
+        <input ref={inputRef} type="text" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" className="typing-input bg-transparent" />
       </div>
 
       <div className="flex gap-4 mt-8">
