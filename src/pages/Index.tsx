@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
-import BottomMenu from '../components/BottomMenu';
+import QuoteUploader from '../components/QuoteUploader';
 import { defaultQuotes } from '../utils/typingUtils';
 
 const Index = () => {
@@ -28,9 +28,10 @@ const Index = () => {
         </div>
         
         <TypingArea quotes={quotes} />
+        
+        <QuoteUploader onQuotesLoaded={handleQuotesLoaded} />
       </main>
       
-      <BottomMenu onQuotesLoaded={handleQuotesLoaded} />
       <Footer />
     </div>
   );

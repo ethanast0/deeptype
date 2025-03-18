@@ -1,6 +1,5 @@
 
 import React, { useRef } from 'react';
-import { Button } from "@/components/ui/button";
 import { cn } from '../lib/utils';
 
 interface QuoteUploaderProps {
@@ -49,13 +48,18 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
   };
 
   return (
-    <div className={cn(className)}>
-      <Button 
-        variant="outline"
+    <div className={cn("mt-12 text-center", className)}>
+      <p className="text-monkey-subtle mb-4">
+        Upload custom quotes (JSON array of strings)
+      </p>
+      
+      <button 
         onClick={handleButtonClick}
+        className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
+                   transition-all duration-300 hover:bg-opacity-30"
       >
-        Upload JSON
-      </Button>
+        Upload Quotes
+      </button>
       
       <input
         type="file"
