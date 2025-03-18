@@ -100,11 +100,13 @@
 @layer components {
   .caret {
     @apply inline-block w-[2px] h-[1.2em] bg-monkey-caret align-text-bottom animate-caret-blink;
-    margin-right: -2px;
+    position: absolute;
+    left: 0;
+    margin-left: -1px; /* Center the caret */
   }
 
   .character {
-    @apply transition-colors duration-100;
+    @apply transition-colors duration-100 relative;
   }
 
   .character-current {

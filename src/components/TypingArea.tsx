@@ -22,7 +22,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     handleInput,
     resetTest,
     loadNewQuote,
-    focusInput
+    focusInput,
+    currentWordIndex,
+    currentCharIndex
   } = useTypingTest({ quotes });
 
   // Auto-focus on mount and when resetting
@@ -54,9 +56,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                     }
                   )}
                 >
+                  {/* Show caret before current character */}
+                  {wordIndex === currentWordIndex && charIndex === currentCharIndex && (
+                    <span className="caret" />
+                  )}
                   {char.char}
-                  {/* Show caret at current character position */}
-                  {wordIndex === currentWordIndex && charIndex === currentCharIndex && <span className="caret" />}
                 </span>
               ))}
             </div>
