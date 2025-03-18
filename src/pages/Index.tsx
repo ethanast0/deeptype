@@ -3,8 +3,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
-import QuoteUploader from '../components/QuoteUploader';
-import SmartQuoteUploader from '../components/SmartQuoteUploader';
+import BottomMenu from '../components/BottomMenu';
 import { defaultQuotes } from '../utils/typingUtils';
 
 const Index = () => {
@@ -29,13 +28,9 @@ const Index = () => {
         </div>
         
         <TypingArea quotes={quotes} />
-        
-        <div className="flex justify-center items-center mt-12">
-          <QuoteUploader onQuotesLoaded={handleQuotesLoaded} />
-          <SmartQuoteUploader onQuotesLoaded={handleQuotesLoaded} />
-        </div>
       </main>
       
+      <BottomMenu onQuotesLoaded={handleQuotesLoaded} />
       <Footer />
     </div>
   );
