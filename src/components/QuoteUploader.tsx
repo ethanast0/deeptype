@@ -40,7 +40,7 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
     fileInputRef.current?.click();
   };
   return <div className={cn("mt-12 text-center", className)}>
-      <p className="text-monkey-subtle mb-4 text-base font-extralight">Upload custom script (JSON array of strings)</p>
+      <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
       
       <button onClick={handleButtonClick} className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
                    transition-all duration-300 hover:bg-opacity-30">upload script</button>
