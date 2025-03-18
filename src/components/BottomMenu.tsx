@@ -1,11 +1,11 @@
-
-import React, { useRef, useState } from 'react';
-import { MessageCircle, FileJson, FileInput, Link, Search } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { MessageCircle, FileJson, FileInput, Link } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { extractQuotesWithAI } from "@/utils/openaiService";
 import ApiKeyDialog from "./ApiKeyDialog";
+import { ToastAction } from "@/components/ui/toast";
 
 interface BottomMenuProps {
   onQuotesLoaded: (quotes: string[]) => void;
@@ -21,6 +21,7 @@ const BottomMenu: React.FC<BottomMenuProps> = ({
   const documentFileInputRef = useRef<HTMLInputElement>(null);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [processingItem, setProcessingItem] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Handle JSON file upload
   const handleJsonFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,139 +66,267 @@ const BottomMenu: React.FC<BottomMenuProps> = ({
     }
   };
 
-  // Extract text from document using OpenAI
-  const processTextContent = async (text: string, source: string) => {
-    if (!localStorage.getItem('openai_api_key')) {
-      setIsApiKeyDialogOpen(true);
-      return;
-    }
-
+  // Helper function to process text content
+  const processTextContent = async (text: string, source?: string) => {
     try {
-      setProcessingItem(source);
+      setIsLoading(true);
+      
+      // Get subscription tier and API key
+      const tier = localStorage.getItem('subscription_tier') || 'free';
+      const apiKey = localStorage.getItem('together_api_key');
       
       toast({
-        title: "Processing Content",
-        description: `Extracting quotes from ${source}...`,
+        title: "Processing",
+        description: `Extracting quotes${source ? ' from ' + source : ''}...`,
       });
-
-      const quotes = await extractQuotesWithAI(text);
       
-      onQuotesLoaded(quotes);
-      toast({
-        title: "Success",
-        description: `${quotes.length} quotes extracted from ${source}.`,
+      // Call API to extract quotes
+      const response = await fetch('/api/extract-quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'demo-user', // In a real app, this would be from auth
+          'x-subscription-tier': tier,
+          ...(apiKey ? { 'x-api-key': apiKey } : {})
+        },
+        body: JSON.stringify({
+          text,
+          preferences: {
+            count: 10,
+            maxLength: 150
+          }
+        })
       });
+      
+      // Handle API errors
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Special handling for quota exceeded
+        if (errorData.error?.code === 'QUOTA_EXCEEDED') {
+          toast({
+            title: "Quota Exceeded",
+            description: "You've reached your free tier limit. Upgrade to Pro for unlimited quotes.",
+            action: (
+              <ToastAction altText="Upgrade" onClick={() => setIsApiKeyDialogOpen(true)}>
+                Upgrade
+              </ToastAction>
+            ),
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(errorData.error?.message || 'Failed to extract quotes');
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Update quotes in the handler function passed from parent
+      onQuotesLoaded(data.quotes);
+      
+      toast({
+        title: "Quotes Ready",
+        description: `Extracted ${data.quotes.length} quotes using ${data.model_used}`,
+      });
+      
     } catch (error) {
-      console.error(`Error processing ${source}:`, error);
+      console.error('Error processing text:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : `Failed to process ${source}.`,
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
+      setIsLoading(false);
       setProcessingItem(null);
     }
   };
 
   // Handle document file upload
-  const handleDocumentFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleDocumentFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     
+    setIsLoading(true);
+    
     try {
-      // For now, we'll just read text files directly
-      // In a real application, you would use libraries like pdf.js for PDFs or other parsers for DOCX
+      toast({
+        title: "Processing Document",
+        description: `Reading ${file.name}...`,
+      });
+      
+      // Get subscription tier
+      const tier = localStorage.getItem('subscription_tier') || 'free';
+      const apiKey = localStorage.getItem('together_api_key');
+      
+      // Check if user is on Pro tier
+      if (tier !== 'pro') {
+        toast({
+          title: "Pro Plan Required",
+          description: "Document processing requires a Pro subscription.",
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Upgrade" onClick={() => setIsApiKeyDialogOpen(true)}>
+              Upgrade
+            </ToastAction>
+          ),
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Read file as base64
       const reader = new FileReader();
-      reader.onload = async (e) => {
-        const content = e.target?.result as string;
-        await processTextContent(content, file.name);
+      
+      reader.onload = async (event) => {
+        if (!event.target?.result) return;
+        
+        const base64String = (event.target.result as string).split(',')[1];
+        
+        // Get MIME type from file
+        const mimeType = file.type;
+        
+        // Send to backend
+        const response = await fetch('/api/process-document', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': 'demo-user', // In a real app, this would be from auth
+            'x-subscription-tier': tier,
+            ...(apiKey ? { 'x-api-key': apiKey } : {})
+          },
+          body: JSON.stringify({
+            document: base64String,
+            mimeType,
+            preferences: {
+              count: 10,
+              maxLength: 150
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Failed to process document');
+        }
+        
+        const data = await response.json();
+        
+        // Update quotes in the handler function passed from parent
+        onQuotesLoaded(data.quotes);
+        
+        toast({
+          title: "Document Processed",
+          description: `Extracted ${data.quotes.length} quotes in ${Math.round(data.processing_time / 1000)}s using ${data.model_used}`,
+        });
       };
       
-      reader.readAsText(file);
+      reader.onerror = () => {
+        throw new Error('Failed to read file');
+      };
+      
+      reader.readAsDataURL(file);
+      
     } catch (error) {
-      console.error('Error reading document:', error);
+      console.error('Error processing document:', error);
       toast({
         title: "Error",
-        description: "Failed to read document.",
+        description: (error as Error).message,
         variant: "destructive",
       });
-    }
-    
-    // Reset the input so the same file can be uploaded again
-    if (event.target) {
-      event.target.value = '';
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Handle URL paste
   const handleUrlPaste = async () => {
-    // Get URL from clipboard
     try {
-      const url = await navigator.clipboard.readText();
+      const clipboardText = await navigator.clipboard.readText();
       
-      if (!url.trim()) {
-        toast({
-          title: "Empty clipboard",
-          description: "Please copy a URL before clicking this button.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch (e) {
+      // Simple URL validation
+      if (!clipboardText.startsWith('http')) {
         toast({
           title: "Invalid URL",
-          description: "The clipboard content is not a valid URL.",
+          description: "Please copy a valid URL to your clipboard.",
           variant: "destructive",
         });
         return;
       }
       
-      setProcessingItem('URL');
+      setIsLoading(true);
+      setProcessingItem('url');
+      
+      // Get subscription tier
+      const tier = localStorage.getItem('subscription_tier') || 'free';
+      const apiKey = localStorage.getItem('together_api_key');
+      
+      // Check if user is on Pro tier
+      if (tier !== 'pro') {
+        toast({
+          title: "Pro Plan Required",
+          description: "URL processing requires a Pro subscription.",
+          variant: "destructive",
+          action: (
+            <ToastAction altText="Upgrade" onClick={() => setIsApiKeyDialogOpen(true)}>
+              Upgrade
+            </ToastAction>
+          ),
+        });
+        setIsLoading(false);
+        setProcessingItem(null);
+        return;
+      }
+      
       toast({
         title: "Processing URL",
-        description: `Fetching content from ${url}...`,
+        description: `Reading content from ${clipboardText.substring(0, 30)}...`,
       });
       
-      try {
-        // Use a CORS proxy to fetch the URL content
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch URL: ${response.statusText}`);
-        }
-        
-        const html = await response.text();
-        
-        // Extract text content from HTML using a simple approach
-        const textContent = html
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/\s{2,}/g, ' ')
-          .trim();
-        
-        await processTextContent(textContent, url);
-      } catch (error) {
-        console.error('Error fetching URL:', error);
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to fetch URL content.",
-          variant: "destructive",
-        });
-        setProcessingItem(null);
+      // Send to backend
+      const response = await fetch('/api/process-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': 'demo-user', // In a real app, this would be from auth
+          'x-subscription-tier': tier,
+          ...(apiKey ? { 'x-api-key': apiKey } : {})
+        },
+        body: JSON.stringify({
+          url: clipboardText,
+          preferences: {
+            count: 10,
+            maxLength: 150
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Failed to process URL');
       }
-    } catch (err) {
-      console.error('Error accessing clipboard:', err);
+      
+      const data = await response.json();
+      
+      // Update quotes in the handler function passed from parent
+      onQuotesLoaded(data.quotes);
+      
+      toast({
+        title: "URL Processed",
+        description: `Extracted ${data.quotes.length} quotes from ${clipboardText.substring(0, 20)}...`,
+      });
+      
+    } catch (error) {
+      console.error('Error processing URL:', error);
       toast({
         title: "Error",
-        description: "Could not access clipboard. Please check permissions.",
+        description: (error as Error).message,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
+      setProcessingItem(null);
     }
   };
 
@@ -208,6 +337,71 @@ const BottomMenu: React.FC<BottomMenuProps> = ({
       description: "The natural language query feature will be available soon!",
     });
   };
+
+  // Add this function to check subscription status
+  const checkSubscriptionStatus = async () => {
+    try {
+      // Get subscription tier from localStorage
+      const tier = localStorage.getItem('subscription_tier') || 'free';
+      
+      // If we're in a real app with backend, we'd fetch the status
+      const response = await fetch('/api/quota', {
+        headers: {
+          'x-user-id': 'demo-user', // In a real app, this would be from auth
+          'x-subscription-tier': tier
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch quota status');
+      }
+      
+      const data = await response.json();
+      
+      // Show different toast based on quota status
+      if (tier === 'pro') {
+        toast({
+          title: "Pro Plan Active",
+          description: `You have unlimited quotes available.`,
+        });
+      } else {
+        toast({
+          title: "Free Plan",
+          description: `${data.quota.remaining} of ${data.quota.limit} quotes remaining this month.`,
+        });
+        
+        // If quota is low, suggest upgrading
+        if (data.quota.remaining < 10) {
+          setTimeout(() => {
+            toast({
+              title: "Running Low",
+              description: "Consider upgrading to Pro for unlimited quotes.",
+              action: (
+                <ToastAction altText="Upgrade" onClick={() => setIsApiKeyDialogOpen(true)}>
+                  Upgrade
+                </ToastAction>
+              ),
+            });
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      // Fallback to showing local storage data
+      const tier = localStorage.getItem('subscription_tier') || 'free';
+      toast({
+        title: tier === 'pro' ? "Pro Plan" : "Free Plan",
+        description: tier === 'pro' 
+          ? "Unlimited quotes available" 
+          : "100 quotes per month",
+      });
+    }
+  };
+  
+  // Add this effect to check status on mount
+  useEffect(() => {
+    checkSubscriptionStatus();
+  }, []);
 
   return (
     <>

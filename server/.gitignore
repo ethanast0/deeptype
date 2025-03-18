@@ -1,0 +1,32 @@
+# Node.js dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Builds
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# API keys and secrets
+*.pem
+*.key
+*.cert
+
+# Cache
+.cache/
+.npm
+
+# IDE
+.vscode/
+.idea/ 

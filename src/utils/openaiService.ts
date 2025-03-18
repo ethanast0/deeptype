@@ -1,71 +1,43 @@
-
-interface OpenAIResponse {
-  choices: {
-    message: {
-      content: string;
-    };
-  }[];
+interface QuoteResponse {
+  quotes: string[];
+  remaining_quota?: number;
+  tier: 'free' | 'pro';
 }
 
 export async function extractQuotesWithAI(text: string): Promise<string[]> {
-  const apiKey = localStorage.getItem('openai_api_key');
-  
-  if (!apiKey) {
-    throw new Error("OpenAI API key not found. Please add your API key in settings.");
-  }
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('/api/extract-quotes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        // We'll add auth header here once we implement authentication
+        'x-user-id': 'demo-user',
+        'x-subscription-tier': localStorage.getItem('subscription_tier') || 'free',
+        ...(localStorage.getItem('together_api_key') ? 
+          { 'x-api-key': localStorage.getItem('together_api_key') as string } : {})
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Extract 5-10 meaningful quotes from the following text. Return ONLY a JSON array of strings with no additional text. Each quote should be concise (under 150 characters if possible) and impactful for typing practice.'
-          },
-          {
-            role: 'user',
-            content: text
-          }
-        ],
-        temperature: 0.7
+        text,
+        preferences: {
+          count: 10,
+          maxLength: 150
+        }
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+      const error = await response.json();
+      if (error.code === 'QUOTA_EXCEEDED') {
+        throw new Error('Quote extraction quota exceeded. Please upgrade to Pro plan for unlimited quotes.');
+      }
+      throw new Error(error.message || 'Failed to extract quotes');
     }
 
-    const data: OpenAIResponse = await response.json();
+    const data: QuoteResponse = await response.json();
+    return data.quotes;
     
-    try {
-      // Try to parse the content as JSON
-      const content = data.choices[0].message.content.trim();
-      return JSON.parse(content);
-    } catch (parseError) {
-      // If parsing fails, try to extract quotes using regex
-      const content = data.choices[0].message.content;
-      const regex = /"(.*?)"/g;
-      const matches = [...content.matchAll(regex)];
-      
-      if (matches.length > 0) {
-        return matches.map(match => match[1]);
-      }
-      
-      // If all else fails, split by newlines and clean up
-      return content
-        .split('\n')
-        .filter(line => line.trim().length > 0)
-        .map(line => line.replace(/^\d+\.\s*/, '').replace(/^["']|["']$/g, ''));
-    }
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error extracting quotes:', error);
     throw error;
   }
 }

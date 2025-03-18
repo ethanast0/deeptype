@@ -1,69 +1,126 @@
-# Welcome to your Lovable project
+# TextFlow - Smart Typing Practice
 
-## Project info
+TextFlow is a modern typing practice application that uses AI to extract quotes from various sources including text, documents (PDF, DOCX, TXT), and websites. It offers a clean, minimalist interface for an optimal typing experience.
 
-**URL**: https://lovable.dev/projects/9fb1d546-e1a6-42b5-94b7-37fa3aa4c4fe
+## Features
 
-## How can I edit this code?
+- Smart quote extraction using Together.ai's LLMs
+- Support for text, PDFs, DOCXs, and URLs
+- Subscription-based model with free and pro tiers
+- Clean, modern UI with a minimalist bottom menu
+- Stats tracking for WPM, accuracy, and time
+- Easy quote navigation
 
-There are several ways of editing your application.
+## Project Structure
 
-**Use Lovable**
+The project consists of two main parts:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9fb1d546-e1a6-42b5-94b7-37fa3aa4c4fe) and start prompting.
+1. **Frontend** - React/TypeScript application with Shadcn UI components
+2. **Backend** - Express.js API for quote extraction and document processing
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js 16+
+- Together.ai API key (for backend)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Backend Setup
 
-Follow these steps:
+1. Navigate to the server directory:
+   ```bash
+   cd server
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Create a `.env` file based on the `.env.example` and add your Together.ai API key:
+   ```
+   TOGETHER_API_KEY=your_api_key_here
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. Start the backend server:
+   ```bash
+   npm run dev
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Frontend Setup
 
-**Edit a file directly in GitHub**
+1. From the project root, install dependencies:
+   ```bash
+   npm install
+   ```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-**Use GitHub Codespaces**
+3. Open your browser to `http://localhost:8080`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Usage
 
-## What technologies are used for this project?
+### Upload JSON
 
-This project is built with .
+Click the file-json icon to upload a JSON file containing an array of quotes.
 
-- Vite
-- TypeScript
+### Smart Document Upload (Pro)
+
+Click the file-input icon to upload PDF, DOCX, or TXT files. The application will extract meaningful quotes from these documents.
+
+### Paste URL (Pro)
+
+Copy a URL to your clipboard and click the link icon. The application will fetch the content and extract quotes from the webpage.
+
+### Subscription Tiers
+
+- **Free Plan**: 100 quotes per month, basic extraction, text uploads only
+- **Pro Plan**: Unlimited quotes, premium extraction models, support for documents and URLs
+
+## Security and Confidentiality
+
+This project follows security best practices:
+
+- All API keys and sensitive information are stored in `.env` files
+- All `.env` files are listed in `.gitignore` to prevent accidental commits
+- User API keys are stored only in browser's local storage, never on the server
+- Requests to external APIs like Together.ai are made server-side to protect API keys
+- No sensitive user data is logged or stored permanently
+- Rate limiting is implemented to prevent abuse
+- Document processing is done securely and files are not stored after processing
+
+### For Contributors
+
+When working with this project:
+- Never commit `.env` files or API keys
+- Use the provided `.env.example` as a template
+- Ensure any new sensitive configuration is added to `.gitignore`
+- All API keys in documentation or examples should be clearly marked as placeholders
+
+## Technology Stack
+
+### Frontend
 - React
-- shadcn-ui
+- TypeScript
+- Vite
+- Shadcn UI
 - Tailwind CSS
 
-## How can I deploy this project?
+### Backend
+- Express.js
+- LiteLLM (Together.ai integration)
+- pdf-parse & mammoth (document processing)
+- loguru (logging)
 
-Simply open [Lovable](https://lovable.dev/projects/9fb1d546-e1a6-42b5-94b7-37fa3aa4c4fe) and click on Share -> Publish.
+## License
 
-## I want to use a custom domain - is that possible?
+MIT
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## Acknowledgments
+
+- Together.ai for providing the LLM API
+- Shadcn for the beautiful UI components
+- Tailwind CSS for styling
