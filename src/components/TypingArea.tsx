@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
@@ -57,7 +56,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       <div className="flex gap-4 mt-8">
-        <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">reset</button>
+        <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
       </div>
     </div>;
