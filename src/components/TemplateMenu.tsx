@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
+import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Crown, Atom, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
@@ -39,13 +39,13 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const getIcon = (templateId: string) => {
     switch (templateId) {
       case 'physics':
-        return <Triangle className="h-5 w-5" />;
+        return <Atom className="h-5 w-5" />;
       case 'history':
         return <BookOpen className="h-5 w-5" />;
       case 'coding':
         return <Code className="h-5 w-5" />;
       case 'legends':
-        return <Type className="h-5 w-5" />;
+        return <Crown className="h-5 w-5" />;
       default:
         return <Heart className="h-5 w-5" />;
     }
@@ -110,7 +110,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
               )}
               onClick={toggleExpand}
             >
-              <Quote className="h-5 w-5" />
+              <Heart className="h-5 w-5" />
               <span>saved</span>
             </button>
           )}
