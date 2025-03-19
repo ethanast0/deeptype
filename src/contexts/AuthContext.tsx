@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 type User = {
   id: string;
@@ -28,6 +29,18 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Helper function to get all users
+  const getAllUsers = (): User[] => {
+    const users = localStorage.getItem("users");
+    return users ? JSON.parse(users) : [];
+  };
+
+  // Helper function to save users
+  const saveUsers = (users: User[]) => {
+    localStorage.setItem("users", JSON.stringify(users));
+  };
 
   useEffect(() => {
     // Check localStorage for existing user session
@@ -35,25 +48,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
+    // Initialize users array if it doesn't exist
+    if (!localStorage.getItem("users")) {
+      localStorage.setItem("users", JSON.stringify([]));
+    }
+
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call with a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get all users
+      const users = getAllUsers();
       
-      // This is a mock implementation - in a real app, this would be an API call
-      // that returns a user object after successful authentication
-      const mockUser: User = {
-        id: "user123",
-        username: email.split('@')[0],
-        email: email
-      };
+      // Find user with matching email
+      const foundUser = users.find(u => u.email === email);
+      if (!foundUser) {
+        throw new Error("User not found");
+      }
       
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
+      // In a real app, you would verify the password here
+      // For this mock implementation, we're just checking if the user exists
+      
+      setUser(foundUser);
+      localStorage.setItem("user", JSON.stringify(foundUser));
+
+      // Associate any temporary scripts with this user
+      const tempScripts = localStorage.getItem("temp_script");
+      if (tempScripts) {
+        const parsedScript = JSON.parse(tempScripts);
+        
+        // Get existing scripts from storage
+        const storageKey = 'typetest_saved_scripts';
+        const existingScripts = localStorage.getItem(storageKey);
+        const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
+        
+        // Add the temp script with the user's ID
+        const newScript = {
+          ...parsedScript,
+          userId: foundUser.id,
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString()
+        };
+        
+        allScripts.push(newScript);
+        localStorage.setItem(storageKey, JSON.stringify(allScripts));
+        
+        // Clear the temp script
+        localStorage.removeItem("temp_script");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -62,18 +110,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call with a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Get all users
+      const users = getAllUsers();
       
-      // This is a mock implementation
-      const mockUser: User = {
+      // Check if email already exists
+      if (users.some(u => u.email === email)) {
+        toast({
+          title: "Email already in use",
+          description: "This email is already registered. Please login or use a different email.",
+          variant: "destructive"
+        });
+        throw new Error("Email already exists");
+      }
+      
+      // Create new user
+      const newUser: User = {
         id: "user" + Math.floor(Math.random() * 1000),
         username,
         email
       };
       
-      setUser(mockUser);
-      localStorage.setItem("user", JSON.stringify(mockUser));
+      // Add user to users array
+      users.push(newUser);
+      saveUsers(users);
+      
+      // Set as current user
+      setUser(newUser);
+      localStorage.setItem("user", JSON.stringify(newUser));
+      
+      // Associate any temporary scripts with this user
+      const tempScripts = localStorage.getItem("temp_script");
+      if (tempScripts) {
+        const parsedScript = JSON.parse(tempScripts);
+        
+        // Get existing scripts from storage
+        const storageKey = 'typetest_saved_scripts';
+        const existingScripts = localStorage.getItem(storageKey);
+        const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
+        
+        // Add the temp script with the user's ID
+        const newScript = {
+          ...parsedScript,
+          userId: newUser.id,
+          id: Date.now().toString(),
+          createdAt: new Date().toISOString()
+        };
+        
+        allScripts.push(newScript);
+        localStorage.setItem(storageKey, JSON.stringify(allScripts));
+        
+        // Clear the temp script
+        localStorage.removeItem("temp_script");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }

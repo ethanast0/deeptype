@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Crown, Atom, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
+import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Crown, Atom, Hash, Clock, Type, Quote, Triangle, Settings, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
@@ -168,6 +169,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
         scripts={savedScripts} 
         userId={user.id} 
         onScriptsChange={loadSavedScripts} 
+        onSelectTemplate={onSelectTemplate}
       />}
     </div>
   );

@@ -39,10 +39,24 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
           onQuotesLoaded(quotesData);
           
           // If user is logged in, prompt to save
+          // If not logged in, store in temporary storage
+          setQuotes(quotesData);
+          setScriptName(`Script ${new Date().toLocaleDateString()}`);
+          
           if (user) {
-            setQuotes(quotesData);
-            setScriptName(`Script ${new Date().toLocaleDateString()}`);
             setIsDialogOpen(true);
+          } else {
+            // Store temporarily in localStorage
+            const tempScript = {
+              name: `Script ${new Date().toLocaleDateString()}`,
+              quotes: quotesData
+            };
+            localStorage.setItem("temp_script", JSON.stringify(tempScript));
+            
+            toast({
+              title: "Script loaded",
+              description: "Sign up or log in to save this script permanently."
+            });
           }
         } else {
           toast({

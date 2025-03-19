@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUp, ArrowDown, Edit, Trash, Plus, Save } from 'lucide-react';
+import { ArrowUp, ArrowDown, Edit, Trash, Plus, Save, Upload } from 'lucide-react';
 import { SavedScript, scriptService } from '@/services/scriptService';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ interface ScriptManagerProps {
   scripts: SavedScript[];
   userId: string;
   onScriptsChange: () => void;
+  onSelectTemplate?: (quotes: string[]) => void;
 }
 
 const ScriptManager: React.FC<ScriptManagerProps> = ({
@@ -27,11 +28,13 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
   onOpenChange,
   scripts,
   userId,
-  onScriptsChange
+  onScriptsChange,
+  onSelectTemplate
 }) => {
   const [editingScript, setEditingScript] = useState<SavedScript | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [scriptContent, setScriptContent] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleEdit = (script: SavedScript) => {
@@ -50,9 +53,54 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
       return;
     }
     
-    setEditingScript(null);
-    setScriptName('New Script');
-    setScriptContent('');
+    // Instead of showing an empty form, trigger the file upload
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const content = e.target?.result as string;
+        const quotesData = JSON.parse(content);
+
+        // Validate that we have an array of strings
+        if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
+          // Set up for editing form
+          setEditingScript(null);
+          setScriptName(`Script ${new Date().toLocaleDateString()}`);
+          setScriptContent(quotesData.join('\n'));
+          
+          // Also update typing area if callback provided
+          if (onSelectTemplate) {
+            onSelectTemplate(quotesData);
+          }
+        } else {
+          toast({
+            title: "Invalid format",
+            description: "Please upload a JSON array of strings.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing JSON file:', error);
+        toast({
+          title: "Error parsing file",
+          description: "Please ensure it is a valid JSON file.",
+          variant: "destructive"
+        });
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be uploaded again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSave = () => {
@@ -102,6 +150,7 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
           description: "Your new script has been saved."
         });
         onScriptsChange();
+        setEditingScript(null);
       } else {
         toast({
           title: "Failed to create script",
@@ -178,9 +227,18 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
                 disabled={scripts.length >= 5}
                 className="bg-slate-800 hover:bg-slate-700 border-slate-700"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                New Script
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Script
               </Button>
+              
+              {/* Hidden file input for script upload */}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileSelection} 
+                accept=".json" 
+                className="hidden" 
+              />
             </div>
             
             <div className="max-h-[50vh] overflow-y-auto space-y-2">
@@ -206,7 +264,7 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
               
               {scripts.length === 0 && (
                 <div className="text-center py-4 text-monkey-subtle">
-                  No scripts saved. Create one to get started.
+                  No scripts saved. Upload one to get started.
                 </div>
               )}
             </div>
