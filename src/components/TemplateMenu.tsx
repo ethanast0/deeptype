@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AtSign, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
+import { BookOpen, History, Heart, Code, Book, Save, Wrench, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
@@ -42,9 +43,9 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       case 'physics':
         return <AtSign className="h-5 w-5" />;
       case 'history':
-        return <Hash className="h-5 w-5" />;
+        return <Book className="h-5 w-5" />;
       case 'coding':
-        return <Clock className="h-5 w-5" />;
+        return <Code className="h-5 w-5" />;
       case 'legends':
         return <Type className="h-5 w-5" />;
       default:
