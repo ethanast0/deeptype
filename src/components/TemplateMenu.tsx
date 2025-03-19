@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AtSign, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
-import { BookOpen, History, Heart, Code, Book, Save, Wrench, Settings } from "lucide-react";
+import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
