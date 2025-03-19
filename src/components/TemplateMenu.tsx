@@ -1,19 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { 
   BookOpen, 
   History, 
   Code, 
   Book, 
   Save, 
-  ChevronDown, 
-  ChevronUp,
+  Wrench,
   Settings
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Menubar,
+  MenubarMenu,
+  MenubarTrigger,
+  MenubarContent,
+  MenubarItem,
+} from "@/components/ui/menubar";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +29,6 @@ interface TemplateMenuProps {
 }
 
 const TemplateMenu: React.FC<TemplateMenuProps> = ({ onSelectTemplate }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [isScriptManagerOpen, setIsScriptManagerOpen] = useState(false);
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
@@ -85,84 +87,65 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({ onSelectTemplate }) => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto mb-6">
-      <div className="mb-4 flex flex-wrap gap-2">
+    <div className="w-full mb-6">
+      <Menubar className="flex bg-slate-800 border-slate-700 rounded-lg w-full overflow-x-auto">
         {templates.map((template) => (
           <Button
             key={template.id}
             variant="ghost"
             size="sm"
             className={cn(
-              "h-10 flex flex-col gap-1 text-monkey-subtle hover:text-monkey-text hover:bg-slate-800 rounded-md",
+              "h-10 flex gap-2 text-monkey-subtle hover:text-monkey-text hover:bg-slate-800 rounded-md",
               activeTemplateId === template.id && "text-monkey-accent"
             )}
             onClick={() => handleSelectTemplate(template.id, template.quotes)}
           >
             {getIcon(template.icon)}
-            <span className="text-xs">{template.name}</span>
+            <span>{template.name}</span>
           </Button>
         ))}
-        
+
         {user && (
-          <Collapsible
-            open={isOpen}
-            onOpenChange={setIsOpen}
-            className="w-full"
-          >
-            <div className="flex items-center">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-10 flex flex-col gap-1 text-monkey-subtle hover:text-monkey-text hover:bg-slate-800 rounded-md"
+          <>
+            <MenubarMenu>
+              <MenubarTrigger className={cn(
+                "h-10 flex gap-2 text-monkey-subtle hover:text-monkey-text data-[state=open]:text-monkey-accent",
+                savedScripts.some(s => activeTemplateId === s.id) && "text-monkey-accent"
+              )}>
+                <Save className="h-4 w-4" />
+                <span>saved</span>
+              </MenubarTrigger>
+              <MenubarContent className="bg-slate-800 border-slate-700 min-w-[150px]">
+                {savedScripts.length > 0 ? (
+                  savedScripts.map((script) => (
+                    <MenubarItem 
+                      key={script.id}
+                      className={cn(
+                        "text-monkey-subtle hover:text-monkey-text hover:bg-slate-700 focus:bg-slate-700 cursor-pointer",
+                        activeTemplateId === script.id && "text-monkey-accent"
+                      )}
+                      onClick={() => handleSelectSavedScript(script)}
+                    >
+                      {script.name}
+                    </MenubarItem>
+                  ))
+                ) : (
+                  <MenubarItem disabled className="text-monkey-subtle opacity-50">
+                    No saved scripts
+                  </MenubarItem>
+                )}
+                <MenubarItem 
+                  className="mt-2 text-monkey-subtle hover:text-monkey-text hover:bg-slate-700 focus:bg-slate-700 cursor-pointer border-t border-slate-700"
+                  onClick={handleOpenScriptManager}
                 >
-                  <Save className="h-4 w-4" />
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs">Saved</span>
-                    {isOpen ? 
-                      <ChevronUp className="h-3 w-3" /> : 
-                      <ChevronDown className="h-3 w-3" />
-                    }
-                  </div>
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-            
-            <CollapsibleContent className="mt-2 space-y-2">
-              {savedScripts.length > 0 ? (
-                savedScripts.map((script) => (
-                  <Button
-                    key={script.id}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "w-full justify-start h-8 text-monkey-subtle hover:text-monkey-text hover:bg-slate-800 rounded-md text-xs px-2",
-                      activeTemplateId === script.id && "text-monkey-accent"
-                    )}
-                    onClick={() => handleSelectSavedScript(script)}
-                  >
-                    {script.name}
-                  </Button>
-                ))
-              ) : (
-                <div className="text-xs text-monkey-subtle py-1 px-2">
-                  No saved scripts
-                </div>
-              )}
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-2 h-8 text-xs bg-slate-800 hover:bg-slate-700 border-slate-700 text-monkey-subtle hover:text-monkey-text"
-                onClick={handleOpenScriptManager}
-              >
-                <Settings className="h-3 w-3 mr-1" />
-                Change
-              </Button>
-            </CollapsibleContent>
-          </Collapsible>
+                  <Settings className="h-3 w-3 mr-2" />
+                  change
+                </MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+          </>
         )}
-      </div>
+      </Menubar>
 
       {user && (
         <ScriptManager 
