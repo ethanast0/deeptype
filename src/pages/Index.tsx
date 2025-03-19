@@ -6,7 +6,6 @@ import TypingArea from '../components/TypingArea';
 import QuoteUploader from '../components/QuoteUploader';
 import TemplateMenu from '../components/TemplateMenu';
 import { defaultQuotes } from '../utils/typingUtils';
-import templates from '../data/templates';
 
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
