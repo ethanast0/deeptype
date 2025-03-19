@@ -138,7 +138,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
                     )}
                     onClick={() => handleSelectSavedScript(script)}
                   >
-                    <Triangle className="h-5 w-5" />
+                    <Hash className="h-5 w-5" />
                     <span>{script.name}</span>
                   </button>
                 ))
