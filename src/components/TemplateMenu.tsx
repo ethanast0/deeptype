@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Hash, Clock, Type, Quote, Triangle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,15 +39,15 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const getIcon = (templateId: string) => {
     switch (templateId) {
       case 'physics':
-        return <AtSign className="h-5 w-5" />;
+        return <Triangle className="h-5 w-5" />;
       case 'history':
-        return <Book className="h-5 w-5" />;
+        return <BookOpen className="h-5 w-5" />;
       case 'coding':
         return <Code className="h-5 w-5" />;
       case 'legends':
         return <Type className="h-5 w-5" />;
       default:
-        return <Triangle className="h-5 w-5" />;
+        return <Heart className="h-5 w-5" />;
     }
   };
 
