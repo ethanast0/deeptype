@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = {
   id: string;
@@ -32,82 +34,131 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Helper function to get all users
-  const getAllUsers = (): User[] => {
-    const users = localStorage.getItem("users");
-    return users ? JSON.parse(users) : [];
-  };
-
-  // Helper function to save users
-  const saveUsers = (users: User[]) => {
-    localStorage.setItem("users", JSON.stringify(users));
-  };
-
   // Helper function to associate temporary scripts with user
-  const associateTempScriptsWithUser = (user: User) => {
+  const associateTempScriptsWithUser = async (user: User) => {
     const tempScripts = localStorage.getItem("temp_script");
     if (tempScripts) {
-      const parsedScript = JSON.parse(tempScripts);
+      try {
+        const parsedScript = JSON.parse(tempScripts);
+        
+        // Insert the script into Supabase
+        const { data, error } = await supabase
+          .from('scripts')
+          .insert({
+            user_id: user.id,
+            title: parsedScript.name,
+            content: JSON.stringify(parsedScript.quotes),
+            category: 'Custom',
+            created_by: user.id
+          });
+        
+        if (error) {
+          console.error("Error saving temp script to Supabase:", error);
+          throw error;
+        }
+        
+        // Clear the temp script from localStorage
+        localStorage.removeItem("temp_script");
+      } catch (error) {
+        console.error("Error processing temp script:", error);
+      }
+    }
+  };
+
+  const fetchUserProfile = async (id: string): Promise<User | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', id)
+        .single();
       
-      // Get existing scripts from storage
-      const storageKey = 'typetest_saved_scripts';
-      const existingScripts = localStorage.getItem(storageKey);
-      const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
+      if (error) {
+        console.error("Error fetching user profile:", error);
+        return null;
+      }
       
-      // Add the temp script with the user's ID
-      const newScript = {
-        ...parsedScript,
-        userId: user.id,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        category: 'Custom'
-      };
+      if (data) {
+        return {
+          id: data.id,
+          username: data.username,
+          email: data.email,
+          createdAt: data.created_at
+        };
+      }
       
-      allScripts.push(newScript);
-      localStorage.setItem(storageKey, JSON.stringify(allScripts));
-      
-      // Clear the temp script
-      localStorage.removeItem("temp_script");
+      return null;
+    } catch (error) {
+      console.error("Error in fetchUserProfile:", error);
+      return null;
     }
   };
 
   useEffect(() => {
-    // Check localStorage for existing user session
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setIsLoading(true);
+        
+        if (session?.user) {
+          // Check if the user exists in our users table
+          const userProfile = await fetchUserProfile(session.user.id);
+          
+          if (userProfile) {
+            setUser(userProfile);
+          } else {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
 
-    // Initialize users array if it doesn't exist
-    if (!localStorage.getItem("users")) {
-      localStorage.setItem("users", JSON.stringify([]));
-    }
+    // Check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        // Check if the user exists in our users table
+        const userProfile = await fetchUserProfile(session.user.id);
+        
+        if (userProfile) {
+          setUser(userProfile);
+        }
+      }
+      
+      setIsLoading(false);
+    });
 
-    setIsLoading(false);
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Get all users
-      const users = getAllUsers();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Find user with matching email
-      const foundUser = users.find(u => u.email === email);
-      if (!foundUser) {
-        throw new Error("User not found");
+      if (error) {
+        throw error;
       }
       
-      // In a real app, you would verify the password here
-      // For this mock implementation, we're just checking if the user exists
-      
-      setUser(foundUser);
-      localStorage.setItem("user", JSON.stringify(foundUser));
-
-      // Associate any temporary scripts with this user
-      associateTempScriptsWithUser(foundUser);
-      
-    } catch (error) {
+      if (data.user) {
+        const userProfile = await fetchUserProfile(data.user.id);
+        
+        if (userProfile) {
+          setUser(userProfile);
+          
+          // Associate any temporary scripts with this user
+          await associateTempScriptsWithUser(userProfile);
+        }
+      }
+    } catch (error: any) {
       console.error("Login error:", error);
       throw error;
     } finally {
@@ -118,39 +169,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Get all users
-      const users = getAllUsers();
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
       
-      // Check if email already exists
-      if (users.some(u => u.email === email)) {
-        toast({
-          title: "Email already in use",
-          description: "This email is already registered. Please login or use a different email.",
-          variant: "destructive"
-        });
-        throw new Error("Email already exists");
+      if (authError) {
+        throw authError;
       }
       
-      // Create new user
+      if (!authData.user) {
+        throw new Error("Failed to create user");
+      }
+      
+      // Create a record in our users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email,
+          username
+        });
+      
+      if (userError) {
+        // If there was an error creating the user record, we should delete the auth user
+        console.error("Error creating user record:", userError);
+        throw userError;
+      }
+      
+      // Set the user in state
       const newUser: User = {
-        id: crypto.randomUUID(), // More reliable UUID generation
+        id: authData.user.id,
         username,
         email,
         createdAt: new Date().toISOString()
       };
       
-      // Add user to users array
-      users.push(newUser);
-      saveUsers(users);
-      
-      // Set as current user
       setUser(newUser);
-      localStorage.setItem("user", JSON.stringify(newUser));
       
       // Associate any temporary scripts with this user
-      associateTempScriptsWithUser(newUser);
+      await associateTempScriptsWithUser(newUser);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Signup error:", error);
       throw error;
     } finally {
@@ -158,9 +219,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("user");
   };
 
   return (

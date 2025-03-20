@@ -1,5 +1,5 @@
 
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../integrations/supabase/client';
 
 interface TypingSession {
   id: string;
@@ -13,40 +13,57 @@ interface TypingSession {
 }
 
 export const typingHistoryService = {
-  // Record a new typing session
-  recordSession: (userId: string, scriptId: string, wpm: number, accuracy: number): boolean => {
+  // Record a new typing session in Supabase
+  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number): Promise<boolean> => {
     try {
-      const historyKey = `typetest_history_${userId}`;
-      const existingHistory = localStorage.getItem(historyKey);
-      const history = existingHistory ? JSON.parse(existingHistory) : [];
-      
       // Check if we already have a session for this script today
       const today = new Date().toISOString().split('T')[0];
-      const existingSession = history.find((session: TypingSession) => 
-        session.scriptId === scriptId && session.date === today
-      );
+      const { data: existingSessions, error: fetchError } = await supabase
+        .from('typing_history')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('script_id', scriptId)
+        .eq('date', today);
       
-      if (existingSession) {
-        // Update existing session
-        existingSession.speed_wpm = Math.max(existingSession.speed_wpm, wpm);
-        existingSession.accuracy = Math.max(existingSession.accuracy, accuracy);
-        existingSession.points += 1;
-      } else {
-        // Create new session
-        const newSession: TypingSession = {
-          id: crypto.randomUUID(),
-          userId,
-          scriptId,
-          date: today,
-          time: new Date().toISOString().split('T')[1].split('.')[0],
-          speed_wpm: wpm,
-          accuracy,
-          points: 1
-        };
-        history.push(newSession);
+      if (fetchError) {
+        console.error('Error checking existing typing sessions:', fetchError);
+        return false;
       }
       
-      localStorage.setItem(historyKey, JSON.stringify(history));
+      if (existingSessions && existingSessions.length > 0) {
+        // Update existing session
+        const existingSession = existingSessions[0];
+        const { error: updateError } = await supabase
+          .from('typing_history')
+          .update({
+            speed_wpm: Math.max(existingSession.speed_wpm, wpm),
+            accuracy: Math.max(existingSession.accuracy, accuracy),
+            points: existingSession.points + 1
+          })
+          .eq('id', existingSession.id);
+        
+        if (updateError) {
+          console.error('Error updating typing session:', updateError);
+          return false;
+        }
+      } else {
+        // Create new session
+        const { error: insertError } = await supabase
+          .from('typing_history')
+          .insert({
+            user_id: userId,
+            script_id: scriptId,
+            speed_wpm: wpm,
+            accuracy: accuracy,
+            points: 1
+          });
+        
+        if (insertError) {
+          console.error('Error recording new typing session:', insertError);
+          return false;
+        }
+      }
+      
       return true;
     } catch (error) {
       console.error('Error recording typing session:', error);
@@ -54,38 +71,69 @@ export const typingHistoryService = {
     }
   },
   
-  // Get all typing sessions for a user
-  getUserSessions: (userId: string): TypingSession[] => {
+  // Get all typing sessions for a user from Supabase
+  getUserSessions: async (userId: string): Promise<TypingSession[]> => {
     try {
-      const historyKey = `typetest_history_${userId}`;
-      const existingHistory = localStorage.getItem(historyKey);
-      return existingHistory ? JSON.parse(existingHistory) : [];
+      const { data, error } = await supabase
+        .from('typing_history')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error fetching typing history:', error);
+        return [];
+      }
+      
+      return data.map(session => ({
+        id: session.id,
+        userId: session.user_id,
+        scriptId: session.script_id,
+        date: session.date,
+        time: session.time,
+        speed_wpm: session.speed_wpm,
+        accuracy: session.accuracy,
+        points: session.points
+      }));
     } catch (error) {
       console.error('Error fetching typing history:', error);
       return [];
     }
   },
   
-  // Get sessions for a specific script
-  getScriptSessions: (userId: string, scriptId: string): TypingSession[] => {
+  // Get sessions for a specific script from Supabase
+  getScriptSessions: async (userId: string, scriptId: string): Promise<TypingSession[]> => {
     try {
-      const historyKey = `typetest_history_${userId}`;
-      const existingHistory = localStorage.getItem(historyKey);
+      const { data, error } = await supabase
+        .from('typing_history')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('script_id', scriptId);
       
-      if (!existingHistory) return [];
+      if (error) {
+        console.error('Error fetching script history:', error);
+        return [];
+      }
       
-      const history: TypingSession[] = JSON.parse(existingHistory);
-      return history.filter(session => session.scriptId === scriptId);
+      return data.map(session => ({
+        id: session.id,
+        userId: session.user_id,
+        scriptId: session.script_id,
+        date: session.date,
+        time: session.time,
+        speed_wpm: session.speed_wpm,
+        accuracy: session.accuracy,
+        points: session.points
+      }));
     } catch (error) {
       console.error('Error fetching script history:', error);
       return [];
     }
   },
   
-  // Get user stats (average WPM, accuracy, total sessions)
-  getUserStats: (userId: string) => {
+  // Get user stats from Supabase
+  getUserStats: async (userId: string) => {
     try {
-      const sessions = typingHistoryService.getUserSessions(userId);
+      const sessions = await typingHistoryService.getUserSessions(userId);
       
       if (sessions.length === 0) {
         return {

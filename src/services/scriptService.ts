@@ -1,5 +1,5 @@
 
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../integrations/supabase/client';
 
 export interface SavedScript {
   id: string;
@@ -11,72 +11,98 @@ export interface SavedScript {
 }
 
 // Constants for script management
-const STORAGE_KEY = 'typetest_saved_scripts';
 const MAX_USER_SCRIPTS = 5;
 
 // Helper functions for script storage
 export const scriptService = {
-  // Get scripts - will check localStorage first, then database when integrated
-  getScripts: (userId: string): SavedScript[] => {
+  // Get scripts from Supabase
+  getScripts: async (userId: string): Promise<SavedScript[]> => {
     try {
-      // For now, we'll still use localStorage until DB integration is complete
-      const scripts = localStorage.getItem(STORAGE_KEY);
-      if (!scripts) return [];
+      const { data, error } = await supabase
+        .from('scripts')
+        .select('*')
+        .eq('user_id', userId);
       
-      const parsedScripts: SavedScript[] = JSON.parse(scripts);
-      return parsedScripts.filter(script => script.userId === userId);
+      if (error) {
+        console.error('Error fetching scripts from Supabase:', error);
+        return [];
+      }
+      
+      // Transform data to SavedScript format
+      return data.map(script => ({
+        id: script.id,
+        name: script.title,
+        quotes: JSON.parse(script.content),
+        userId: script.user_id,
+        createdAt: script.created_at,
+        category: script.category
+      }));
     } catch (error) {
       console.error('Error fetching scripts:', error);
       return [];
     }
   },
   
-  // Save script - will save to localStorage first, then database when integrated
-  saveScript: (userId: string, name: string, quotes: string[], category: string = 'Custom'): SavedScript | null => {
+  // Save script to Supabase
+  saveScript: async (userId: string, name: string, quotes: string[], category: string = 'Custom'): Promise<SavedScript | null> => {
     try {
-      const scripts = scriptService.getScripts(userId);
+      // Check if user already has 5 scripts
+      const existingScripts = await scriptService.getScripts(userId);
       
-      // Limit to 5 scripts per user
-      if (scripts.length >= MAX_USER_SCRIPTS) {
+      if (existingScripts.length >= MAX_USER_SCRIPTS) {
         return null;
       }
       
-      const newScript: SavedScript = {
-        id: crypto.randomUUID(), // More reliable UUID generation
-        name,
-        quotes,
-        userId,
-        createdAt: new Date().toISOString(),
-        category
+      // Insert script to Supabase
+      const { data, error } = await supabase
+        .from('scripts')
+        .insert({
+          user_id: userId,
+          title: name,
+          content: JSON.stringify(quotes),
+          category,
+          created_by: userId
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error saving script to Supabase:', error);
+        return null;
+      }
+      
+      // Return in SavedScript format
+      return {
+        id: data.id,
+        name: data.title,
+        quotes: JSON.parse(data.content),
+        userId: data.user_id,
+        createdAt: data.created_at,
+        category: data.category
       };
-      
-      // Store in localStorage for now
-      const allScripts = localStorage.getItem(STORAGE_KEY) 
-        ? JSON.parse(localStorage.getItem(STORAGE_KEY)!) 
-        : [];
-        
-      const updatedScripts = [...allScripts.filter((s: SavedScript) => s.userId !== userId || !scripts.some(us => us.id === s.id)), ...scripts, newScript];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedScripts));
-      
-      return newScript;
     } catch (error) {
       console.error('Error saving script:', error);
       return null;
     }
   },
   
-  // Update script
-  updateScript: (script: SavedScript): boolean => {
+  // Update script in Supabase
+  updateScript: async (script: SavedScript): Promise<boolean> => {
     try {
-      const allScripts = localStorage.getItem(STORAGE_KEY);
-      if (!allScripts) return false;
+      const { error } = await supabase
+        .from('scripts')
+        .update({
+          title: script.name,
+          content: JSON.stringify(script.quotes),
+          category: script.category || 'Custom'
+        })
+        .eq('id', script.id);
       
-      const parsedScripts: SavedScript[] = JSON.parse(allScripts);
-      const updatedScripts = parsedScripts.map(s => 
-        s.id === script.id ? script : s
-      );
+      if (error) {
+        console.error('Error updating script in Supabase:', error);
+        return false;
+      }
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedScripts));
       return true;
     } catch (error) {
       console.error('Error updating script:', error);
@@ -84,16 +110,19 @@ export const scriptService = {
     }
   },
   
-  // Delete script
-  deleteScript: (scriptId: string): boolean => {
+  // Delete script from Supabase
+  deleteScript: async (scriptId: string): Promise<boolean> => {
     try {
-      const allScripts = localStorage.getItem(STORAGE_KEY);
-      if (!allScripts) return false;
+      const { error } = await supabase
+        .from('scripts')
+        .delete()
+        .eq('id', scriptId);
       
-      const parsedScripts: SavedScript[] = JSON.parse(allScripts);
-      const updatedScripts = parsedScripts.filter(s => s.id !== scriptId);
+      if (error) {
+        console.error('Error deleting script from Supabase:', error);
+        return false;
+      }
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedScripts));
       return true;
     } catch (error) {
       console.error('Error deleting script:', error);
@@ -101,58 +130,28 @@ export const scriptService = {
     }
   },
   
-  // Reorder scripts
-  reorderScripts: (userId: string, scriptIds: string[]): boolean => {
-    try {
-      const allScripts = localStorage.getItem(STORAGE_KEY);
-      if (!allScripts) return false;
-      
-      const parsedScripts: SavedScript[] = JSON.parse(allScripts);
-      const userScripts = parsedScripts.filter(s => s.userId === userId);
-      
-      // Create a new array with the reordered scripts
-      const reorderedScripts = scriptIds.map(id => 
-        userScripts.find(s => s.id === id)
-      ).filter(Boolean) as SavedScript[];
-      
-      // Keep other users' scripts intact
-      const otherScripts = parsedScripts.filter(s => s.userId !== userId);
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...reorderedScripts, ...otherScripts]));
-      return true;
-    } catch (error) {
-      console.error('Error reordering scripts:', error);
-      return false;
-    }
-  },
-
-  // Get system templates
+  // Get system templates is not needed as templates are handled separately
   getTemplates: (): SavedScript[] => {
-    // We would normally fetch this from the database
-    // For now, we'll return an empty array as templates are handled separately
     return [];
   },
 
-  // Record typing history
-  recordTypingHistory: (userId: string, scriptId: string, wpm: number, accuracy: number): boolean => {
+  // Record typing history in Supabase
+  recordTypingHistory: async (userId: string, scriptId: string, wpm: number, accuracy: number): Promise<boolean> => {
     try {
-      const historyKey = `typetest_history_${userId}`;
-      const existingHistory = localStorage.getItem(historyKey);
-      const history = existingHistory ? JSON.parse(existingHistory) : [];
+      const { error } = await supabase
+        .from('typing_history')
+        .insert({
+          user_id: userId,
+          script_id: scriptId,
+          speed_wpm: wpm,
+          accuracy
+        });
       
-      const newEntry = {
-        id: crypto.randomUUID(),
-        userId,
-        scriptId,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toISOString().split('T')[1].split('.')[0],
-        speed_wpm: wpm,
-        accuracy,
-        points: 1
-      };
+      if (error) {
+        console.error('Error recording typing history to Supabase:', error);
+        return false;
+      }
       
-      history.push(newEntry);
-      localStorage.setItem(historyKey, JSON.stringify(history));
       return true;
     } catch (error) {
       console.error('Error recording typing history:', error);
@@ -160,12 +159,20 @@ export const scriptService = {
     }
   },
 
-  // Get typing history for a user
-  getTypingHistory: (userId: string): any[] => {
+  // Get typing history from Supabase
+  getTypingHistory: async (userId: string): Promise<any[]> => {
     try {
-      const historyKey = `typetest_history_${userId}`;
-      const existingHistory = localStorage.getItem(historyKey);
-      return existingHistory ? JSON.parse(existingHistory) : [];
+      const { data, error } = await supabase
+        .from('typing_history')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error fetching typing history from Supabase:', error);
+        return [];
+      }
+      
+      return data;
     } catch (error) {
       console.error('Error fetching typing history:', error);
       return [];

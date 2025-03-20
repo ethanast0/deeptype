@@ -86,7 +86,7 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
     fileInputRef.current?.click();
   };
   
-  const handleSaveScript = () => {
+  const handleSaveScript = async () => {
     if (!user) {
       toast({
         title: "Login required",
@@ -106,18 +106,27 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
       return;
     }
     
-    const savedScript = scriptService.saveScript(user.id, scriptName, quotes);
-    
-    if (savedScript) {
+    try {
+      const savedScript = await scriptService.saveScript(user.id, scriptName, quotes);
+      
+      if (savedScript) {
+        toast({
+          title: "Script saved",
+          description: "Your script has been saved successfully to Supabase."
+        });
+        setIsDialogOpen(false);
+      } else {
+        toast({
+          title: "Failed to save",
+          description: "You can have a maximum of 5 saved scripts.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error saving script:", error);
       toast({
-        title: "Script saved",
-        description: "Your script has been saved successfully."
-      });
-      setIsDialogOpen(false);
-    } else {
-      toast({
-        title: "Failed to save",
-        description: "You can have a maximum of 5 saved scripts.",
+        title: "Error saving script",
+        description: "There was an error saving your script.",
         variant: "destructive"
       });
     }
