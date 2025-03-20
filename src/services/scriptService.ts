@@ -1,3 +1,4 @@
+
 import { useAuth } from '../contexts/AuthContext';
 
 export interface SavedScript {
@@ -6,14 +7,19 @@ export interface SavedScript {
   quotes: string[];
   userId: string;
   createdAt: string;
+  category?: string;
 }
 
+// Constants for script management
 const STORAGE_KEY = 'typetest_saved_scripts';
+const MAX_USER_SCRIPTS = 5;
 
 // Helper functions for script storage
 export const scriptService = {
+  // Get scripts - will check localStorage first, then database when integrated
   getScripts: (userId: string): SavedScript[] => {
     try {
+      // For now, we'll still use localStorage until DB integration is complete
       const scripts = localStorage.getItem(STORAGE_KEY);
       if (!scripts) return [];
       
@@ -25,24 +31,31 @@ export const scriptService = {
     }
   },
   
-  saveScript: (userId: string, name: string, quotes: string[]): SavedScript | null => {
+  // Save script - will save to localStorage first, then database when integrated
+  saveScript: (userId: string, name: string, quotes: string[], category: string = 'Custom'): SavedScript | null => {
     try {
       const scripts = scriptService.getScripts(userId);
       
       // Limit to 5 scripts per user
-      if (scripts.length >= 5) {
+      if (scripts.length >= MAX_USER_SCRIPTS) {
         return null;
       }
       
       const newScript: SavedScript = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(), // More reliable UUID generation
         name,
         quotes,
         userId,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        category
       };
       
-      const updatedScripts = [...scripts, newScript];
+      // Store in localStorage for now
+      const allScripts = localStorage.getItem(STORAGE_KEY) 
+        ? JSON.parse(localStorage.getItem(STORAGE_KEY)!) 
+        : [];
+        
+      const updatedScripts = [...allScripts.filter((s: SavedScript) => s.userId !== userId || !scripts.some(us => us.id === s.id)), ...scripts, newScript];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedScripts));
       
       return newScript;
@@ -52,6 +65,7 @@ export const scriptService = {
     }
   },
   
+  // Update script
   updateScript: (script: SavedScript): boolean => {
     try {
       const allScripts = localStorage.getItem(STORAGE_KEY);
@@ -70,6 +84,7 @@ export const scriptService = {
     }
   },
   
+  // Delete script
   deleteScript: (scriptId: string): boolean => {
     try {
       const allScripts = localStorage.getItem(STORAGE_KEY);
@@ -86,6 +101,7 @@ export const scriptService = {
     }
   },
   
+  // Reorder scripts
   reorderScripts: (userId: string, scriptIds: string[]): boolean => {
     try {
       const allScripts = localStorage.getItem(STORAGE_KEY);
@@ -107,6 +123,52 @@ export const scriptService = {
     } catch (error) {
       console.error('Error reordering scripts:', error);
       return false;
+    }
+  },
+
+  // Get system templates
+  getTemplates: (): SavedScript[] => {
+    // We would normally fetch this from the database
+    // For now, we'll return an empty array as templates are handled separately
+    return [];
+  },
+
+  // Record typing history
+  recordTypingHistory: (userId: string, scriptId: string, wpm: number, accuracy: number): boolean => {
+    try {
+      const historyKey = `typetest_history_${userId}`;
+      const existingHistory = localStorage.getItem(historyKey);
+      const history = existingHistory ? JSON.parse(existingHistory) : [];
+      
+      const newEntry = {
+        id: crypto.randomUUID(),
+        userId,
+        scriptId,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toISOString().split('T')[1].split('.')[0],
+        speed_wpm: wpm,
+        accuracy,
+        points: 1
+      };
+      
+      history.push(newEntry);
+      localStorage.setItem(historyKey, JSON.stringify(history));
+      return true;
+    } catch (error) {
+      console.error('Error recording typing history:', error);
+      return false;
+    }
+  },
+
+  // Get typing history for a user
+  getTypingHistory: (userId: string): any[] => {
+    try {
+      const historyKey = `typetest_history_${userId}`;
+      const existingHistory = localStorage.getItem(historyKey);
+      return existingHistory ? JSON.parse(existingHistory) : [];
+    } catch (error) {
+      console.error('Error fetching typing history:', error);
+      return [];
     }
   }
 };

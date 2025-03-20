@@ -6,6 +6,7 @@ type User = {
   id: string;
   username: string;
   email: string;
+  createdAt?: string;
 };
 
 type AuthContextType = {
@@ -42,6 +43,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem("users", JSON.stringify(users));
   };
 
+  // Helper function to associate temporary scripts with user
+  const associateTempScriptsWithUser = (user: User) => {
+    const tempScripts = localStorage.getItem("temp_script");
+    if (tempScripts) {
+      const parsedScript = JSON.parse(tempScripts);
+      
+      // Get existing scripts from storage
+      const storageKey = 'typetest_saved_scripts';
+      const existingScripts = localStorage.getItem(storageKey);
+      const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
+      
+      // Add the temp script with the user's ID
+      const newScript = {
+        ...parsedScript,
+        userId: user.id,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        category: 'Custom'
+      };
+      
+      allScripts.push(newScript);
+      localStorage.setItem(storageKey, JSON.stringify(allScripts));
+      
+      // Clear the temp script
+      localStorage.removeItem("temp_script");
+    }
+  };
+
   useEffect(() => {
     // Check localStorage for existing user session
     const storedUser = localStorage.getItem("user");
@@ -76,29 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("user", JSON.stringify(foundUser));
 
       // Associate any temporary scripts with this user
-      const tempScripts = localStorage.getItem("temp_script");
-      if (tempScripts) {
-        const parsedScript = JSON.parse(tempScripts);
-        
-        // Get existing scripts from storage
-        const storageKey = 'typetest_saved_scripts';
-        const existingScripts = localStorage.getItem(storageKey);
-        const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
-        
-        // Add the temp script with the user's ID
-        const newScript = {
-          ...parsedScript,
-          userId: foundUser.id,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString()
-        };
-        
-        allScripts.push(newScript);
-        localStorage.setItem(storageKey, JSON.stringify(allScripts));
-        
-        // Clear the temp script
-        localStorage.removeItem("temp_script");
-      }
+      associateTempScriptsWithUser(foundUser);
+      
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -125,9 +133,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Create new user
       const newUser: User = {
-        id: "user" + Math.floor(Math.random() * 1000),
+        id: crypto.randomUUID(), // More reliable UUID generation
         username,
-        email
+        email,
+        createdAt: new Date().toISOString()
       };
       
       // Add user to users array
@@ -139,29 +148,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("user", JSON.stringify(newUser));
       
       // Associate any temporary scripts with this user
-      const tempScripts = localStorage.getItem("temp_script");
-      if (tempScripts) {
-        const parsedScript = JSON.parse(tempScripts);
-        
-        // Get existing scripts from storage
-        const storageKey = 'typetest_saved_scripts';
-        const existingScripts = localStorage.getItem(storageKey);
-        const allScripts = existingScripts ? JSON.parse(existingScripts) : [];
-        
-        // Add the temp script with the user's ID
-        const newScript = {
-          ...parsedScript,
-          userId: newUser.id,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString()
-        };
-        
-        allScripts.push(newScript);
-        localStorage.setItem(storageKey, JSON.stringify(allScripts));
-        
-        // Clear the temp script
-        localStorage.removeItem("temp_script");
-      }
+      associateTempScriptsWithUser(newUser);
+      
     } catch (error) {
       console.error("Signup error:", error);
       throw error;
