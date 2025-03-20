@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Fetch the user record to get the password hash
+      // 1. First get the user record to get the password hash
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, email, password_hash, created_at')
@@ -144,14 +144,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Invalid email or password");
       }
       
-      // Compare the provided password with the stored hash
+      // 2. Compare the provided password with the stored hash
       const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
       
       if (!passwordMatch) {
         throw new Error("Invalid email or password");
       }
       
-      // If password matches, sign in with Supabase Auth
+      // 3. If password matches, sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Set the user state
+      // 4. Set the user state
       const userProfile: User = {
         id: userData.id,
         username: userData.username,
@@ -172,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(userProfile);
       
-      // Associate any temporary scripts with this user
+      // 5. Associate any temporary scripts with this user
       await associateTempScriptsWithUser(userProfile);
       
     } catch (error: any) {
@@ -186,11 +186,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Hash the password
+      // 1. Hash the password
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(password, saltRounds);
       
-      // Sign up with Supabase Auth
+      // 2. Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -204,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Failed to create user");
       }
       
-      // Create a record in our users table with the hashed password
+      // 3. Create a record in our users table with the hashed password
       const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
@@ -212,7 +212,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email,
           username,
           password_hash: passwordHash
-        });
+        })
+        .select()
+        .single();
       
       if (userError) {
         // If there was an error creating the user record, we should delete the auth user
@@ -220,7 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw userError;
       }
       
-      // Set the user in state
+      // 4. Set the user in state
       const newUser: User = {
         id: authData.user.id,
         username,
@@ -230,7 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(newUser);
       
-      // Associate any temporary scripts with this user
+      // 5. Associate any temporary scripts with this user
       await associateTempScriptsWithUser(newUser);
       
     } catch (error: any) {

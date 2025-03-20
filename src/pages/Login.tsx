@@ -37,7 +37,7 @@ const Login = () => {
       navigate('/');
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error.message || "Login failed. Please check your credentials and try again.");
+      setError(error.message || "Invalid email or password. Please try again.");
     }
   };
 
