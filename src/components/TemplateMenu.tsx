@@ -31,10 +31,14 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     }
   }, [user]);
 
-  const loadSavedScripts = () => {
+  const loadSavedScripts = async () => {
     if (!user) return;
-    const scripts = scriptService.getScripts(user.id);
-    setSavedScripts(scripts);
+    try {
+      const scripts = await scriptService.getScripts(user.id);
+      setSavedScripts(scripts);
+    } catch (error) {
+      console.error("Error loading saved scripts:", error);
+    }
   };
 
   const getIcon = (templateId: string) => {
