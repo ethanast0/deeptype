@@ -8,34 +8,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const { signup, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!username || !email || !password || !confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
+      setError("Please fill in all fields");
       return;
     }
     
     if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      });
+      setError("Passwords do not match");
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
       return;
     }
     
@@ -46,12 +47,16 @@ const Signup = () => {
         description: "Your account has been created successfully!",
       });
       navigate('/');
-    } catch (error) {
-      toast({
-        title: "Sign up failed",
-        description: "There was an error creating your account. Please try again.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      const errorMessage = error.message || "There was an error creating your account. Please try again.";
+      
+      // Handle specific Supabase errors
+      if (errorMessage.includes("User already registered")) {
+        setError("This email is already registered. Please use a different email or log in.");
+      } else {
+        setError(errorMessage);
+      }
     }
   };
 
@@ -70,6 +75,12 @@ const Signup = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-900">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="username" className="text-sm text-monkey-subtle">

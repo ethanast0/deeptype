@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
+import * as bcrypt from 'bcryptjs';
 
 type User = {
   id: string;
@@ -94,43 +95,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Check for an existing session on component mount
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setIsLoading(true);
-        
-        if (session?.user) {
-          // Check if the user exists in our users table
-          const userProfile = await fetchUserProfile(session.user.id);
-          
-          if (userProfile) {
-            setUser(userProfile);
-          } else {
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
-        
-        setIsLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        // Check if the user exists in our users table
-        const userProfile = await fetchUserProfile(session.user.id);
-        
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        const userProfile = await fetchUserProfile(data.session.user.id);
         if (userProfile) {
           setUser(userProfile);
         }
       }
-      
       setIsLoading(false);
-    });
-
+    };
+    
+    checkSession();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const userProfile = await fetchUserProfile(session.user.id);
+          if (userProfile) {
+            setUser(userProfile);
+          }
+        } else {
+          setUser(null);
+        }
+      }
+    );
+    
     return () => {
       subscription.unsubscribe();
     };
@@ -139,25 +132,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      // Fetch the user record to get the password hash
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, username, email, password_hash, created_at')
+        .eq('email', email)
+        .single();
+      
+      if (userError || !userData) {
+        console.error("Login error: User not found", userError);
+        throw new Error("Invalid email or password");
+      }
+      
+      // Compare the provided password with the stored hash
+      const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
+      
+      if (!passwordMatch) {
+        throw new Error("Invalid email or password");
+      }
+      
+      // If password matches, sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
+        console.error("Supabase login error:", error);
         throw error;
       }
       
-      if (data.user) {
-        const userProfile = await fetchUserProfile(data.user.id);
-        
-        if (userProfile) {
-          setUser(userProfile);
-          
-          // Associate any temporary scripts with this user
-          await associateTempScriptsWithUser(userProfile);
-        }
-      }
+      // Set the user state
+      const userProfile: User = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email,
+        createdAt: userData.created_at
+      };
+      
+      setUser(userProfile);
+      
+      // Associate any temporary scripts with this user
+      await associateTempScriptsWithUser(userProfile);
+      
     } catch (error: any) {
       console.error("Login error:", error);
       throw error;
@@ -169,6 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
+      // Hash the password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+      
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -183,13 +204,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Failed to create user");
       }
       
-      // Create a record in our users table
+      // Create a record in our users table with the hashed password
       const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
           id: authData.user.id,
           email,
-          username
+          username,
+          password_hash: passwordHash
         });
       
       if (userError) {
