@@ -10,7 +10,7 @@ const Footer: React.FC<FooterProps> = ({
       <div className="container max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 md:mb-0">
-            <p>typelearn.ai</p>
+            <p>No Strings Attached to MonkeyType</p>
           </div>
           
           <div className="flex space-x-6">
