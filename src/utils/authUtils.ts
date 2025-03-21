@@ -1,3 +1,4 @@
+
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getAuth0Client } from "@/integrations/auth0/client";
@@ -149,33 +150,32 @@ export const processAuth0User = async (): Promise<User | null> => {
       return null;
     }
     
-    // Now authenticate with Supabase directly using the Auth0 user email
-    // This is a workaround since we can't use OIDC with Auth0 directly
-    // In a production app, you'd set up a proper JWT integration between Auth0 and Supabase
+    // Get the email from Auth0 user
+    const email = auth0User.email || "";
+    if (!email) {
+      console.error("No email found in Auth0 user");
+      return null;
+    }
+      
+    // Generate a consistent password based on the Auth0 user's sub (ID)
+    // This ensures we use the same password for the same user each time
+    const consistentPassword = `auth0_${auth0User.sub}_${process.env.NODE_ENV}`;
+    
     try {
-      // Try to fetch an existing user with this email
-      const email = auth0User.email || "";
-      if (!email) {
-        console.error("No email found in Auth0 user");
-        return null;
-      }
-      
-      // Generate a random password for Supabase auth (not exposed to user)
-      // This is just a workaround for demonstration purposes
-      const tempPassword = Math.random().toString(36).slice(-10);
-      
-      // First try signing in
+      // First check if the user already exists by trying to sign in
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
-        password: tempPassword,
+        password: consistentPassword,
       });
       
-      // If user doesn't exist, create one
-      if (signInError && signInError.message.includes("Invalid login credentials")) {
-        // Create the user in Supabase
+      // If login fails, user doesn't exist yet, so create one
+      if (signInError) {
+        console.log("User doesn't exist, creating new user");
+        
+        // Create the user in Supabase with the consistent password
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
-          password: tempPassword,
+          password: consistentPassword,
         });
         
         if (signUpError) {
@@ -194,7 +194,10 @@ export const processAuth0User = async (): Promise<User | null> => {
           }
         }
       } else if (signInData && signInData.user) {
-        // User exists, get their profile
+        // User exists and login successful
+        console.log("User exists and login successful");
+        
+        // Get or create their profile
         const userProfile = await fetchUserProfile(signInData.user.id);
         
         if (userProfile) {

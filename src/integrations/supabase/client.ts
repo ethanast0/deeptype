@@ -9,11 +9,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    storageKey: 'supabase.auth.token',
     storage: localStorage
-  },
-  global: {
-    fetch: fetch.bind(globalThis)
   }
 })
 
