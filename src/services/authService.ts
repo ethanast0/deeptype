@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import * as bcrypt from 'bcryptjs';
 
@@ -80,6 +79,12 @@ export const signupUser = async (username: string, email: string, password: stri
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: window.location.origin + '/login?verified=true',
+        data: {
+          username
+        }
+      }
     });
     
     if (authError) {
@@ -118,7 +123,13 @@ export const signupUser = async (username: string, email: string, password: stri
 // Sign out the current user
 export const signOutUser = async () => {
   try {
-    const { error } = await supabase.auth.signOut();
+    // Clear any local storage items that might be related to auth
+    localStorage.removeItem('supabase.auth.user.id');
+    
+    const { error } = await supabase.auth.signOut({
+      scope: 'local' // Only sign out from this browser, not all devices
+    });
+    
     if (error) {
       console.error("Sign out error:", error);
       throw error;
@@ -135,6 +146,9 @@ export const resendConfirmationEmail = async (email: string) => {
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
+      options: {
+        emailRedirectTo: window.location.origin + '/login?verified=true',
+      }
     });
     
     if (error) {
@@ -158,6 +172,21 @@ export const getCurrentSession = async () => {
     return data.session;
   } catch (error) {
     console.error("Get session error:", error);
+    return null;
+  }
+};
+
+// Refresh auth token
+export const refreshAuthToken = async () => {
+  try {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) {
+      console.error("Error refreshing token:", error);
+      throw error;
+    }
+    return data.session;
+  } catch (error) {
+    console.error("Refresh token error:", error);
     return null;
   }
 };

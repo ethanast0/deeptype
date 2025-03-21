@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, refreshSession } from "@/integrations/supabase/client";
 import { User, fetchUserProfile, associateTempScriptsWithUser } from "@/services/userService";
 import { 
   authenticateWithSupabase, 
@@ -47,13 +46,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userProfile = await fetchUserProfile(userId);
       if (userProfile) {
         setUser(userProfile);
+        // Store user ID in localStorage for redundant persistence
+        localStorage.setItem('supabase.auth.user.id', userId);
       } else {
         console.log("User profile not found for ID:", userId);
         setUser(null);
+        localStorage.removeItem('supabase.auth.user.id');
       }
     } catch (error) {
       console.error("Error handling auth change:", error);
       setUser(null);
+      localStorage.removeItem('supabase.auth.user.id');
     }
   }, []);
 
@@ -72,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (event === 'SIGNED_OUT') {
         setUser(null);
+        localStorage.removeItem('supabase.auth.user.id');
       } else if (session?.user) {
         await handleAuthChange(session.user.id);
       }
@@ -91,7 +95,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("Found existing session:", session.user.id);
           await handleAuthChange(session.user.id);
         } else {
-          setUser(null);
+          // Try to restore from localStorage as fallback
+          const storedUserId = localStorage.getItem('supabase.auth.user.id');
+          if (storedUserId) {
+            console.log("Attempting to restore session from stored user ID:", storedUserId);
+            // Try to refresh the session
+            const refreshedSession = await refreshSession();
+            if (refreshedSession?.user) {
+              await handleAuthChange(refreshedSession.user.id);
+            } else {
+              setUser(null);
+              localStorage.removeItem('supabase.auth.user.id');
+            }
+          } else {
+            setUser(null);
+          }
         }
       } catch (error) {
         console.error("Error getting initial session:", error);
@@ -103,9 +121,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkSession();
     
+    // Add window focus event listener to refresh session
+    const handleFocus = async () => {
+      console.log("Window focused, refreshing session");
+      try {
+        const refreshedSession = await refreshSession();
+        if (refreshedSession?.user) {
+          await handleAuthChange(refreshedSession.user.id);
+        }
+      } catch (error) {
+        console.error("Error refreshing session on focus:", error);
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      window.removeEventListener('focus', handleFocus);
     };
   }, [handleAuthChange]);
 
@@ -130,6 +164,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(userProfile);
       
+      // Store user ID for redundant persistence
+      localStorage.setItem('supabase.auth.user.id', userData.id);
+      
       // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(userProfile);
       
@@ -140,6 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Login error:", error);
       setUser(null);
+      localStorage.removeItem('supabase.auth.user.id');
       throw error;
     } finally {
       setIsLoading(false);
@@ -164,6 +202,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(newUser);
       
+      // Store user ID for redundant persistence
+      localStorage.setItem('supabase.auth.user.id', userData.id);
+      
       // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(newUser);
       
@@ -174,6 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Signup error:", error);
       setUser(null);
+      localStorage.removeItem('supabase.auth.user.id');
       throw error;
     } finally {
       setIsLoading(false);
@@ -186,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signOutUser();
       setUser(null);
+      localStorage.removeItem('supabase.auth.user.id');
       toast({
         title: "Logged out",
         description: "You've been logged out successfully",
