@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching user profile:", error);
@@ -106,9 +106,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const userProfile = await fetchUserProfile(session.user.id);
               if (userProfile) {
                 setUser(userProfile);
+                setIsLoading(false);
+              } else {
+                console.log("User profile not found for ID:", session.user.id);
+                setUser(null);
+                setIsLoading(false);
               }
             } else {
               setUser(null);
+              setIsLoading(false);
             }
           }
         );
@@ -120,15 +126,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userProfile = await fetchUserProfile(session.user.id);
           if (userProfile) {
             setUser(userProfile);
+          } else {
+            console.log("User profile not found for ID in initial check:", session.user.id);
           }
         }
+        
+        setIsLoading(false);
 
         return () => {
           subscription.unsubscribe();
         };
       } catch (error) {
         console.error("Error initializing auth:", error);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -147,12 +156,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (userError || !userData) {
         console.error("Login error: User not found", userError);
+        setIsLoading(false);
         throw new Error("Invalid email or password");
       }
       
       const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
       
       if (!passwordMatch) {
+        setIsLoading(false);
         throw new Error("Invalid email or password");
       }
       
@@ -162,6 +173,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        console.error("Supabase login error:", error);
+        setIsLoading(false);
+        
         if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
           throw {
             code: "email_not_confirmed",
@@ -170,7 +184,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         }
         
-        console.error("Supabase login error:", error);
         throw error;
       }
       
