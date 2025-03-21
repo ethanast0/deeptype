@@ -1,3 +1,4 @@
+
 import { createAuth0Client, Auth0Client } from '@auth0/auth0-spa-js';
 
 const auth0Domain = 'dev-thhqocp8jw018dpu.us.auth0.com'; 
@@ -11,6 +12,7 @@ export const getAuth0Client = async (): Promise<Auth0Client> => {
       redirect_uri: `${window.location.origin}/callback`,
     },
     cacheLocation: 'localstorage',
+    useRefreshTokens: true,
   });
 };
 

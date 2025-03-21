@@ -8,6 +8,8 @@ const auth0 = new Auth0Client({
   authorizationParams: {
     redirect_uri: `${window.location.origin}/callback`,
   },
+  cacheLocation: 'localstorage', // Use localstorage for better persistence
+  useRefreshTokens: true, // Enable refresh tokens for longer sessions
 })
 
 // Use the proper Supabase URL format with the project ID

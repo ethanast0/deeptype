@@ -1,7 +1,7 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, auth0 } from "@/integrations/supabase/client";
-import { Auth0Client } from "@auth0/auth0-spa-js";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = {
@@ -100,50 +100,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isAuthenticated = await auth0.isAuthenticated();
         
         if (isAuthenticated) {
+          // Get user info from Auth0
           const auth0User = await auth0.getUser();
-          if (auth0User) {
-            // Get token for Supabase
-            const token = await auth0.getTokenSilently();
-            
-            // Update Supabase auth client with Auth0 token
-            const { data, error } = await supabase.auth.getUser(token);
-            
-            if (error) {
-              console.error("Error fetching Supabase user with Auth0 token:", error);
-              setIsLoading(false);
-              return;
-            }
-            
-            if (data.user) {
-              const userProfile = await fetchUserProfile(data.user.id);
-              if (userProfile) {
-                setUser(userProfile);
-                await associateTempScriptsWithUser(userProfile);
-              } else {
-                // Create profile if not exists
-                const newUser: User = {
-                  id: data.user.id,
-                  username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
-                  email: auth0User.email || 'unknown@email.com',
-                  createdAt: new Date().toISOString()
-                };
+          
+          if (auth0User && auth0User.sub) {
+            try {
+              // Get ID token for Supabase (this is different from the access token)
+              const claims = await auth0.getIdTokenClaims();
+              if (claims && claims.__raw) {
+                const token = claims.__raw;
                 
-                // Create user record in our users table
-                const { error: createError } = await supabase
-                  .from('users')
-                  .insert({
-                    id: data.user.id,
-                    email: newUser.email,
-                    username: newUser.username
+                // Use the token with Supabase
+                const { data: userData, error: userError } = await supabase.auth.getUser(token);
+                
+                if (userError) {
+                  console.error("Error fetching Supabase user with Auth0 token:", userError);
+                  toast({
+                    title: "Authentication Error",
+                    description: "There was an issue with your session. Please try logging in again.",
+                    variant: "destructive",
                   });
+                  await logout();
+                  setIsLoading(false);
+                  return;
+                }
                 
-                if (createError) {
-                  console.error("Error creating user record:", createError);
-                } else {
-                  setUser(newUser);
-                  await associateTempScriptsWithUser(newUser);
+                if (userData.user) {
+                  const userProfile = await fetchUserProfile(userData.user.id);
+                  if (userProfile) {
+                    setUser(userProfile);
+                    await associateTempScriptsWithUser(userProfile);
+                  } else {
+                    // Create profile if not exists
+                    const newUser: User = {
+                      id: userData.user.id,
+                      username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
+                      email: auth0User.email || 'unknown@email.com',
+                      createdAt: new Date().toISOString()
+                    };
+                    
+                    // Create user record in our users table
+                    const { error: createError } = await supabase
+                      .from('users')
+                      .insert({
+                        id: userData.user.id,
+                        email: newUser.email,
+                        username: newUser.username
+                      });
+                    
+                    if (createError) {
+                      console.error("Error creating user record:", createError);
+                    } else {
+                      setUser(newUser);
+                      await associateTempScriptsWithUser(newUser);
+                    }
+                  }
                 }
               }
+            } catch (error) {
+              console.error("Error processing Auth0 session:", error);
+              toast({
+                title: "Session Error",
+                description: "There was an issue with your authentication session. Please log in again.",
+                variant: "destructive",
+              });
             }
           }
         }
@@ -180,7 +200,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const processAuthCallback = async (): Promise<void> => {
     try {
       // Handle redirect callback if applicable
-      if (window.location.search.includes("code=")) {
+      if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
+        // Use handleRedirectCallback to process the login callback
         await auth0.handleRedirectCallback();
       }
       
@@ -188,49 +209,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const isAuthenticated = await auth0.isAuthenticated();
       
       if (isAuthenticated) {
+        // Get user info from Auth0
         const auth0User = await auth0.getUser();
-        if (auth0User) {
-          // Get token for Supabase
-          const token = await auth0.getTokenSilently();
-          
-          // Update Supabase auth client with Auth0 token
-          const { data, error } = await supabase.auth.getUser(token);
-          
-          if (error) {
-            console.error("Error fetching Supabase user with Auth0 token:", error);
-            return;
-          }
-          
-          if (data.user) {
-            const userProfile = await fetchUserProfile(data.user.id);
-            if (userProfile) {
-              setUser(userProfile);
-              await associateTempScriptsWithUser(userProfile);
-            } else {
-              // Create profile if not exists
-              const newUser: User = {
-                id: data.user.id,
-                username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
-                email: auth0User.email || 'unknown@email.com',
-                createdAt: new Date().toISOString()
-              };
+        
+        if (auth0User && auth0User.sub) {
+          try {
+            // Get ID token for Supabase (this is different from the access token)
+            const claims = await auth0.getIdTokenClaims();
+            if (claims && claims.__raw) {
+              const token = claims.__raw;
               
-              // Create user record in our users table
-              const { error: createError } = await supabase
-                .from('users')
-                .insert({
-                  id: data.user.id,
-                  email: newUser.email,
-                  username: newUser.username
-                });
+              // Update Supabase auth client with Auth0 token
+              const { data, error } = await supabase.auth.getUser(token);
               
-              if (createError) {
-                console.error("Error creating user record:", createError);
-              } else {
-                setUser(newUser);
-                await associateTempScriptsWithUser(newUser);
+              if (error) {
+                console.error("Error fetching Supabase user with Auth0 token:", error);
+                throw error;
               }
+              
+              if (data.user) {
+                const userProfile = await fetchUserProfile(data.user.id);
+                if (userProfile) {
+                  setUser(userProfile);
+                  await associateTempScriptsWithUser(userProfile);
+                } else {
+                  // Create profile if not exists
+                  const newUser: User = {
+                    id: data.user.id,
+                    username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
+                    email: auth0User.email || 'unknown@email.com',
+                    createdAt: new Date().toISOString()
+                  };
+                  
+                  // Create user record in our users table
+                  const { error: createError } = await supabase
+                    .from('users')
+                    .insert({
+                      id: data.user.id,
+                      email: newUser.email,
+                      username: newUser.username
+                    });
+                  
+                  if (createError) {
+                    console.error("Error creating user record:", createError);
+                    throw createError;
+                  } else {
+                    setUser(newUser);
+                    await associateTempScriptsWithUser(newUser);
+                  }
+                }
+              }
+            } else {
+              throw new Error("Failed to get ID token from Auth0");
             }
+          } catch (error) {
+            console.error("Error processing Auth0 session:", error);
+            throw error;
           }
         }
       }
@@ -243,7 +277,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithAuth0 = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      await auth0.loginWithRedirect();
+      // Use loginWithRedirect with appropriate options
+      await auth0.loginWithRedirect({
+        authorizationParams: {
+          redirect_uri: `${window.location.origin}/callback`,
+          // Include additional parameters if needed
+          scope: 'openid profile email',
+        }
+      });
     } catch (error: any) {
       console.error("Auth0 sign-in error:", error);
       toast({
@@ -261,7 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Logout from Supabase
       await supabase.auth.signOut();
       
-      // Logout from Auth0
+      // Clear local Auth0 session
       await auth0.logout({
         logoutParams: {
           returnTo: window.location.origin
