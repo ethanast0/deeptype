@@ -1,8 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser, Provider } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import * as bcrypt from 'bcryptjs';
 
 type User = {
@@ -19,7 +18,6 @@ type AuthContextType = {
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   resendConfirmationEmail: (email: string) => Promise<void>;
-  signInWithAuth0: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -260,32 +258,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithAuth0 = async (): Promise<void> => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'auth0' as Provider,
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      
-      if (error) {
-        console.error("Auth0 sign-in error:", error);
-        throw error;
-      }
-      
-      // User will be set by the onAuthStateChange listener after redirect
-      
-    } catch (error: any) {
-      console.error("Auth0 sign-in error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -293,8 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       signup, 
       logout, 
-      resendConfirmationEmail,
-      signInWithAuth0
+      resendConfirmationEmail 
     }}>
       {children}
     </AuthContext.Provider>
