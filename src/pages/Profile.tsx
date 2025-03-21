@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -7,24 +7,54 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { Loader2 } from 'lucide-react';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged out",
-      description: "You've been logged out successfully",
-    });
-    navigate('/');
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, isLoading, navigate]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-900">
+        <Header />
+        <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-monkey-accent" />
+            <p className="mt-2 text-monkey-subtle">Loading profile...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!user) {
-    navigate('/login');
-    return null;
+    return null; // Will redirect in useEffect
   }
 
   return (
@@ -60,8 +90,14 @@ const Profile = () => {
               onClick={handleLogout}
               variant="destructive"
               className="w-full"
+              disabled={isLoggingOut}
             >
-              Logout
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging out...
+                </>
+              ) : "Logout"}
             </Button>
           </CardFooter>
         </Card>

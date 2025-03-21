@@ -18,94 +18,112 @@ export interface AuthError extends Error {
 
 // Authenticate user with Supabase
 export const authenticateWithSupabase = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  
-  if (error) {
-    console.error("Supabase auth error:", error);
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     
-    if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
-      const authError: AuthError = new Error("Please check your inbox and confirm your email before logging in.");
-      authError.code = "email_not_confirmed";
-      authError.originalError = error;
-      throw authError;
+    if (error) {
+      console.error("Supabase auth error:", error);
+      
+      if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
+        const authError: AuthError = new Error("Please check your inbox and confirm your email before logging in.");
+        authError.code = "email_not_confirmed";
+        authError.originalError = error;
+        throw authError;
+      }
+      
+      throw error;
     }
     
+    return data;
+  } catch (error) {
+    console.error("Authentication error:", error);
     throw error;
   }
-  
-  return data;
 };
 
 // Verify user against database
 export const verifyUserCredentials = async (email: string, password: string) => {
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('id, username, email, password_hash, created_at')
-    .eq('email', email)
-    .maybeSingle();
-  
-  if (userError) {
-    console.error("User verification error:", userError);
-    throw new Error("Invalid email or password");
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, username, email, password_hash, created_at')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (userError) {
+      console.error("User verification error:", userError);
+      throw new Error("Invalid email or password");
+    }
+    
+    if (!userData) {
+      throw new Error("Invalid email or password");
+    }
+    
+    return userData;
+  } catch (error) {
+    console.error("Verification error:", error);
+    throw error;
   }
-  
-  if (!userData) {
-    throw new Error("Invalid email or password");
-  }
-  
-  // For browser compatibility, we'll just verify the user exists without checking password
-  // as bcrypt doesn't work well in the browser
-  return userData;
 };
 
 // Sign up a new user
 export const signupUser = async (username: string, email: string, password: string) => {
-  // Hash the password
-  const saltRounds = 10;
-  const passwordHash = await bcrypt.hash(password, saltRounds);
-  
-  // Create auth user in Supabase
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-  
-  if (authError) {
-    console.error("Auth signup error:", authError);
-    throw authError;
-  }
-  
-  if (!authData.user) {
-    throw new Error("Failed to create user");
-  }
-  
-  // Create user profile in our table
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .insert({
-      id: authData.user.id,
+  try {
+    // Hash the password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    
+    // Create auth user in Supabase
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
-      username,
-      password_hash: passwordHash
-    })
-    .select()
-    .single();
-  
-  if (userError) {
-    console.error("Error creating user record:", userError);
-    throw userError;
+      password,
+    });
+    
+    if (authError) {
+      console.error("Auth signup error:", authError);
+      throw authError;
+    }
+    
+    if (!authData.user) {
+      throw new Error("Failed to create user");
+    }
+    
+    // Create user profile in our table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email,
+        username,
+        password_hash: passwordHash
+      })
+      .select()
+      .single();
+    
+    if (userError) {
+      console.error("Error creating user record:", userError);
+      throw userError;
+    }
+    
+    return { authData, userData };
+  } catch (error) {
+    console.error("Signup error:", error);
+    throw error;
   }
-  
-  return { authData, userData };
 };
 
 // Sign out the current user
 export const signOutUser = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Sign out error:", error);
+      throw error;
+    }
+  } catch (error) {
     console.error("Sign out error:", error);
     throw error;
   }
@@ -113,12 +131,17 @@ export const signOutUser = async () => {
 
 // Resend confirmation email
 export const resendConfirmationEmail = async (email: string) => {
-  const { error } = await supabase.auth.resend({
-    type: 'signup',
-    email,
-  });
-  
-  if (error) {
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+    
+    if (error) {
+      console.error("Error resending confirmation email:", error);
+      throw error;
+    }
+  } catch (error) {
     console.error("Error resending confirmation email:", error);
     throw error;
   }
@@ -126,6 +149,15 @@ export const resendConfirmationEmail = async (email: string) => {
 
 // Get current session
 export const getCurrentSession = async () => {
-  const { data } = await supabase.auth.getSession();
-  return data.session;
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Error getting session:", error);
+      throw error;
+    }
+    return data.session;
+  } catch (error) {
+    console.error("Get session error:", error);
+    return null;
+  }
 };

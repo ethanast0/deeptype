@@ -10,7 +10,7 @@ import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,6 +21,7 @@ const Login = () => {
   const { login, isLoading, user, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -33,9 +34,11 @@ const Login = () => {
     e.preventDefault();
     setError(null);
     setShowResendOption(false);
+    setSubmitting(true);
     
     if (!email || !password) {
       setError("Please fill in all fields");
+      setSubmitting(false);
       return;
     }
     
@@ -52,6 +55,8 @@ const Login = () => {
       } else {
         setError(error.message || "Invalid email or password. Please try again.");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -64,20 +69,16 @@ const Login = () => {
     setIsResendingEmail(true);
     try {
       await resendConfirmationEmail(email);
+      toast({
+        title: "Email sent",
+        description: "Confirmation email has been sent. Please check your inbox.",
+      });
     } catch (error: any) {
       setError(error.message || "Failed to resend confirmation email. Please try again.");
     } finally {
       setIsResendingEmail(false);
     }
   };
-
-  if (isLoading && user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
@@ -109,7 +110,13 @@ const Login = () => {
                   onClick={handleResendEmail}
                   disabled={isResendingEmail}
                 >
-                  {isResendingEmail ? "Sending..." : "Resend confirmation email"}
+                  {isResendingEmail ? 
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </> : 
+                    "Resend confirmation email"
+                  }
                 </Button>
               </div>
             )}
@@ -126,6 +133,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -139,14 +147,20 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <Button 
                 type="submit" 
                 className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
-                disabled={isLoading}
+                disabled={submitting || isLoading}
               >
-                {isLoading ? "Logging in..." : "Login"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : "Login"}
               </Button>
             </form>
           </CardContent>

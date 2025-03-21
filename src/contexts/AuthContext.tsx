@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User, fetchUserProfile, associateTempScriptsWithUser } from "@/services/userService";
@@ -35,89 +35,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Initialize auth state and setup listeners
-  useEffect(() => {
-    console.log("Initializing auth...");
-    let mounted = true;
+  const handleAuthChange = useCallback(async (userId: string | null) => {
+    console.log("Auth state change, user ID:", userId);
     
-    // First set up auth state listener to catch auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.id);
+    if (!userId) {
+      setUser(null);
+      return;
+    }
+    
+    try {
+      const userProfile = await fetchUserProfile(userId);
+      if (userProfile) {
+        setUser(userProfile);
+      } else {
+        console.log("User profile not found for ID:", userId);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error handling auth change:", error);
+      setUser(null);
+    }
+  }, []);
+
+  // Initialize auth state
+  useEffect(() => {
+    console.log("Initializing auth state...");
+    let isMounted = true;
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.id);
+      
+      if (!isMounted) return;
+      
+      setIsLoading(true);
+      
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+      } else if (session?.user) {
+        await handleAuthChange(session.user.id);
+      }
+      
+      setIsLoading(false);
+    });
+
+    // Get initial session
+    const checkSession = async () => {
+      try {
+        console.log("Checking initial session...");
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (!mounted) return;
-        
-        if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
+        if (!isMounted) return;
         
         if (session?.user) {
-          try {
-            const userProfile = await fetchUserProfile(session.user.id);
-            if (userProfile) {
-              setUser(userProfile);
-            } else {
-              console.log("User profile not found for ID:", session.user.id);
-              setUser(null);
-            }
-          } catch (error) {
-            console.error("Error fetching user profile:", error);
-            setUser(null);
-          }
+          console.log("Found existing session:", session.user.id);
+          await handleAuthChange(session.user.id);
         } else {
           setUser(null);
         }
-        
-        setIsLoading(false);
-      }
-    );
-
-    // Then check for existing session
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (mounted) {
-          if (session?.user) {
-            console.log("Found existing session:", session.user.id);
-            try {
-              const userProfile = await fetchUserProfile(session.user.id);
-              if (userProfile) {
-                setUser(userProfile);
-              } else {
-                console.log("User profile not found for ID in initial check:", session.user.id);
-                setUser(null);
-              }
-            } catch (error) {
-              console.error("Error fetching initial user profile:", error);
-              setUser(null);
-            }
-          } else {
-            setUser(null);
-          }
-          
-          setIsLoading(false);
-        }
       } catch (error) {
         console.error("Error getting initial session:", error);
-        if (mounted) {
-          setUser(null);
-          setIsLoading(false);
-        }
+        if (isMounted) setUser(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     
-    getInitialSession();
+    checkSession();
     
     return () => {
-      mounted = false;
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [handleAuthChange]);
 
   const login = async (email: string, password: string) => {
+    console.log("Login attempt for:", email);
     setIsLoading(true);
     
     try {
@@ -144,7 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Success",
         description: "You've been logged in successfully!",
       });
-      
     } catch (error: any) {
       console.error("Login error:", error);
       setUser(null);
@@ -155,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signup = async (username: string, email: string, password: string) => {
+    console.log("Signup attempt for:", email);
     setIsLoading(true);
     
     try {
@@ -178,7 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Account created",
         description: "Your account has been created successfully!",
       });
-      
     } catch (error: any) {
       console.error("Signup error:", error);
       setUser(null);
@@ -189,12 +181,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log("Logging out...");
     setIsLoading(true);
     try {
       await signOutUser();
       setUser(null);
+      toast({
+        title: "Logged out",
+        description: "You've been logged out successfully",
+      });
     } catch (error) {
       console.error("Error during logout:", error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -213,15 +215,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const value = {
+    user, 
+    isLoading, 
+    login, 
+    signup, 
+    logout, 
+    resendConfirmationEmail
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      signup, 
-      logout, 
-      resendConfirmationEmail 
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

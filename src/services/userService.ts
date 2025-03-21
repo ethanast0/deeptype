@@ -11,6 +11,7 @@ export interface User {
 // Fetch user profile from database
 export const fetchUserProfile = async (id: string): Promise<User | null> => {
   try {
+    console.log("Fetching user profile for ID:", id);
     const { data, error } = await supabase
       .from('users')
       .select('id, username, email, created_at')
@@ -27,6 +28,7 @@ export const fetchUserProfile = async (id: string): Promise<User | null> => {
       return null;
     }
     
+    console.log("User profile found:", data);
     return {
       id: data.id,
       username: data.username,
@@ -41,10 +43,10 @@ export const fetchUserProfile = async (id: string): Promise<User | null> => {
 
 // Associate temporary scripts with user
 export const associateTempScriptsWithUser = async (user: User) => {
-  const tempScripts = localStorage.getItem("temp_script");
-  if (!tempScripts) return;
-
   try {
+    const tempScripts = localStorage.getItem("temp_script");
+    if (!tempScripts) return;
+
     const parsedScript = JSON.parse(tempScripts);
     
     const { data, error } = await supabase
@@ -55,7 +57,8 @@ export const associateTempScriptsWithUser = async (user: User) => {
         content: JSON.stringify(parsedScript.quotes),
         category: 'Custom',
         created_by: user.id
-      });
+      })
+      .select();
     
     if (error) {
       console.error("Error saving temp script to Supabase:", error);
@@ -63,7 +66,9 @@ export const associateTempScriptsWithUser = async (user: User) => {
     }
     
     localStorage.removeItem("temp_script");
+    return data;
   } catch (error) {
     console.error("Error processing temp script:", error);
+    return null;
   }
 };

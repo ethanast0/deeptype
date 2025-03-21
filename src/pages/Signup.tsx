@@ -10,7 +10,7 @@ import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -18,8 +18,10 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const { signup, isLoading, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -31,24 +33,32 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     
     if (!username || !email || !password || !confirmPassword) {
       setError("Please fill in all fields");
+      setSubmitting(false);
       return;
     }
     
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      setSubmitting(false);
       return;
     }
     
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
+      setSubmitting(false);
       return;
     }
     
     try {
       await signup(username, email, password);
+      toast({
+        title: "Account created",
+        description: "Check your email to confirm your account",
+      });
       navigate('/');
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -60,16 +70,10 @@ const Signup = () => {
       } else {
         setError(errorMessage);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
-
-  if (isLoading && user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
-        <p className="text-white">Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
@@ -104,6 +108,7 @@ const Signup = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -117,6 +122,7 @@ const Signup = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -130,6 +136,7 @@ const Signup = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -143,14 +150,20 @@ const Signup = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="bg-slate-700 border-slate-600"
+                  disabled={submitting}
                 />
               </div>
               <Button 
                 type="submit" 
                 className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
-                disabled={isLoading}
+                disabled={submitting || isLoading}
               >
-                {isLoading ? "Creating account..." : "Sign Up"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating account...
+                  </> 
+                ) : "Sign Up"}
               </Button>
             </form>
           </CardContent>
