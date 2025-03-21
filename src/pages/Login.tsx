@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
@@ -17,9 +18,16 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [showResendOption, setShowResendOption] = useState(false);
-  const { login, isLoading, resendConfirmationEmail } = useAuth();
+  const { login, isLoading, user, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,10 +41,6 @@ const Login = () => {
     
     try {
       await login(email, password);
-      toast({
-        title: "Success",
-        description: "You've been logged in successfully!",
-      });
       navigate('/');
     } catch (error: any) {
       console.error("Login error:", error);
@@ -60,16 +64,20 @@ const Login = () => {
     setIsResendingEmail(true);
     try {
       await resendConfirmationEmail(email);
-      toast({
-        title: "Email Sent",
-        description: "A new confirmation email has been sent. Please check your inbox.",
-      });
     } catch (error: any) {
       setError(error.message || "Failed to resend confirmation email. Please try again.");
     } finally {
       setIsResendingEmail(false);
     }
   };
+
+  if (isLoading && user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
+        <p className="text-white">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
@@ -108,9 +116,9 @@ const Login = () => {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm text-monkey-subtle">
+                <Label htmlFor="email" className="text-sm text-monkey-subtle">
                   Email
-                </label>
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -121,9 +129,9 @@ const Login = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm text-monkey-subtle">
+                <Label htmlFor="password" className="text-sm text-monkey-subtle">
                   Password
-                </label>
+                </Label>
                 <Input
                   id="password"
                   type="password"

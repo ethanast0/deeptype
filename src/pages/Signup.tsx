@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
@@ -17,9 +18,15 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +49,6 @@ const Signup = () => {
     
     try {
       await signup(username, email, password);
-      toast({
-        title: "Account created",
-        description: "Your account has been created successfully!",
-      });
       navigate('/');
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -59,6 +62,14 @@ const Signup = () => {
       }
     }
   };
+
+  if (isLoading && user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
+        <p className="text-white">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
@@ -83,9 +94,9 @@ const Signup = () => {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="username" className="text-sm text-monkey-subtle">
+                <Label htmlFor="username" className="text-sm text-monkey-subtle">
                   Username
-                </label>
+                </Label>
                 <Input
                   id="username"
                   type="text"
@@ -96,9 +107,9 @@ const Signup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm text-monkey-subtle">
+                <Label htmlFor="email" className="text-sm text-monkey-subtle">
                   Email
-                </label>
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -109,9 +120,9 @@ const Signup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="text-sm text-monkey-subtle">
+                <Label htmlFor="password" className="text-sm text-monkey-subtle">
                   Password
-                </label>
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -122,9 +133,9 @@ const Signup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm text-monkey-subtle">
+                <Label htmlFor="confirmPassword" className="text-sm text-monkey-subtle">
                   Confirm Password
-                </label>
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
