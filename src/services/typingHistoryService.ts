@@ -18,6 +18,8 @@ export const typingHistoryService = {
     try {
       // Check if we already have a session for this script today
       const today = new Date().toISOString().split('T')[0];
+      const now = new Date().toTimeString().split(' ')[0];
+      
       const { data: existingSessions, error: fetchError } = await supabase
         .from('typing_history')
         .select('*')
@@ -38,7 +40,8 @@ export const typingHistoryService = {
           .update({
             speed_wpm: Math.max(existingSession.speed_wpm, wpm),
             accuracy: Math.max(existingSession.accuracy, accuracy),
-            points: existingSession.points + 1
+            points: existingSession.points + 1,
+            time: now // Update the time to the current time
           })
           .eq('id', existingSession.id);
         
@@ -48,11 +51,23 @@ export const typingHistoryService = {
         }
       } else {
         // Create new session
-        const { error: insertError } = await supabase
+        console.log('Creating new typing history record:', {
+          user_id: userId,
+          script_id: scriptId,
+          date: today,
+          time: now,
+          speed_wpm: wpm,
+          accuracy: accuracy,
+          points: 1
+        });
+        
+        const { data, error: insertError } = await supabase
           .from('typing_history')
           .insert({
             user_id: userId,
             script_id: scriptId,
+            date: today,
+            time: now,
             speed_wpm: wpm,
             accuracy: accuracy,
             points: 1

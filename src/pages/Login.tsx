@@ -10,6 +10,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [showResendOption, setShowResendOption] = useState(false);
-  const { login, isLoading, resendConfirmationEmail } = useAuth();
+  const { login, isLoading, resendConfirmationEmail, signInWithAuth0 } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -71,6 +72,15 @@ const Login = () => {
     }
   };
 
+  const handleAuth0Login = async () => {
+    try {
+      await signInWithAuth0();
+    } catch (error: any) {
+      console.error("Auth0 login error:", error);
+      setError("Failed to login with Auth0. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-900">
       <Header />
@@ -106,41 +116,58 @@ const Login = () => {
               </div>
             )}
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm text-monkey-subtle">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-slate-700 border-slate-600"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm text-monkey-subtle">
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-slate-700 border-slate-600"
-                />
-              </div>
+            <div className="space-y-4">
               <Button 
-                type="submit" 
-                className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
+                type="button" 
+                onClick={handleAuth0Login}
+                className="w-full bg-slate-700 hover:bg-slate-600 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? "Logging in..." : "Login"}
+                {isLoading ? "Processing..." : "Continue with Auth0"}
               </Button>
-            </form>
+              
+              <div className="relative flex items-center">
+                <Separator className="flex-1" />
+                <span className="mx-2 text-xs text-monkey-subtle">OR</span>
+                <Separator className="flex-1" />
+              </div>
+            
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm text-monkey-subtle">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm text-monkey-subtle">
+                    Password
+                  </label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-slate-700 border-slate-600"
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Logging in..." : "Login"}
+                </Button>
+              </form>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-monkey-subtle">
