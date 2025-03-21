@@ -10,6 +10,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
+import { Separator } from "@/components/ui/separator";
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -17,7 +18,7 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, signInWithCognito } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -57,6 +58,16 @@ const Signup = () => {
       } else {
         setError(errorMessage);
       }
+    }
+  };
+
+  const handleCognitoSignIn = async () => {
+    try {
+      await signInWithCognito();
+      // The redirect will happen automatically; no need to navigate here
+    } catch (error: any) {
+      console.error("Cognito login error:", error);
+      setError(error.message || "Failed to sign in with Amazon Cognito. Please try again.");
     }
   };
 
@@ -142,6 +153,25 @@ const Signup = () => {
                 {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
             </form>
+            
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-slate-800 px-2 text-xs text-monkey-subtle">
+                  OR CONTINUE WITH
+                </span>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleCognitoSignIn}
+              className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+              type="button"
+            >
+              Amazon Cognito
+            </Button>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-monkey-subtle">

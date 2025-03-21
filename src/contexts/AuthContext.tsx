@@ -18,6 +18,7 @@ type AuthContextType = {
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   resendConfirmationEmail: (email: string) => Promise<void>;
+  signInWithCognito: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -258,6 +259,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithCognito = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'amazon',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error signing in with Amazon Cognito:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -265,7 +286,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       signup, 
       logout, 
-      resendConfirmationEmail 
+      resendConfirmationEmail,
+      signInWithCognito
     }}>
       {children}
     </AuthContext.Provider>
