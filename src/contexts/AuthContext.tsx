@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +17,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  resendConfirmationEmail: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -35,14 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Helper function to associate temporary scripts with user
   const associateTempScriptsWithUser = async (user: User) => {
     const tempScripts = localStorage.getItem("temp_script");
     if (tempScripts) {
       try {
         const parsedScript = JSON.parse(tempScripts);
         
-        // Insert the script into Supabase
         const { data, error } = await supabase
           .from('scripts')
           .insert({
@@ -58,7 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw error;
         }
         
-        // Clear the temp script from localStorage
         localStorage.removeItem("temp_script");
       } catch (error) {
         console.error("Error processing temp script:", error);
@@ -95,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Check for an existing session on component mount
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -110,7 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkSession();
     
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
@@ -132,7 +127,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // 1. First get the user record to get the password hash
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, email, password_hash, created_at')
@@ -144,25 +138,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Invalid email or password");
       }
       
-      // 2. Compare the provided password with the stored hash
       const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
       
       if (!passwordMatch) {
         throw new Error("Invalid email or password");
       }
       
-      // 3. If password matches, sign in with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
+        if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
+          throw {
+            code: "email_not_confirmed",
+            message: "Please check your inbox and confirm your email before logging in.",
+            originalError: error
+          };
+        }
+        
         console.error("Supabase login error:", error);
         throw error;
       }
       
-      // 4. Set the user state
       const userProfile: User = {
         id: userData.id,
         username: userData.username,
@@ -172,7 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(userProfile);
       
-      // 5. Associate any temporary scripts with this user
       await associateTempScriptsWithUser(userProfile);
       
     } catch (error: any) {
@@ -186,11 +184,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      // 1. Hash the password
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(password, saltRounds);
       
-      // 2. Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -204,7 +200,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Failed to create user");
       }
       
-      // 3. Create a record in our users table with the hashed password
       const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
@@ -217,12 +212,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
       
       if (userError) {
-        // If there was an error creating the user record, we should delete the auth user
         console.error("Error creating user record:", userError);
         throw userError;
       }
       
-      // 4. Set the user in state
       const newUser: User = {
         id: authData.user.id,
         username,
@@ -232,7 +225,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(newUser);
       
-      // 5. Associate any temporary scripts with this user
       await associateTempScriptsWithUser(newUser);
       
     } catch (error: any) {
@@ -248,8 +240,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const resendConfirmationEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      return;
+    } catch (error) {
+      console.error("Error resending confirmation email:", error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading, 
+      login, 
+      signup, 
+      logout, 
+      resendConfirmationEmail 
+    }}>
       {children}
     </AuthContext.Provider>
   );

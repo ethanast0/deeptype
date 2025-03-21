@@ -15,13 +15,16 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { login, isLoading } = useAuth();
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
+  const { login, isLoading, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setShowResendOption(false);
     
     if (!email || !password) {
       setError("Please fill in all fields");
@@ -41,9 +44,30 @@ const Login = () => {
       // Handle specific error cases
       if (error.code === "email_not_confirmed") {
         setError("Email not confirmed. Please check your inbox and confirm your email to log in.");
+        setShowResendOption(true);
       } else {
         setError(error.message || "Invalid email or password. Please try again.");
       }
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!email) {
+      setError("Please enter your email address first");
+      return;
+    }
+
+    setIsResendingEmail(true);
+    try {
+      await resendConfirmationEmail(email);
+      toast({
+        title: "Email Sent",
+        description: "A new confirmation email has been sent. Please check your inbox.",
+      });
+    } catch (error: any) {
+      setError(error.message || "Failed to resend confirmation email. Please try again.");
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -68,6 +92,20 @@ const Login = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            
+            {showResendOption && (
+              <div className="mb-4 text-center">
+                <Button 
+                  variant="outline" 
+                  className="text-monkey-accent hover:text-monkey-accent/90 border-monkey-accent/50"
+                  onClick={handleResendEmail}
+                  disabled={isResendingEmail}
+                >
+                  {isResendingEmail ? "Sending..." : "Resend confirmation email"}
+                </Button>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm text-monkey-subtle">
