@@ -5,9 +5,6 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://mjvnjaxjilztaebmpxmy.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdm5qYXhqaWx6dGFlYm1weG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0MzU5MTAsImV4cCI6MjA1ODAxMTkxMH0.piNkqjJB7_7qwo0dYI2vUeeahKRZSpMuASceaeKnPTo";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
@@ -29,8 +26,20 @@ export const supabase = createClient<Database>(
 export const refreshSession = async () => {
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    console.error("Error refreshing session:", error);
+    console.error("Error refreshing auth token:", error);
     return null;
   }
   return data.session;
 };
+
+// Helper function to get the current session
+export const getCurrentSession = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error("Error getting current session:", error);
+    return null;
+  }
+  return data.session;
+};
+
+
