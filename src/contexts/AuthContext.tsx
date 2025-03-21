@@ -2,8 +2,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser, Provider } from "@supabase/supabase-js";
-import * as bcrypt from 'bcryptjs';
+import { getAuth0Client } from "@/integrations/auth0/client";
+import { User as SupabaseUser } from "@supabase/supabase-js";
+import { Auth0Client } from "@auth0/auth0-spa-js";
 
 type User = {
   id: string;
@@ -15,11 +16,8 @@ type User = {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (username: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  resendConfirmationEmail: (email: string) => Promise<void>;
   signInWithAuth0: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -35,6 +33,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [auth0Client, setAuth0Client] = useState<Auth0Client | null>(null);
   const { toast } = useToast();
 
   const associateTempScriptsWithUser = async (user: User) => {
@@ -81,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         return {
           id: data.id,
-          username: data.username,
+          username: data.username || data.email.split('@')[0], // Use email username as fallback
           email: data.email,
           createdAt: data.created_at
         };
@@ -94,20 +93,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Initialize Auth0 client
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        const userProfile = await fetchUserProfile(data.session.user.id);
-        if (userProfile) {
-          setUser(userProfile);
+    const initAuth0 = async () => {
+      try {
+        const client = await getAuth0Client();
+        setAuth0Client(client);
+        
+        // Handle redirect callback if applicable
+        if (window.location.search.includes("code=")) {
+          await client.handleRedirectCallback();
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
+        
+        // Check if user is authenticated with Auth0
+        const isAuthenticated = await client.isAuthenticated();
+        
+        if (isAuthenticated) {
+          const auth0User = await client.getUser();
+          if (auth0User) {
+            // Get token for Supabase
+            const token = await client.getTokenSilently();
+            
+            // Update Supabase auth client with Auth0 token
+            const { data, error } = await supabase.auth.getUser(token);
+            
+            if (error) {
+              console.error("Error fetching Supabase user with Auth0 token:", error);
+              setIsLoading(false);
+              return;
+            }
+            
+            if (data.user) {
+              const userProfile = await fetchUserProfile(data.user.id);
+              if (userProfile) {
+                setUser(userProfile);
+                await associateTempScriptsWithUser(userProfile);
+              } else {
+                // Create profile if not exists
+                const newUser: User = {
+                  id: data.user.id,
+                  username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
+                  email: auth0User.email || 'unknown@email.com',
+                  createdAt: new Date().toISOString()
+                };
+                
+                // Create user record in our users table
+                const { error: createError } = await supabase
+                  .from('users')
+                  .insert({
+                    id: data.user.id,
+                    email: newUser.email,
+                    username: newUser.username
+                  });
+                
+                if (createError) {
+                  console.error("Error creating user record:", createError);
+                } else {
+                  setUser(newUser);
+                  await associateTempScriptsWithUser(newUser);
+                }
+              }
+            }
+          }
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error initializing Auth0:", error);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     
-    checkSession();
-    
+    initAuth0();
+  }, []);
+
+  // Listen for auth changes in Supabase
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
@@ -126,163 +188,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, username, email, password_hash, created_at')
-        .eq('email', email)
-        .single();
-      
-      if (userError || !userData) {
-        console.error("Login error: User not found", userError);
-        throw new Error("Invalid email or password");
-      }
-      
-      const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
-      
-      if (!passwordMatch) {
-        throw new Error("Invalid email or password");
-      }
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
-          throw {
-            code: "email_not_confirmed",
-            message: "Please check your inbox and confirm your email before logging in.",
-            originalError: error
-          };
-        }
-        
-        console.error("Supabase login error:", error);
-        throw error;
-      }
-      
-      const userProfile: User = {
-        id: userData.id,
-        username: userData.username,
-        email: userData.email,
-        createdAt: userData.created_at
-      };
-      
-      setUser(userProfile);
-      
-      await associateTempScriptsWithUser(userProfile);
-      
-    } catch (error: any) {
-      console.error("Login error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signup = async (username: string, email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
-      
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (authError) {
-        throw authError;
-      }
-      
-      if (!authData.user) {
-        throw new Error("Failed to create user");
-      }
-      
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email,
-          username,
-          password_hash: passwordHash
-        })
-        .select()
-        .single();
-      
-      if (userError) {
-        console.error("Error creating user record:", userError);
-        throw userError;
-      }
-      
-      const newUser: User = {
-        id: authData.user.id,
-        username,
-        email,
-        createdAt: new Date().toISOString()
-      };
-      
-      setUser(newUser);
-      
-      await associateTempScriptsWithUser(newUser);
-      
-    } catch (error: any) {
-      console.error("Signup error:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
-  const resendConfirmationEmail = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      return;
-    } catch (error) {
-      console.error("Error resending confirmation email:", error);
-      throw error;
-    }
-  };
-
   const signInWithAuth0 = async (): Promise<void> => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'auth0' as Provider,
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      
-      if (error) {
-        console.error("Auth0 sign-in error:", error);
-        throw error;
+      if (!auth0Client) {
+        throw new Error("Auth0 client not initialized");
       }
       
-      // User will be set by the onAuthStateChange listener after redirect
+      await auth0Client.loginWithRedirect();
       
     } catch (error: any) {
       console.error("Auth0 sign-in error:", error);
-      throw error;
-    } finally {
+      toast({
+        title: "Error",
+        description: "Failed to sign in with Auth0. Please try again.",
+        variant: "destructive",
+      });
       setIsLoading(false);
+      throw error;
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      // Logout from Supabase
+      await supabase.auth.signOut();
+      
+      // Logout from Auth0
+      if (auth0Client) {
+        await auth0Client.logout({
+          logoutParams: {
+            returnTo: window.location.origin
+          }
+        });
+      }
+      
+      setUser(null);
+    } catch (error) {
+      console.error("Error during logout:", error);
+      throw error;
     }
   };
 
@@ -290,11 +235,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={{ 
       user, 
       isLoading, 
-      login, 
-      signup, 
-      logout, 
-      resendConfirmationEmail,
-      signInWithAuth0
+      signInWithAuth0,
+      logout 
     }}>
       {children}
     </AuthContext.Provider>
