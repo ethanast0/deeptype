@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser, Provider } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import * as bcrypt from 'bcryptjs';
 
 type User = {
@@ -18,7 +18,6 @@ type AuthContextType = {
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   resendConfirmationEmail: (email: string) => Promise<void>;
-  signInWithCognito: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -259,24 +258,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithCognito = async (): Promise<void> => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'amazon' as Provider,
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      console.error("Error signing in with Amazon Cognito:", error);
-      throw error;
-    }
-  };
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -284,8 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       signup, 
       logout, 
-      resendConfirmationEmail,
-      signInWithCognito
+      resendConfirmationEmail 
     }}>
       {children}
     </AuthContext.Provider>
