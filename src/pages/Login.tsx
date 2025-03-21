@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
@@ -11,19 +12,62 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from 'lucide-react';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { signInWithAuth0, isLoading } = useAuth();
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
+  const { login, isLoading, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleAuth0Login = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
+    setShowResendOption(false);
+    
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+    
     try {
-      await signInWithAuth0();
-      // Note: No need for redirect here as Auth0 will handle it
+      await login(email, password);
+      toast({
+        title: "Success",
+        description: "You've been logged in successfully!",
+      });
+      navigate('/');
     } catch (error: any) {
-      console.error("Auth0 login error:", error);
-      setError("Failed to login with Auth0. Please try again.");
+      console.error("Login error:", error);
+      
+      // Handle specific error cases
+      if (error.code === "email_not_confirmed") {
+        setError("Email not confirmed. Please check your inbox and confirm your email to log in.");
+        setShowResendOption(true);
+      } else {
+        setError(error.message || "Invalid email or password. Please try again.");
+      }
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!email) {
+      setError("Please enter your email address first");
+      return;
+    }
+
+    setIsResendingEmail(true);
+    try {
+      await resendConfirmationEmail(email);
+      toast({
+        title: "Email Sent",
+        description: "A new confirmation email has been sent. Please check your inbox.",
+      });
+    } catch (error: any) {
+      setError(error.message || "Failed to resend confirmation email. Please try again.");
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -38,7 +82,7 @@ const Login = () => {
               <span className="text-monkey-accent">Welcome</span> back
             </CardTitle>
             <CardDescription className="text-center text-monkey-subtle">
-              Sign in to access your account
+              Enter your credentials to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -49,16 +93,54 @@ const Login = () => {
               </Alert>
             )}
             
-            <div className="space-y-4">
+            {showResendOption && (
+              <div className="mb-4 text-center">
+                <Button 
+                  variant="outline" 
+                  className="text-monkey-accent hover:text-monkey-accent/90 border-monkey-accent/50"
+                  onClick={handleResendEmail}
+                  disabled={isResendingEmail}
+                >
+                  {isResendingEmail ? "Sending..." : "Resend confirmation email"}
+                </Button>
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm text-monkey-subtle">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="bg-slate-700 border-slate-600"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm text-monkey-subtle">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="bg-slate-700 border-slate-600"
+                />
+              </div>
               <Button 
-                type="button" 
-                onClick={handleAuth0Login}
-                className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+                type="submit" 
+                className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
                 disabled={isLoading}
               >
-                {isLoading ? "Connecting..." : "Continue with Auth0"}
+                {isLoading ? "Logging in..." : "Login"}
               </Button>
-            </div>
+            </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-monkey-subtle">

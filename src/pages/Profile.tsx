@@ -13,22 +13,13 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({
-        title: "Logged out",
-        description: "You've been logged out successfully",
-      });
-      navigate('/');
-    } catch (error) {
-      console.error("Error logging out:", error);
-      toast({
-        title: "Error",
-        description: "Failed to log out. Please try again.",
-        variant: "destructive",
-      });
-    }
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You've been logged out successfully",
+    });
+    navigate('/');
   };
 
   if (!user) {
