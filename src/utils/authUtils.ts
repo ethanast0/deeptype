@@ -1,6 +1,7 @@
 
 import { User as SupabaseUser } from "@supabase/supabase-js";
-import { supabase, auth0 } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
+import { getAuth0Client } from "@/integrations/auth0/client";
 
 export interface User {
   id: string;
@@ -71,6 +72,22 @@ export const associateTempScriptsWithUser = async (user: User) => {
 // Create user profile in Supabase if it doesn't exist
 export const createUserProfile = async (userId: string, username: string, email: string): Promise<User | null> => {
   try {
+    // Check if user already exists first
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+      
+    if (existingUser) {
+      return {
+        id: existingUser.id,
+        username: existingUser.username || username,
+        email: existingUser.email || email,
+        createdAt: existingUser.created_at
+      };
+    }
+    
     const newUser: User = {
       id: userId,
       username,
@@ -99,46 +116,74 @@ export const createUserProfile = async (userId: string, username: string, email:
   }
 };
 
+// Use Auth0 session to authenticate with Supabase
+export const signInToSupabaseWithAuth0 = async (): Promise<{user: SupabaseUser | null, error: any}> => {
+  try {
+    const auth0 = await getAuth0Client();
+    
+    // Get the ID token from Auth0
+    const isAuthenticated = await auth0.isAuthenticated();
+    if (!isAuthenticated) {
+      return { user: null, error: new Error("Not authenticated with Auth0") };
+    }
+    
+    const token = await auth0.getTokenSilently();
+    
+    // Sign in to Supabase with the custom token
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'auth0',
+      token,
+    });
+    
+    if (error) {
+      console.error("Supabase auth error:", error);
+      return { user: null, error };
+    }
+    
+    return { user: data?.user || null, error: null };
+  } catch (error) {
+    console.error("Error signing in to Supabase with Auth0:", error);
+    return { user: null, error };
+  }
+};
+
 // Process Auth0 authentication and link with Supabase
 export const processAuth0User = async (): Promise<User | null> => {
   try {
+    const auth0 = await getAuth0Client();
+    
+    // Verify the user is authenticated with Auth0
+    const isAuthenticated = await auth0.isAuthenticated();
+    if (!isAuthenticated) {
+      return null;
+    }
+    
     // Get user info from Auth0
     const auth0User = await auth0.getUser();
     
     if (auth0User && auth0User.sub) {
-      // Get ID token for Supabase
-      const claims = await auth0.getIdTokenClaims();
-      if (claims && claims.__raw) {
-        const token = claims.__raw;
+      // First sign in to Supabase with the Auth0 token
+      const { user: supabaseUser, error } = await signInToSupabaseWithAuth0();
+      
+      if (error || !supabaseUser) {
+        console.error("Failed to authenticate with Supabase:", error);
+        throw error;
+      }
+      
+      // Try to fetch existing profile
+      let userProfile = await fetchUserProfile(supabaseUser.id);
+      
+      if (!userProfile) {
+        // Create profile if not exists
+        const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
+        const email = auth0User.email || 'unknown@email.com';
         
-        // Use the token with Supabase
-        const { data: userData, error: userError } = await supabase.auth.getUser(token);
-        
-        if (userError) {
-          console.error("Error fetching Supabase user with Auth0 token:", userError);
-          throw userError;
-        }
-        
-        if (userData.user) {
-          // Try to fetch existing profile
-          const userProfile = await fetchUserProfile(userData.user.id);
-          
-          if (userProfile) {
-            await associateTempScriptsWithUser(userProfile);
-            return userProfile;
-          } else {
-            // Create profile if not exists
-            const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
-            const email = auth0User.email || 'unknown@email.com';
-            
-            const newUser = await createUserProfile(userData.user.id, username, email);
-            
-            if (newUser) {
-              await associateTempScriptsWithUser(newUser);
-              return newUser;
-            }
-          }
-        }
+        userProfile = await createUserProfile(supabaseUser.id, username, email);
+      }
+      
+      if (userProfile) {
+        await associateTempScriptsWithUser(userProfile);
+        return userProfile;
       }
     }
     
@@ -152,9 +197,18 @@ export const processAuth0User = async (): Promise<User | null> => {
 // Handle Auth0 callback
 export const handleAuth0Callback = async (): Promise<User | null> => {
   try {
+    const auth0 = await getAuth0Client();
+    
     // Handle redirect callback if applicable
     if (window.location.search.includes("code=") && window.location.search.includes("state=")) {
-      await auth0.handleRedirectCallback();
+      try {
+        await auth0.handleRedirectCallback();
+      } catch (error) {
+        console.error("Error handling Auth0 callback:", error);
+        // Clear any potentially corrupt state
+        localStorage.removeItem('auth0.state');
+        throw error;
+      }
     }
     
     // Check if user is authenticated after callback processing
@@ -174,6 +228,11 @@ export const handleAuth0Callback = async (): Promise<User | null> => {
 // Initiate Auth0 sign in
 export const signInWithAuth0 = async (): Promise<void> => {
   try {
+    const auth0 = await getAuth0Client();
+    
+    // Clear any potentially stale state before starting a new login
+    localStorage.removeItem('auth0.state');
+    
     // Use loginWithRedirect with appropriate options
     await auth0.loginWithRedirect({
       authorizationParams: {
@@ -194,6 +253,7 @@ export const logoutFromAuth = async (): Promise<void> => {
     await supabase.auth.signOut();
     
     // Clear local Auth0 session
+    const auth0 = await getAuth0Client();
     await auth0.logout({
       logoutParams: {
         returnTo: window.location.origin
