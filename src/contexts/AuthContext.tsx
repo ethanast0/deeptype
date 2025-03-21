@@ -1,7 +1,8 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser } from "@supabase/supabase-js";
+import { User as SupabaseUser, Session } from "@supabase/supabase-js";
 import * as bcrypt from 'bcryptjs';
 
 type User = {
@@ -93,35 +94,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        const userProfile = await fetchUserProfile(data.session.user.id);
-        if (userProfile) {
-          setUser(userProfile);
-        }
-      }
-      setIsLoading(false);
-    };
-    
-    checkSession();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      try {
+        // Set up auth state listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log("Auth state changed:", event, session?.user?.id);
+            
+            if (session?.user) {
+              const userProfile = await fetchUserProfile(session.user.id);
+              if (userProfile) {
+                setUser(userProfile);
+              }
+            } else {
+              setUser(null);
+            }
+          }
+        );
+
+        // Then check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          console.log("Found existing session:", session.user.id);
           const userProfile = await fetchUserProfile(session.user.id);
           if (userProfile) {
             setUser(userProfile);
           }
-        } else {
-          setUser(null);
         }
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setIsLoading(false);
       }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
     };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
