@@ -1,4 +1,3 @@
-
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getAuth0Client } from "@/integrations/auth0/client";
@@ -116,38 +115,22 @@ export const createUserProfile = async (userId: string, username: string, email:
   }
 };
 
-// Use Auth0 session to authenticate with Supabase
-export const signInToSupabaseWithAuth0 = async (): Promise<{user: SupabaseUser | null, error: any}> => {
+// Direct auth with Supabase using email/password
+export const directAuthWithSupabase = async (email: string, password: string) => {
   try {
-    const auth0 = await getAuth0Client();
-    
-    // Get the ID token from Auth0
-    const isAuthenticated = await auth0.isAuthenticated();
-    if (!isAuthenticated) {
-      return { user: null, error: new Error("Not authenticated with Auth0") };
-    }
-    
-    const token = await auth0.getTokenSilently();
-    
-    // Sign in to Supabase with the custom token
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'auth0',
-      token,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
     
-    if (error) {
-      console.error("Supabase auth error:", error);
-      return { user: null, error };
-    }
-    
-    return { user: data?.user || null, error: null };
+    return { user: data?.user || null, error };
   } catch (error) {
-    console.error("Error signing in to Supabase with Auth0:", error);
+    console.error("Error in direct auth:", error);
     return { user: null, error };
   }
 };
 
-// Process Auth0 authentication and link with Supabase
+// Process Auth0 authentication
 export const processAuth0User = async (): Promise<User | null> => {
   try {
     const auth0 = await getAuth0Client();
@@ -161,30 +144,76 @@ export const processAuth0User = async (): Promise<User | null> => {
     // Get user info from Auth0
     const auth0User = await auth0.getUser();
     
-    if (auth0User && auth0User.sub) {
-      // First sign in to Supabase with the Auth0 token
-      const { user: supabaseUser, error } = await signInToSupabaseWithAuth0();
-      
-      if (error || !supabaseUser) {
-        console.error("Failed to authenticate with Supabase:", error);
-        throw error;
+    if (!auth0User || !auth0User.sub) {
+      console.error("No valid Auth0 user found");
+      return null;
+    }
+    
+    // Now authenticate with Supabase directly using the Auth0 user email
+    // This is a workaround since we can't use OIDC with Auth0 directly
+    // In a production app, you'd set up a proper JWT integration between Auth0 and Supabase
+    try {
+      // Try to fetch an existing user with this email
+      const email = auth0User.email || "";
+      if (!email) {
+        console.error("No email found in Auth0 user");
+        return null;
       }
       
-      // Try to fetch existing profile
-      let userProfile = await fetchUserProfile(supabaseUser.id);
+      // Generate a random password for Supabase auth (not exposed to user)
+      // This is just a workaround for demonstration purposes
+      const tempPassword = Math.random().toString(36).slice(-10);
       
-      if (!userProfile) {
-        // Create profile if not exists
-        const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
-        const email = auth0User.email || 'unknown@email.com';
+      // First try signing in
+      const { user: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: tempPassword,
+      });
+      
+      // If user doesn't exist, create one
+      if (signInError && signInError.message.includes("Invalid login credentials")) {
+        // Create the user in Supabase
+        const { data: newUser, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password: tempPassword,
+        });
         
-        userProfile = await createUserProfile(supabaseUser.id, username, email);
+        if (signUpError) {
+          console.error("Error creating user in Supabase:", signUpError);
+          return null;
+        }
+        
+        if (newUser.user) {
+          // Create user profile with Auth0 data
+          const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
+          const userProfile = await createUserProfile(newUser.user.id, username, email);
+          
+          if (userProfile) {
+            await associateTempScriptsWithUser(userProfile);
+            return userProfile;
+          }
+        }
+      } else if (existingUser) {
+        // User exists, get their profile
+        const userProfile = await fetchUserProfile(existingUser.id);
+        
+        if (userProfile) {
+          await associateTempScriptsWithUser(userProfile);
+          return userProfile;
+        } else {
+          // Create profile if somehow it doesn't exist
+          const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
+          const newProfile = await createUserProfile(existingUser.id, username, email);
+          
+          if (newProfile) {
+            await associateTempScriptsWithUser(newProfile);
+            return newProfile;
+          }
+        }
       }
-      
-      if (userProfile) {
-        await associateTempScriptsWithUser(userProfile);
-        return userProfile;
-      }
+    } catch (error) {
+      console.error("Error authenticating with Supabase:", error);
+      return null;
     }
     
     return null;

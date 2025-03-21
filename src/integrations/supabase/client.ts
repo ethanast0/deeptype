@@ -1,10 +1,5 @@
 
 import { createClient } from '@supabase/supabase-js'
-import { Auth0Client } from '@auth0/auth0-spa-js'
-
-// Auth0 configuration
-const auth0Domain = 'dev-thhqocp8jw018dpu.us.auth0.com'; 
-const auth0ClientId = 'IJqUdbzKbG8vESWvA5ArQsyChCWmvYa5';
 
 // Create Supabase client with proper configuration
 const supabaseUrl = 'https://mjvnjaxjilztaebmpxmy.supabase.co'
@@ -22,5 +17,4 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// We'll initialize auth0 client in a different file for better code organization
-export { supabase, auth0Domain, auth0ClientId }
+export { supabase }
