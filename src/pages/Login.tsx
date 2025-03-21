@@ -37,7 +37,13 @@ const Login = () => {
       navigate('/');
     } catch (error: any) {
       console.error("Login error:", error);
-      setError(error.message || "Invalid email or password. Please try again.");
+      
+      // Handle specific error cases
+      if (error.code === "email_not_confirmed") {
+        setError("Email not confirmed. Please check your inbox and confirm your email to log in.");
+      } else {
+        setError(error.message || "Invalid email or password. Please try again.");
+      }
     }
   };
 
