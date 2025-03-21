@@ -2,15 +2,16 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser, Session } from "@supabase/supabase-js";
-import * as bcrypt from 'bcryptjs';
-
-type User = {
-  id: string;
-  username: string;
-  email: string;
-  createdAt?: string;
-};
+import { User, fetchUserProfile, associateTempScriptsWithUser } from "@/services/userService";
+import { 
+  UserCredentials, 
+  SignupCredentials,
+  authenticateWithSupabase, 
+  verifyUserCredentials, 
+  signupUser, 
+  signOutUser,
+  resendConfirmationEmail as resendEmail
+} from "@/services/authService";
 
 type AuthContextType = {
   user: User | null;
@@ -36,157 +37,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const associateTempScriptsWithUser = async (user: User) => {
-    const tempScripts = localStorage.getItem("temp_script");
-    if (tempScripts) {
-      try {
-        const parsedScript = JSON.parse(tempScripts);
-        
-        const { data, error } = await supabase
-          .from('scripts')
-          .insert({
-            user_id: user.id,
-            title: parsedScript.name,
-            content: JSON.stringify(parsedScript.quotes),
-            category: 'Custom',
-            created_by: user.id
-          });
-        
-        if (error) {
-          console.error("Error saving temp script to Supabase:", error);
-          throw error;
-        }
-        
-        localStorage.removeItem("temp_script");
-      } catch (error) {
-        console.error("Error processing temp script:", error);
-      }
-    }
-  };
-
-  const fetchUserProfile = async (id: string): Promise<User | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Error fetching user profile:", error);
-        return null;
-      }
-      
-      if (data) {
-        return {
-          id: data.id,
-          username: data.username,
-          email: data.email,
-          createdAt: data.created_at
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error("Error in fetchUserProfile:", error);
-      return null;
-    }
-  };
-
+  // Initialize auth state and setup listeners
   useEffect(() => {
+    let mounted = true;
+    
     const initializeAuth = async () => {
-      setIsLoading(true);
       try {
-        // Set up auth state listener first
+        console.log("Initializing auth...");
+        
+        // First set up auth state listener to catch auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
             console.log("Auth state changed:", event, session?.user?.id);
+            
+            if (!mounted) return;
             
             if (session?.user) {
               const userProfile = await fetchUserProfile(session.user.id);
               if (userProfile) {
                 setUser(userProfile);
-                setIsLoading(false);
               } else {
                 console.log("User profile not found for ID:", session.user.id);
                 setUser(null);
-                setIsLoading(false);
               }
             } else {
               setUser(null);
-              setIsLoading(false);
             }
+            
+            setIsLoading(false);
           }
         );
 
         // Then check for existing session
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          console.log("Found existing session:", session.user.id);
-          const userProfile = await fetchUserProfile(session.user.id);
-          if (userProfile) {
-            setUser(userProfile);
-          } else {
-            console.log("User profile not found for ID in initial check:", session.user.id);
-          }
-        }
         
-        setIsLoading(false);
+        if (mounted) {
+          if (session?.user) {
+            console.log("Found existing session:", session.user.id);
+            const userProfile = await fetchUserProfile(session.user.id);
+            if (userProfile) {
+              setUser(userProfile);
+            } else {
+              console.log("User profile not found for ID in initial check:", session.user.id);
+              setUser(null);
+            }
+          }
+          
+          setIsLoading(false);
+        }
 
         return () => {
           subscription.unsubscribe();
         };
       } catch (error) {
         console.error("Error initializing auth:", error);
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeAuth();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    
     try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, username, email, password_hash, created_at')
-        .eq('email', email)
-        .single();
+      // Verify user credentials in our database
+      const userData = await verifyUserCredentials(email, password);
       
-      if (userError || !userData) {
-        console.error("Login error: User not found", userError);
-        setIsLoading(false);
-        throw new Error("Invalid email or password");
-      }
+      // Authenticate with Supabase
+      await authenticateWithSupabase(email, password);
       
-      const passwordMatch = await bcrypt.compare(password, userData.password_hash || '');
-      
-      if (!passwordMatch) {
-        setIsLoading(false);
-        throw new Error("Invalid email or password");
-      }
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        console.error("Supabase login error:", error);
-        setIsLoading(false);
-        
-        if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
-          throw {
-            code: "email_not_confirmed",
-            message: "Please check your inbox and confirm your email before logging in.",
-            originalError: error
-          };
-        }
-        
-        throw error;
-      }
-      
+      // Create user object
       const userProfile: User = {
         id: userData.id,
         username: userData.username,
@@ -196,10 +124,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(userProfile);
       
+      // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(userProfile);
       
     } catch (error: any) {
       console.error("Login error:", error);
+      setIsLoading(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -208,52 +138,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (username: string, email: string, password: string) => {
     setIsLoading(true);
+    
     try {
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
+      // Sign up the user
+      const { userData } = await signupUser(username, email, password);
       
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (authError) {
-        throw authError;
-      }
-      
-      if (!authData.user) {
-        throw new Error("Failed to create user");
-      }
-      
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email,
-          username,
-          password_hash: passwordHash
-        })
-        .select()
-        .single();
-      
-      if (userError) {
-        console.error("Error creating user record:", userError);
-        throw userError;
-      }
-      
+      // Create user object
       const newUser: User = {
-        id: authData.user.id,
+        id: userData.id,
         username,
         email,
-        createdAt: new Date().toISOString()
+        createdAt: userData.created_at
       };
       
       setUser(newUser);
       
+      // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(newUser);
       
     } catch (error: any) {
       console.error("Signup error:", error);
+      setIsLoading(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -261,22 +166,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    await signOutUser();
     setUser(null);
   };
 
   const resendConfirmationEmail = async (email: string) => {
     try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      return;
+      await resendEmail(email);
     } catch (error) {
       console.error("Error resending confirmation email:", error);
       throw error;
