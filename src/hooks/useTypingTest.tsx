@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -51,6 +52,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
       if (isFinished && user && scriptId && !resultRecordedRef.current) {
         resultRecordedRef.current = true;
         try {
+          console.log('Recording typing history for user:', user.id, 'script:', scriptId, 'wpm:', stats.wpm, 'accuracy:', stats.accuracy);
           const success = await typingHistoryService.recordSession(
             user.id,
             scriptId,
@@ -63,10 +65,30 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
               title: "Progress saved",
               description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
             });
+            console.log('Typing history recorded successfully');
+          } else {
+            console.error('Failed to record typing history');
+            toast({
+              title: "Error",
+              description: "Failed to record your typing results.",
+              variant: "destructive"
+            });
           }
         } catch (error) {
           console.error('Error recording typing history:', error);
+          toast({
+            title: "Error",
+            description: "Failed to record your typing results.",
+            variant: "destructive"
+          });
         }
+      } else if (isFinished) {
+        console.log('Not recording typing history:', {
+          user: !!user,
+          scriptId: scriptId,
+          isFinished,
+          alreadyRecorded: resultRecordedRef.current
+        });
       }
     };
     
