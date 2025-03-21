@@ -6,10 +6,10 @@ const auth0ClientId = '2yUjFaMgLB5GQcwuMRv8xEP9c7QiTJ5F'; // Replace with your A
 
 export const getAuth0Client = async (): Promise<Auth0Client> => {
   return createAuth0Client({
-    domain: 'dev-thhqocp8jw018dpu.us.auth0.com',
-    clientId: '2yUjFaMgLB5GQcwuMRv8xEP9c7QiTJ5F',
+    domain: auth0Domain,
+    clientId: auth0ClientId,
     authorizationParams: {
-      redirect_uri: `${window.location.origin}/callback`,  // ✅ Ensure "/callback" is included
+      redirect_uri: `${window.location.origin}/callback`,  // <== FIXED: Ensure correct callback
     },
     cacheLocation: 'localstorage',
   });
