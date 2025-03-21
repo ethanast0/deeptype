@@ -18,6 +18,9 @@ export interface AuthError extends Error {
 // Authenticate user with Supabase
 export const authenticateWithSupabase = async (email: string, password: string) => {
   try {
+    // First clear any existing session to prevent conflicts
+    localStorage.removeItem('supabase.auth.user.id');
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -34,6 +37,14 @@ export const authenticateWithSupabase = async (email: string, password: string) 
       }
       
       throw error;
+    }
+    
+    // Explicitly store the session in localStorage for redundancy
+    if (data.session) {
+      localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
+      if (data.user) {
+        localStorage.setItem('supabase.auth.user.id', data.user.id);
+      }
     }
     
     return data;
@@ -75,6 +86,9 @@ export const signupUser = async (username: string, email: string, password: stri
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
     
+    // Clear any existing auth state
+    localStorage.removeItem('supabase.auth.user.id');
+    
     // Create auth user in Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -113,6 +127,12 @@ export const signupUser = async (username: string, email: string, password: stri
       throw userError;
     }
     
+    // Explicitly store the session in localStorage for redundancy
+    if (authData.session) {
+      localStorage.setItem('supabase.auth.token', JSON.stringify(authData.session));
+      localStorage.setItem('supabase.auth.user.id', authData.user.id);
+    }
+    
     return { authData, userData };
   } catch (error) {
     console.error("Signup error:", error);
@@ -123,9 +143,13 @@ export const signupUser = async (username: string, email: string, password: stri
 // Sign out the current user
 export const signOutUser = async () => {
   try {
-    // Clear any local storage items that might be related to auth
+    // Clear all auth-related storage before signing out
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('supabase.auth.refreshToken');
     localStorage.removeItem('supabase.auth.user.id');
+    localStorage.removeItem('supabase.auth.event');
     
+    // Ensure we call the Supabase signOut with the right parameters
     const { error } = await supabase.auth.signOut({
       scope: 'local' // Only sign out from this browser, not all devices
     });
@@ -164,12 +188,31 @@ export const resendConfirmationEmail = async (email: string) => {
 // Get current session
 export const getCurrentSession = async () => {
   try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Error getting session:", error);
-      throw error;
+    // Check localStorage first for our backup session info
+    const storedUserId = localStorage.getItem('supabase.auth.user.id');
+    const session = await supabase.auth.getSession();
+    
+    if (session.error) {
+      console.error("Error getting session:", session.error);
+      // If there's an error but we have a stored user ID, we'll try to recover
+      if (storedUserId) {
+        return { user: { id: storedUserId } };
+      }
+      return null;
     }
-    return data.session;
+    
+    // If we have a session, ensure the userId is also stored for redundancy
+    if (session.data.session?.user) {
+      localStorage.setItem('supabase.auth.user.id', session.data.session.user.id);
+    } else if (storedUserId) {
+      // We have a stored user ID but no active session - try to refresh
+      const refreshResult = await supabase.auth.refreshSession();
+      if (!refreshResult.error && refreshResult.data.session) {
+        return refreshResult.data.session;
+      }
+    }
+    
+    return session.data.session;
   } catch (error) {
     console.error("Get session error:", error);
     return null;
@@ -182,8 +225,20 @@ export const refreshAuthToken = async () => {
     const { data, error } = await supabase.auth.refreshSession();
     if (error) {
       console.error("Error refreshing token:", error);
+      // Try to use our stored user ID as a fallback
+      const storedUserId = localStorage.getItem('supabase.auth.user.id');
+      if (storedUserId) {
+        // Return a minimal session object for the app to work with
+        return { user: { id: storedUserId } };
+      }
       throw error;
     }
+    
+    // Update stored user ID if we were successful
+    if (data.session?.user) {
+      localStorage.setItem('supabase.auth.user.id', data.session.user.id);
+    }
+    
     return data.session;
   } catch (error) {
     console.error("Refresh token error:", error);

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, refreshSession } from "@/integrations/supabase/client";
+import { supabase, refreshSession, initializeAuth, checkPersistedSession } from "@/integrations/supabase/client";
 import { User, fetchUserProfile, associateTempScriptsWithUser } from "@/services/userService";
 import { 
   authenticateWithSupabase, 
@@ -32,6 +32,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const authCleanupRef = useRef<(() => void) | null>(null);
   const { toast } = useToast();
 
   const handleAuthChange = useCallback(async (userId: string | null) => {
@@ -65,9 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("Initializing auth state...");
     let isMounted = true;
     
+    // Initialize cross-tab auth support
+    const authHandler = initializeAuth();
+    if (authHandler && authHandler.cleanup) {
+      authCleanupRef.current = authHandler.cleanup;
+    }
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.id);
+      console.log(`Auth state changed: ${event}`, session?.user?.id);
       
       if (!isMounted) return;
       
@@ -76,18 +83,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('supabase.auth.user.id');
-      } else if (session?.user) {
-        await handleAuthChange(session.user.id);
+        console.log('User signed out, cleared user state');
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          console.log(`User ${event} event, updating user state`);
+          await handleAuthChange(session.user.id);
+        }
       }
       
       setIsLoading(false);
     });
 
-    // Get initial session
+    // Initial session check - critical for page refresh
     const checkSession = async () => {
       try {
-        console.log("Checking initial session...");
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Checking for existing session...");
+        
+        // Use our enhanced session checking function
+        const session = await checkPersistedSession();
         
         if (!isMounted) return;
         
@@ -95,24 +108,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log("Found existing session:", session.user.id);
           await handleAuthChange(session.user.id);
         } else {
-          // Try to restore from localStorage as fallback
-          const storedUserId = localStorage.getItem('supabase.auth.user.id');
-          if (storedUserId) {
-            console.log("Attempting to restore session from stored user ID:", storedUserId);
-            // Try to refresh the session
-            const refreshedSession = await refreshSession();
-            if (refreshedSession?.user) {
-              await handleAuthChange(refreshedSession.user.id);
-            } else {
-              setUser(null);
-              localStorage.removeItem('supabase.auth.user.id');
-            }
-          } else {
-            setUser(null);
-          }
+          console.log("No existing session found");
+          setUser(null);
         }
       } catch (error) {
-        console.error("Error getting initial session:", error);
+        console.error("Error checking session:", error);
         if (isMounted) setUser(null);
       } finally {
         if (isMounted) setIsLoading(false);
@@ -123,11 +123,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Add window focus event listener to refresh session
     const handleFocus = async () => {
+      if (!user) return; // Only refresh if we think we're logged in
+      
       console.log("Window focused, refreshing session");
       try {
         const refreshedSession = await refreshSession();
         if (refreshedSession?.user) {
           await handleAuthChange(refreshedSession.user.id);
+        } else {
+          // No valid session found on focus, but we thought we were logged in
+          console.log("Session expired, clearing user state");
+          setUser(null);
+          localStorage.removeItem('supabase.auth.user.id');
         }
       } catch (error) {
         console.error("Error refreshing session on focus:", error);
@@ -136,12 +143,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     window.addEventListener('focus', handleFocus);
     
+    // Also set an interval to periodically refresh the token while tab is active
+    const tokenRefreshInterval = setInterval(async () => {
+      if (user) {
+        console.log("Performing periodic token refresh");
+        await refreshSession();
+      }
+    }, 10 * 60 * 1000); // Every 10 minutes
+    
     return () => {
       isMounted = false;
       subscription.unsubscribe();
       window.removeEventListener('focus', handleFocus);
+      clearInterval(tokenRefreshInterval);
+      
+      // Clean up cross-tab auth handler
+      if (authCleanupRef.current) {
+        authCleanupRef.current();
+        authCleanupRef.current = null;
+      }
     };
-  }, [handleAuthChange]);
+  }, [handleAuthChange, user]);
 
   const login = async (email: string, password: string) => {
     console.log("Login attempt for:", email);

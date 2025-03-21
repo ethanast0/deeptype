@@ -8,6 +8,7 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
+// Create and export the Supabase client
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
   SUPABASE_PUBLISHABLE_KEY,
@@ -17,29 +18,114 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       storage: isBrowser ? localStorage : undefined,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'pkce',
+      storageKey: 'supabase.auth.token' // Explicit key for localStorage
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'text-flow'
+      }
     }
   }
 );
 
 // Helper function to refresh the session
 export const refreshSession = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error("Error refreshing auth token:", error);
+  try {
+    // First try to get the existing session
+    const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error("Error fetching session:", sessionError);
+      return null;
+    }
+    
+    // If we have a session but it's old/needs refreshing
+    if (existingSession) {
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error("Error refreshing session:", error);
+        return existingSession; // Return the existing session even if refresh failed
+      }
+      
+      return data.session;
+    }
+    
+    return existingSession;
+  } catch (error) {
+    console.error("Error in refreshSession:", error);
     return null;
   }
-  return data.session;
 };
 
 // Helper function to get the current session
 export const getCurrentSession = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    console.error("Error getting current session:", error);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("Error getting current session:", error);
+      return null;
+    }
+    return data.session;
+  } catch (error) {
+    console.error("Error in getCurrentSession:", error);
     return null;
   }
-  return data.session;
+};
+
+// Initialize supabase auth with cross-tab communication
+export const initializeAuth = () => {
+  if (!isBrowser) return null;
+  
+  // Set up cross-tab auth state change listener
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // Broadcast auth state change to other tabs
+      const authStateUpdate = {
+        event,
+        session,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('supabase.auth.event', JSON.stringify(authStateUpdate));
+    }
+  });
+  
+  // Listen for storage events to sync auth state across tabs
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === 'supabase.auth.event') {
+      // Another tab updated the auth state
+      console.log('Auth state changed in another tab');
+      refreshSession();
+    }
+  };
+  
+  window.addEventListener('storage', handleStorageChange);
+  
+  return {
+    cleanup: () => {
+      subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
+    }
+  };
+};
+
+// Check if there's a persistent session on load
+export const checkPersistedSession = async () => {
+  // Check both Supabase's storage and our custom backup
+  if (!isBrowser) return null;
+  
+  const session = await getCurrentSession();
+  if (session) return session;
+  
+  // If no session but we have a backup user ID, try to reestablish the session
+  const storedUserId = localStorage.getItem('supabase.auth.user.id');
+  if (storedUserId) {
+    console.log('Found stored user ID, attempting to refresh session');
+    return await refreshSession();
+  }
+  
+  return null;
 };
 
 
