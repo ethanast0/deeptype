@@ -1,8 +1,7 @@
-
 import { createAuth0Client, Auth0Client } from '@auth0/auth0-spa-js';
 
 const auth0Domain = 'dev-thhqocp8jw018dpu.us.auth0.com'; 
-const auth0ClientId = '2yUjFaMgLB5GQcwuMRv8xEP9c7QiTJ5F';
+const auth0ClientId = 'IJqUdbzKbG8vESWvA5ArQsyChCWmvYa5';
 
 export const getAuth0Client = async (): Promise<Auth0Client> => {
   return createAuth0Client({
