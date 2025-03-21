@@ -165,7 +165,7 @@ export const processAuth0User = async (): Promise<User | null> => {
       const tempPassword = Math.random().toString(36).slice(-10);
       
       // First try signing in
-      const { user: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password: tempPassword,
       });
@@ -173,7 +173,7 @@ export const processAuth0User = async (): Promise<User | null> => {
       // If user doesn't exist, create one
       if (signInError && signInError.message.includes("Invalid login credentials")) {
         // Create the user in Supabase
-        const { data: newUser, error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password: tempPassword,
         });
@@ -183,19 +183,19 @@ export const processAuth0User = async (): Promise<User | null> => {
           return null;
         }
         
-        if (newUser.user) {
+        if (signUpData && signUpData.user) {
           // Create user profile with Auth0 data
           const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
-          const userProfile = await createUserProfile(newUser.user.id, username, email);
+          const userProfile = await createUserProfile(signUpData.user.id, username, email);
           
           if (userProfile) {
             await associateTempScriptsWithUser(userProfile);
             return userProfile;
           }
         }
-      } else if (existingUser) {
+      } else if (signInData && signInData.user) {
         // User exists, get their profile
-        const userProfile = await fetchUserProfile(existingUser.id);
+        const userProfile = await fetchUserProfile(signInData.user.id);
         
         if (userProfile) {
           await associateTempScriptsWithUser(userProfile);
@@ -203,7 +203,7 @@ export const processAuth0User = async (): Promise<User | null> => {
         } else {
           // Create profile if somehow it doesn't exist
           const username = auth0User.name || auth0User.email?.split('@')[0] || 'user';
-          const newProfile = await createUserProfile(existingUser.id, username, email);
+          const newProfile = await createUserProfile(signInData.user.id, username, email);
           
           if (newProfile) {
             await associateTempScriptsWithUser(newProfile);
