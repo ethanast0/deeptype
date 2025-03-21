@@ -3,7 +3,7 @@ import { Auth0Client } from '@auth0/auth0-spa-js'
 
 const auth0 = new Auth0Client({
   domain: 'dev-thhqocp8jw018dpu.us.auth0.com',
-  clientId: '2yUjFaMgLB5GQcwuMRv8xEP9c7QiTJ5F',
+  clientId: 'IJqUdbzKbG8vESWvA5ArQsyChCWmvYa5',
   authorizationParams: {
     redirect_uri: `${window.location.origin}/callback`,
   },
