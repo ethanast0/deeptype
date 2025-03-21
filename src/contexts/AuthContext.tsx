@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { User as SupabaseUser } from "@supabase/supabase-js";
+import { User as SupabaseUser, Provider } from "@supabase/supabase-js";
 import * as bcrypt from 'bcryptjs';
 
 type User = {
@@ -259,10 +259,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithCognito = async () => {
+  const signInWithCognito = async (): Promise<void> => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'amazon',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'amazon' as Provider,
         options: {
           redirectTo: `${window.location.origin}/`,
         }
@@ -271,8 +271,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         throw error;
       }
-
-      return data;
     } catch (error) {
       console.error("Error signing in with Amazon Cognito:", error);
       throw error;
