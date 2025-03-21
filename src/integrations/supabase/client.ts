@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js'
 import { Auth0Client } from '@auth0/auth0-spa-js'
 
@@ -9,15 +10,18 @@ const auth0 = new Auth0Client({
   },
 })
 
-const supabase = createClient('https://<supabase-project>.supabase.co', 'SUPABASE_ANON_KEY', {
-  accessToken: async () => {
-    const accessToken = await auth0.getTokenSilently()
+// Use the proper Supabase URL format with the project ID
+const supabaseUrl = 'https://mjvnjaxjilztaebmpxmy.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1qdm5qYXhqaWx6dGFlYm1weG15Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0MzU5MTAsImV4cCI6MjA1ODAxMTkxMH0.piNkqjJB7_7qwo0dYI2vUeeahKRZSpMuASceaeKnPTo'
 
-    // Alternatively, you can use (await auth0.getIdTokenClaims()).__raw 
-    // to use an ID token instead.
-
-    return accessToken
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
   },
+  global: {
+    fetch: fetch.bind(globalThis)
+  }
 })
 
 export { supabase, auth0 }
