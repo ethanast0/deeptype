@@ -1,10 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { getAuth0Client } from "@/integrations/auth0/client";
-import { User as SupabaseUser } from "@supabase/supabase-js";
+import { supabase, auth0 } from "@/integrations/supabase/client";
 import { Auth0Client } from "@auth0/auth0-spa-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 
 type User = {
   id: string;
@@ -18,6 +16,7 @@ type AuthContextType = {
   isLoading: boolean;
   signInWithAuth0: () => Promise<void>;
   logout: () => Promise<void>;
+  processAuthCallback: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,7 +32,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [auth0Client, setAuth0Client] = useState<Auth0Client | null>(null);
   const { toast } = useToast();
 
   const associateTempScriptsWithUser = async (user: User) => {
@@ -93,27 +91,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Initialize Auth0 client
   useEffect(() => {
-    const initAuth0 = async () => {
+    const initAuth = async () => {
       try {
-        const client = await getAuth0Client();
-        setAuth0Client(client);
-        
-        // Handle redirect callback if applicable
-        if (window.location.search.includes("code=")) {
-          await client.handleRedirectCallback();
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        setIsLoading(true);
         
         // Check if user is authenticated with Auth0
-        const isAuthenticated = await client.isAuthenticated();
+        const isAuthenticated = await auth0.isAuthenticated();
         
         if (isAuthenticated) {
-          const auth0User = await client.getUser();
+          const auth0User = await auth0.getUser();
           if (auth0User) {
             // Get token for Supabase
-            const token = await client.getTokenSilently();
+            const token = await auth0.getTokenSilently();
             
             // Update Supabase auth client with Auth0 token
             const { data, error } = await supabase.auth.getUser(token);
@@ -165,10 +155,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
-    initAuth0();
+    initAuth();
   }, []);
 
-  // Listen for auth changes in Supabase
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -188,16 +177,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const processAuthCallback = async (): Promise<void> => {
+    try {
+      // Handle redirect callback if applicable
+      if (window.location.search.includes("code=")) {
+        await auth0.handleRedirectCallback();
+      }
+      
+      // Check if user is authenticated after callback processing
+      const isAuthenticated = await auth0.isAuthenticated();
+      
+      if (isAuthenticated) {
+        const auth0User = await auth0.getUser();
+        if (auth0User) {
+          // Get token for Supabase
+          const token = await auth0.getTokenSilently();
+          
+          // Update Supabase auth client with Auth0 token
+          const { data, error } = await supabase.auth.getUser(token);
+          
+          if (error) {
+            console.error("Error fetching Supabase user with Auth0 token:", error);
+            return;
+          }
+          
+          if (data.user) {
+            const userProfile = await fetchUserProfile(data.user.id);
+            if (userProfile) {
+              setUser(userProfile);
+              await associateTempScriptsWithUser(userProfile);
+            } else {
+              // Create profile if not exists
+              const newUser: User = {
+                id: data.user.id,
+                username: auth0User.name || auth0User.email?.split('@')[0] || 'user',
+                email: auth0User.email || 'unknown@email.com',
+                createdAt: new Date().toISOString()
+              };
+              
+              // Create user record in our users table
+              const { error: createError } = await supabase
+                .from('users')
+                .insert({
+                  id: data.user.id,
+                  email: newUser.email,
+                  username: newUser.username
+                });
+              
+              if (createError) {
+                console.error("Error creating user record:", createError);
+              } else {
+                setUser(newUser);
+                await associateTempScriptsWithUser(newUser);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error processing Auth0 callback:", error);
+      throw error;
+    }
+  };
+
   const signInWithAuth0 = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      
-      if (!auth0Client) {
-        throw new Error("Auth0 client not initialized");
-      }
-      
-      await auth0Client.loginWithRedirect();
-      
+      await auth0.loginWithRedirect();
     } catch (error: any) {
       console.error("Auth0 sign-in error:", error);
       toast({
@@ -216,13 +262,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       
       // Logout from Auth0
-      if (auth0Client) {
-        await auth0Client.logout({
-          logoutParams: {
-            returnTo: window.location.origin
-          }
-        });
-      }
+      await auth0.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
       
       setUser(null);
     } catch (error) {
@@ -236,7 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       isLoading, 
       signInWithAuth0,
-      logout 
+      logout,
+      processAuthCallback
     }}>
       {children}
     </AuthContext.Provider>
