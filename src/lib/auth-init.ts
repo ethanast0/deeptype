@@ -168,7 +168,7 @@ export const initializeAuthentication = async () => {
     
     return {
       cleanup: () => {
-        if (authHandler?.cleanup) {
+        if (authHandler && typeof authHandler.cleanup === 'function') {
           authHandler.cleanup();
         }
         if (tokenRefreshCleanup) {
@@ -207,4 +207,4 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export default initializeAuthentication; 
+export default initializeAuthentication;

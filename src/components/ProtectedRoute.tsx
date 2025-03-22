@@ -40,7 +40,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
         // No user in context, try to refresh the session
         const result = await refreshSession();
-        setIsAuthenticated(!!result?.session?.user);
+        setIsAuthenticated(result.success && !!result.session?.user);
       } catch (error) {
         console.error('Error validating authentication:', error);
         setIsAuthenticated(false);
@@ -76,4 +76,4 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   return <>{children}</>;
 };
 
-export default ProtectedRoute; 
+export default ProtectedRoute;

@@ -33,7 +33,6 @@ const Login = () => {
   const sessionCheckRef = useRef<boolean>(false);
   const mountTimeRef = useRef<number>(Date.now());
 
-  // Check if we already have a session when the component mounts
   useEffect(() => {
     const checkExistingSession = async () => {
       if (sessionCheckRef.current) return; // Only check once
@@ -61,13 +60,11 @@ const Login = () => {
     
     checkExistingSession();
     
-    // Also add a forced check a bit later to detect race conditions
     const laterCheck = setTimeout(async () => {
       try {
         authDebug("Login component running delayed session check");
         const { data } = await supabase.auth.getSession();
         
-        // Compare with state
         traceSessionCheck('Login-delayedCheck', data.session ? true : false);
         authDebug("Delayed check state comparison", {
           hasSession: !!data.session?.user,
@@ -85,11 +82,9 @@ const Login = () => {
     };
   }, [user, alreadyLoggedIn]);
 
-  // Clear any old auth errors when component mounts
   useEffect(() => {
     setError(null);
     
-    // Check if we're coming back with a verified parameter
     const params = new URLSearchParams(location.search);
     if (params.get('verified') === 'true') {
       authDebug("Login page detected verified=true parameter");
@@ -98,13 +93,11 @@ const Login = () => {
         description: "Your email has been verified. You can now log in.",
       });
       
-      // Remove the parameter from URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('verified');
       window.history.replaceState({}, document.title, newUrl.toString());
     }
     
-    // Check if we're here after a reset
     if (params.get('reset') === 'true') {
       authDebug("Login page detected reset=true parameter");
       toast({
@@ -112,13 +105,11 @@ const Login = () => {
         description: "Your session has been reset. Please log in again.",
       });
       
-      // Remove the parameter from URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('reset');
       window.history.replaceState({}, document.title, newUrl.toString());
     }
     
-    // When component unmounts, clear any pending timeouts
     return () => {
       if (loginTimeoutRef.current) {
         clearTimeout(loginTimeoutRef.current);
@@ -127,9 +118,7 @@ const Login = () => {
     };
   }, [location, toast]);
 
-  // Redirect if already logged in
   useEffect(() => {
-    // Add debug log to see when this effect runs
     authDebug("Login redirect effect triggered", {
       userState: !!user,
       alreadyLoggedIn,
@@ -142,10 +131,8 @@ const Login = () => {
         redirectTo: redirectedFrom.current || '/'
       });
       
-      // Redirect to the page they were trying to access, or home
       navigate(redirectedFrom.current || '/');
       
-      // If we had a timer running, clear it
       if (loginTimeoutRef.current) {
         clearTimeout(loginTimeoutRef.current);
         loginTimeoutRef.current = null;
@@ -156,7 +143,6 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If we're already detecting a session, just redirect without doing a login
     if (alreadyLoggedIn) {
       authDebug("Login form submitted but already logged in, redirecting");
       toast({
@@ -173,19 +159,17 @@ const Login = () => {
     loginAttempt.current = true;
     loginStartTime.current = Date.now();
     
-    // Set a timeout to detect stalled login attempts
     if (loginTimeoutRef.current) {
       clearTimeout(loginTimeoutRef.current);
     }
     
     loginTimeoutRef.current = setTimeout(() => {
-      // If we're still submitting after 10 seconds, something is wrong
       if (submitting && !user) {
         authDebug("Login attempt stalled after timeout");
         setError("Login attempt timed out. Your session might be in an inconsistent state. Try resetting your session.");
         setSubmitting(false);
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
     
     if (!email || !password) {
       setError("Please fill in all fields");
@@ -200,9 +184,8 @@ const Login = () => {
         userContextState: !!user
       });
       
-      // Check if we already have a session before attempting login
       const { data: sessionData } = await supabase.auth.getSession();
-      traceSessionCheck('login-precheck', sessionData.session ? true : false);
+      traceSessionCheck('login-precheck', !!sessionData.session);
       
       if (sessionData.session?.user) {
         authDebug("Found existing session before login attempt", {
@@ -210,24 +193,19 @@ const Login = () => {
           email
         });
         
-        // We're already logged in, just redirect
         setAlreadyLoggedIn(true);
         navigate(redirectedFrom.current || '/');
         setSubmitting(false);
         return;
       }
       
-      // Clear any lingering data before login attempt for clean state
       clearAuthData();
       
       await login(email, password);
       authDebug("Login function completed successfully");
-      
-      // Success will redirect via the useEffect above
     } catch (error: any) {
       logAuthError("Login error", error);
       
-      // Handle specific error cases
       if (error.code === "email_not_confirmed") {
         setError("Email not confirmed. Please check your inbox and confirm your email to log in.");
         setShowResendOption(true);
@@ -241,7 +219,6 @@ const Login = () => {
         authDebug("Received 'already signed in' error during login");
         setAlreadyLoggedIn(true);
         
-        // Check for session again
         try {
           const { data } = await supabase.auth.getSession();
           traceSessionCheck('login-alreadySignedIn', data.session);
@@ -253,14 +230,12 @@ const Login = () => {
           logAuthError("Error checking session after 'already signed in'", e);
         }
         
-        // Try to refresh the page to get the user state
         window.location.reload();
         return;
       } else {
         setError(error.message || "Invalid email or password. Please try again.");
       }
     } finally {
-      // Clear the timeout
       if (loginTimeoutRef.current) {
         clearTimeout(loginTimeoutRef.current);
         loginTimeoutRef.current = null;
@@ -290,13 +265,11 @@ const Login = () => {
     }
   };
 
-  // Handle case where auth is in limbo (thinks logged in but can't get profile)
   const handleForceLogout = async () => {
     try {
       setSessionResetInProgress(true);
       authDebug("Force logout initiated");
       
-      // First try to use the logout function for a clean logout
       if (logout) {
         try {
           await logout();
@@ -306,28 +279,23 @@ const Login = () => {
         }
       }
       
-      // Clear all auth data thoroughly using our helper function
       clearAuthData();
       
-      // Show a toast to the user
       toast({
         title: "Session Reset",
         description: "Your session has been reset. You can now try logging in again.",
       });
       
-      // Force reload the page to clear any in-memory state
       authDebug("Reloading page to complete session reset");
       setTimeout(() => {
         window.location.href = '/login?reset=true';
       }, 500);
     } catch (error) {
       logAuthError("Error during forced logout", error);
-      // Last resort - redirect to login with cleared state
       window.location.href = '/login?reset=true';
     }
   };
 
-  // If already logged in, show a simpler message
   if (alreadyLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-900">
@@ -455,8 +423,6 @@ const Login = () => {
               </Button>
             </form>
             
-            {/* Emergency logout button - show if they've tried to log in but are stuck 
-                or if there's a stalled login attempt */}
             {(loginAttempt.current && (isLoading || error?.includes("session"))) && (
               <div className="mt-4 text-center">
                 <p className="text-xs text-monkey-subtle mb-2">Having trouble? Try resetting your session:</p>
