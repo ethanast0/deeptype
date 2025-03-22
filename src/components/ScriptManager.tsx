@@ -5,8 +5,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter,
-  DialogDescription
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +34,6 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
   const [editingScript, setEditingScript] = useState<SavedScript | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [scriptContent, setScriptContent] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -126,8 +124,6 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
       return;
     }
 
-    setIsLoading(true);
-
     try {
       if (editingScript) {
         // Update existing script
@@ -140,10 +136,8 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         if (updated) {
           toast({
             title: "Script updated",
-            description: "Your script has been updated successfully."
+            description: "Your script has been updated in Supabase."
           });
-          
-          // Call onScriptsChange to refresh the list of scripts immediately
           onScriptsChange();
           setEditingScript(null);
         } else {
@@ -160,10 +154,8 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         if (newScript) {
           toast({
             title: "Script created",
-            description: "Your new script has been saved successfully."
+            description: "Your new script has been saved to Supabase."
           });
-          
-          // Call onScriptsChange to refresh the list of scripts immediately
           onScriptsChange();
           setEditingScript(null);
         } else {
@@ -181,23 +173,18 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         description: "There was an error saving your script.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDelete = async (scriptId: string) => {
-    setIsLoading(true);
     try {
       const deleted = await scriptService.deleteScript(scriptId);
       
       if (deleted) {
         toast({
           title: "Script deleted",
-          description: "Your script has been deleted successfully."
+          description: "Your script has been deleted from Supabase."
         });
-        
-        // Call onScriptsChange to refresh the list of scripts immediately
         onScriptsChange();
         
         if (editingScript?.id === scriptId) {
@@ -217,8 +204,6 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         description: "There was an error deleting your script.",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -259,9 +244,6 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
       <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-monkey-text">
         <DialogHeader>
           <DialogTitle>Manage Your Scripts</DialogTitle>
-          <DialogDescription className="text-monkey-subtle">
-            Upload, edit, and organize your custom typing scripts.
-          </DialogDescription>
         </DialogHeader>
         
         {!editingScript ? (
@@ -272,7 +254,7 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
                 variant="outline" 
                 size="sm" 
                 onClick={handleCreate} 
-                disabled={scripts.length >= 5 || isLoading}
+                disabled={scripts.length >= 5}
                 className="bg-slate-800 hover:bg-slate-700 border-slate-700"
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -294,16 +276,16 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
                 <div key={script.id} className="flex items-center justify-between p-2 rounded-md bg-slate-800 border border-slate-700">
                   <span className="text-sm truncate flex-1">{script.name}</span>
                   <div className="flex space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleMoveUp(index)} disabled={index === 0 || isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => handleMoveUp(index)} disabled={index === 0}>
                       <ArrowUp className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleMoveDown(index)} disabled={index === scripts.length - 1 || isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => handleMoveDown(index)} disabled={index === scripts.length - 1}>
                       <ArrowDown className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(script)} disabled={isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(script)}>
                       <Edit className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(script.id)} disabled={isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(script.id)}>
                       <Trash className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
                     </Button>
                   </div>
@@ -328,7 +310,6 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
                 value={scriptName}
                 onChange={(e) => setScriptName(e.target.value)}
                 className="bg-slate-800 border-slate-700 text-monkey-text"
-                disabled={isLoading}
               />
             </div>
             
@@ -342,30 +323,16 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
                 onChange={(e) => setScriptContent(e.target.value)}
                 rows={10}
                 className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-monkey-text resize-y"
-                disabled={isLoading}
               />
             </div>
             
             <DialogFooter className="flex gap-2 sm:gap-0">
-              <Button 
-                variant="outline" 
-                onClick={cancelEditing} 
-                className="bg-slate-800 hover:bg-slate-700 border-slate-700"
-                disabled={isLoading}
-              >
+              <Button variant="outline" onClick={cancelEditing} className="bg-slate-800 hover:bg-slate-700 border-slate-700">
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSave} 
-                className="bg-monkey-accent text-black hover:bg-monkey-accent/80"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Script
-                  </>
-                )}
+              <Button onClick={handleSave} className="bg-monkey-accent text-black hover:bg-monkey-accent/80">
+                <Save className="w-4 h-4 mr-2" />
+                Save Script
               </Button>
             </DialogFooter>
           </div>

@@ -1,22 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
 import QuoteUploader from '../components/QuoteUploader';
 import TemplateMenu from '../components/TemplateMenu';
 import { defaultQuotes } from '../utils/typingUtils';
-import { useAuth } from '../contexts/AuthContext';
 
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { user } = useAuth();
-  
-  // Force a refresh when user changes
-  useEffect(() => {
-    setRefreshKey(prev => prev + 1);
-  }, [user]);
   
   const handleQuotesLoaded = (newQuotes: string[]) => {
     setQuotes(newQuotes);
@@ -24,11 +16,6 @@ const Index = () => {
   
   const handleTemplateSelected = (templateQuotes: string[]) => {
     setQuotes(templateQuotes);
-  };
-
-  // This will cause the TemplateMenu to re-render and fetch the latest scripts
-  const forceRefresh = () => {
-    setRefreshKey(prev => prev + 1);
   };
 
   return (
@@ -40,10 +27,7 @@ const Index = () => {
           <h2 className="text-lg text-monkey-subtle mb-2">type your favorite things</h2>
         </div>
         
-        <TemplateMenu 
-          key={refreshKey} 
-          onSelectTemplate={handleTemplateSelected} 
-        />
+        <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         
         <TypingArea quotes={quotes} />
         
