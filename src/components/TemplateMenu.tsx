@@ -20,6 +20,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const [isScriptManagerOpen, setIsScriptManagerOpen] = useState(false);
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -33,12 +34,27 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   const loadSavedScripts = async () => {
     if (!user) return;
+    
+    setIsLoading(true);
     try {
       const scripts = await scriptService.getScripts(user.id);
       setSavedScripts(scripts);
     } catch (error) {
       console.error("Error loading saved scripts:", error);
+      toast({
+        title: "Error loading scripts",
+        description: "Unable to load your saved scripts",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // This function gets passed to ScriptManager and will be called after changes
+  const handleScriptsChange = () => {
+    console.log("Scripts changed, reloading saved scripts");
+    loadSavedScripts();
   };
 
   const getIcon = (templateId: string) => {
@@ -82,6 +98,14 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     setIsScriptManagerOpen(true);
   };
 
+  const handleScriptManagerClose = (open: boolean) => {
+    setIsScriptManagerOpen(open);
+    if (!open) {
+      // Reload scripts when the modal closes
+      loadSavedScripts();
+    }
+  };
+
   return (
     <div className="w-full mb-6">
       <div className="flex items-center justify-center text-gray-400 py-4 px-2 rounded-lg w-full overflow-hidden bg-transparent">
@@ -117,6 +141,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
             >
               <Heart className="h-5 w-5" />
               <span>saved</span>
+              {isLoading && <span className="ml-1 text-xs">(loading...)</span>}
             </button>
           )}
 
@@ -148,7 +173,9 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
                   </button>
                 ))
               ) : (
-                <span className="text-monkey-subtle opacity-50 px-3 whitespace-nowrap flex-shrink-0">No saved scripts</span>
+                <span className="text-monkey-subtle opacity-50 px-3 whitespace-nowrap flex-shrink-0">
+                  {isLoading ? "Loading scripts..." : "No saved scripts"}
+                </span>
               )}
 
               {/* Separator before Change */}
@@ -169,10 +196,10 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
       {user && <ScriptManager 
         open={isScriptManagerOpen} 
-        onOpenChange={setIsScriptManagerOpen} 
+        onOpenChange={handleScriptManagerClose} 
         scripts={savedScripts} 
         userId={user.id} 
-        onScriptsChange={loadSavedScripts} 
+        onScriptsChange={handleScriptsChange} 
         onSelectTemplate={onSelectTemplate}
       />}
     </div>
