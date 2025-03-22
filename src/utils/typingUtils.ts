@@ -52,14 +52,14 @@ export const formatTime = (seconds: number): string => {
 
 // Sample quotes for typing test
 export const defaultQuotes = [
-  "The quick brown fox jumps over the lazy dog.",
-  "Programming is the art of telling another human what one wants the computer to do.",
-  "The best way to predict the future is to invent it.",
-  "The only way to learn a new programming language is by writing programs in it.",
-  "Simplicity is the ultimate sophistication.",
-  "Code is like humor. When you have to explain it, it's bad.",
-  "First, solve the problem. Then, write the code.",
-  "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.",
-  "The most disastrous thing that you can ever learn is your first programming language.",
-  "The most important property of a program is whether it accomplishes the intention of its user."
+  "type your favorite things create your favorite scripts share it with others",
+  "click on one of the favorite topics above to try them out",
+  "upload a script from any llm app just ask it for json strings like ['x', 'y', 'z']",
+  "use prompt create a json array of 20 quotes all lowercase no punctuation for the topic <your favorite topic>",
+  "make typing personal again one line at a time",
+  "don’t forget to sign up so you can follow your stats and build your vibe",
+  "your words your rhythm their typing joy",
+  "create calm funny sharp or weird scripts for the world to type",
+  "typing is better when it comes from you",
+  "give your friends something better to type and watch it spread"
 ];
