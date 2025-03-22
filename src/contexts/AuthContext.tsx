@@ -7,7 +7,8 @@ import {
   verifyUserCredentials, 
   signupUser, 
   signOutUser,
-  resendConfirmationEmail as resendEmail
+  resendConfirmationEmail as resendEmail,
+  getCurrentSession
 } from "@/services/authService";
 
 type AuthContextType = {
@@ -35,30 +36,112 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const authCleanupRef = useRef<(() => void) | null>(null);
   const initializationCompleted = useRef(false);
   const userProfileFetchAttempted = useRef(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const delayedProfileFetchRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSessionCheckRef = useRef<number>(0);
+  const sessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
+  // Enhanced logging for auth state changes
+  const logAuthState = (action: string, details?: any) => {
+    console.log(`[AUTH CONTEXT] ${action}`, details ? details : '');
+  };
+
   const handleAuthChange = useCallback(async (userId: string | null) => {
-    console.log("Auth state change, user ID:", userId);
+    logAuthState("Auth state change", { userId });
     
     if (!userId) {
       setUser(null);
       return;
     }
     
+    // Store the user ID in localStorage for redundancy
+    if (userId) {
+      localStorage.setItem('supabase.auth.user.id', userId);
+      localStorage.setItem('backup:supabase.auth.user.id', userId);
+    }
+    
+    // Clear any existing fetch timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
+    
+    // Clear any delayed profile fetch
+    if (delayedProfileFetchRef.current) {
+      clearTimeout(delayedProfileFetchRef.current);
+    }
+    
+    // Set a new timeout to ensure the fetch completes in a reasonable time
+    fetchTimeoutRef.current = setTimeout(() => {
+      logAuthState("User profile fetch timed out, using fallback");
+      // If fetch is taking too long, try to use cached data or minimal data
+      const cachedUserJson = localStorage.getItem('cached_user_profile');
+      if (cachedUserJson) {
+        try {
+          const cachedUser = JSON.parse(cachedUserJson);
+          if (cachedUser && cachedUser.id === userId) {
+            logAuthState("Using cached profile due to fetch timeout");
+            setUser(cachedUser);
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing cached user during timeout:", e);
+        }
+      }
+      
+      // If no cached data, create minimal user object
+      const minimalUser = {
+        id: userId,
+        username: "User", // Will be updated when fetch succeeds
+        email: "user@example.com" // Will be updated when fetch succeeds
+      };
+      logAuthState("Using minimal user profile:", minimalUser);
+      setUser(minimalUser);
+      setIsLoading(false);
+      
+      // Schedule a delayed retry of the profile fetch
+      delayedProfileFetchRef.current = setTimeout(() => {
+        logAuthState("Retrying profile fetch in background");
+        fetchUserProfile(userId)
+          .then(profile => {
+            if (profile) {
+              logAuthState("Background fetch succeeded, updating user");
+              setUser(profile);
+              
+              // Update cached profile
+              localStorage.setItem('cached_user_profile', JSON.stringify(profile));
+            }
+          })
+          .catch(e => console.error("Background profile fetch failed:", e));
+      }, 5000); // Try again after 5 seconds
+    }, 3000); // 3 second timeout for initial fetch
+    
     try {
-      console.log("Fetching user profile for ID:", userId);
+      logAuthState("Fetching user profile for ID:", userId);
       userProfileFetchAttempted.current = true;
       
       // Try to get the user profile
       const userProfile = await fetchUserProfile(userId);
       
+      // Clear timeout since fetch completed
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+      
       if (userProfile) {
-        console.log("Setting user profile:", userProfile);
+        logAuthState("Setting user profile:", userProfile);
         setUser(userProfile);
+        
+        // Cache the profile for future use
+        localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
+        
         // Store user ID in localStorage for redundant persistence
         localStorage.setItem('supabase.auth.user.id', userId);
+        localStorage.setItem('backup:supabase.auth.user.id', userId);
       } else {
-        console.log("User profile not found for ID:", userId);
+        logAuthState("User profile not found for ID:", userId);
         
         // If we have a cached user, use it
         const cachedUserJson = localStorage.getItem('cached_user_profile');
@@ -66,8 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const cachedUser = JSON.parse(cachedUserJson) as User;
             if (cachedUser.id === userId) {
-              console.log("Using cached user profile as fallback:", cachedUser);
+              logAuthState("Using cached user profile as fallback:", cachedUser);
               setUser(cachedUser);
+              setIsLoading(false);
               return;
             }
           } catch (e) {
@@ -75,36 +159,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // If no user profile found and no cached user, log out
-        setUser(null);
-        localStorage.removeItem('supabase.auth.user.id');
+        // If no user profile found and no cached user, create a minimal profile
+        // This prevents the user from being logged out if the profile fetch fails
+        const minimalUser = {
+          id: userId,
+          username: "User", // Generic name
+          email: "user@example.com", // Generic email
+        };
+        logAuthState("Using minimal user profile:", minimalUser);
+        setUser(minimalUser);
+        localStorage.setItem('cached_user_profile', JSON.stringify(minimalUser));
         
-        // If we've attempted to fetch the user profile multiple times without success,
-        // try to sign out and redirect to login as a last resort
-        if (userProfileFetchAttempted.current) {
-          console.log("Multiple failed attempts to fetch user profile. Signing out...");
-          await supabase.auth.signOut();
-        }
+        // Don't redirect to login, just maintain session with minimal data
+        localStorage.setItem('supabase.auth.user.id', userId);
+        localStorage.setItem('backup:supabase.auth.user.id', userId);
       }
     } catch (error) {
       console.error("Error handling auth change:", error);
+      
+      // Clear timeout since fetch completed (with error)
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+      
       // Don't clear the user on error to prevent flickering
       // Only clear if there was no previous user
       if (!user) {
-        setUser(null);
-        localStorage.removeItem('supabase.auth.user.id');
+        // Try to use cached user as fallback
+        const cachedUserJson = localStorage.getItem('cached_user_profile');
+        if (cachedUserJson) {
+          try {
+            const cachedUser = JSON.parse(cachedUserJson) as User;
+            if (cachedUser.id === userId) {
+              logAuthState("Using cached user after error:", cachedUser);
+              setUser(cachedUser);
+              setIsLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("Error parsing cached user during error recovery:", e);
+          }
+        }
+        
+        // Last resort - create minimal user to maintain session
+        const minimalUser = {
+          id: userId,
+          username: "User", // Generic name
+          email: "user@example.com", // Generic email
+        };
+        logAuthState("Using minimal user profile after error:", minimalUser);
+        setUser(minimalUser);
+        localStorage.setItem('cached_user_profile', JSON.stringify(minimalUser));
+        localStorage.setItem('supabase.auth.user.id', userId);
+        localStorage.setItem('backup:supabase.auth.user.id', userId);
       }
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
+
+  // Function to check session status explicitly
+  const checkSessionStatus = useCallback(async (force = false) => {
+    const now = Date.now();
+    // Don't check too frequently unless forced
+    if (!force && now - lastSessionCheckRef.current < 10000) {
+      return;
+    }
+    
+    lastSessionCheckRef.current = now;
+    logAuthState("Performing explicit session check");
+    
+    try {
+      // Use our helper to check for an existing session
+      const session = await getCurrentSession();
+      
+      if (session?.user) {
+        // We have a user, ensure we have the user profile
+        logAuthState("Session check found valid session:", session.user.id);
+        
+        // If no user is set or user ID doesn't match, update it
+        if (!user || user.id !== session.user.id) {
+          await handleAuthChange(session.user.id);
+        }
+      } else if (user) {
+        // We thought we had a user but the session is gone, clear the state
+        logAuthState("Session check found no valid session but had user state, clearing");
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error checking session status:", error);
+    }
+  }, [handleAuthChange, user]);
 
   // Initialize auth state
   useEffect(() => {
     if (initializationCompleted.current) {
-      console.log("Auth already initialized, skipping");
+      logAuthState("Auth already initialized, skipping");
       return;
     }
     
-    console.log("Initializing auth state...");
+    logAuthState("Initializing auth state...");
     initializationCompleted.current = true;
     let isMounted = true;
     
@@ -116,7 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Auth state changed: ${event}`, session?.user?.id);
+      logAuthState(`Auth state changed: ${event}`, session?.user?.id);
       
       if (!isMounted) return;
       
@@ -125,25 +280,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         case 'SIGNED_OUT':
           setUser(null);
           localStorage.removeItem('supabase.auth.user.id');
-          console.log('User signed out, cleared user state');
+          localStorage.removeItem('backup:supabase.auth.user.id');
+          localStorage.removeItem('cached_user_profile');
+          logAuthState('User signed out, cleared user state');
           break;
           
         case 'SIGNED_IN':
         case 'TOKEN_REFRESHED':
         case 'USER_UPDATED':
           if (session?.user) {
-            console.log(`User ${event} event, updating user state`);
+            logAuthState(`User ${event} event, updating user state`);
             // Only trigger handleAuthChange if the event is significant
             await handleAuthChange(session.user.id);
           }
           break;
           
         case 'INITIAL_SESSION':
-          // For initial session, we'll handle it specifically in the checkSession function
+          // For initial session, handle it
+          if (session?.user) {
+            logAuthState('Initial session found, updating user state');
+            await handleAuthChange(session.user.id);
+          }
           break;
           
         default:
-          console.log(`Unhandled auth event: ${event}`);
+          logAuthState(`Unhandled auth event: ${event}`);
       }
       
       setIsLoading(false);
@@ -152,7 +313,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initial session check - critical for page refresh
     const checkSession = async () => {
       try {
-        console.log("Checking for existing session...");
+        logAuthState("Checking for existing session...");
+        setIsLoading(true);
         
         // Use our enhanced session checking function
         const session = await checkPersistedSession();
@@ -160,21 +322,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         
         if (session?.user) {
-          console.log("Found existing session:", session.user.id);
+          logAuthState("Found existing session:", session.user.id);
           await handleAuthChange(session.user.id);
         } else {
-          console.log("No existing session found");
+          logAuthState("No existing session found");
           // But check localStorage one more time for redundancy
-          const storedUserId = localStorage.getItem('supabase.auth.user.id');
+          const storedUserId = localStorage.getItem('supabase.auth.user.id') || 
+                              localStorage.getItem('backup:supabase.auth.user.id');
+                              
           if (storedUserId) {
-            console.log("Found stored user ID, attempting to restore session");
+            logAuthState("Found stored user ID, attempting to restore session");
             const cachedUserJson = localStorage.getItem('cached_user_profile');
             
             if (cachedUserJson) {
               try {
                 const cachedUser = JSON.parse(cachedUserJson) as User;
                 if (cachedUser.id === storedUserId) {
-                  console.log("Using cached user profile for stored ID:", cachedUser);
+                  logAuthState("Using cached user profile for stored ID:", cachedUser);
                   setUser(cachedUser);
                   // Attempt to refresh session in background
                   refreshSession().catch(e => console.error("Error refreshing session:", e));
@@ -184,7 +348,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setUser(null);
               }
             } else {
-              setUser(null);
+              // Try to get the user profile
+              try {
+                const userProfile = await fetchUserProfile(storedUserId);
+                if (userProfile) {
+                  logAuthState("Fetched user profile for stored ID:", userProfile);
+                  setUser(userProfile);
+                  localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
+                } else {
+                  setUser(null);
+                }
+              } catch (e) {
+                console.error("Error fetching profile for stored ID:", e);
+                setUser(null);
+              }
             }
           } else {
             setUser(null);
@@ -192,7 +369,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error("Error checking session:", error);
-        if (isMounted) setUser(null);
+        
+        // Attempt to recover using stored user ID if available
+        const storedUserId = localStorage.getItem('supabase.auth.user.id') || 
+                            localStorage.getItem('backup:supabase.auth.user.id');
+                            
+        if (storedUserId && isMounted) {
+          logAuthState("Error during session check, using stored user ID:", storedUserId);
+          
+          // Try to use cached profile
+          const cachedUserJson = localStorage.getItem('cached_user_profile');
+          if (cachedUserJson) {
+            try {
+              const cachedUser = JSON.parse(cachedUserJson) as User;
+              if (cachedUser.id === storedUserId) {
+                logAuthState("Using cached user during session check error:", cachedUser);
+                setUser(cachedUser);
+                setIsLoading(false);
+                return;
+              }
+            } catch (e) {
+              console.error("Error parsing cached user during recovery:", e);
+            }
+          }
+          
+          // Last resort - create minimal user
+          const minimalUser = {
+            id: storedUserId,
+            username: "User", // Generic name
+            email: "user@example.com", // Generic email
+          };
+          logAuthState("Using minimal user during session check error:", minimalUser);
+          setUser(minimalUser);
+        } else if (isMounted) {
+          setUser(null);
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -200,37 +411,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     checkSession();
     
+    // Set up a repeating session check at a reasonable interval
+    // This helps ensure our React state stays in sync with Supabase
+    sessionCheckIntervalRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        checkSessionStatus();
+      }
+    }, 30000); // Check every 30 seconds when visible
+    
     // Add window focus event listener to refresh session
     const handleFocus = async () => {
-      if (!user) return; // Only refresh if we think we're logged in
-      
-      console.log("Window focused, refreshing session");
-      try {
-        const refreshedSession = await refreshSession();
-        if (refreshedSession?.user) {
-          // Just update the timestamp in localStorage to indicate activity
-          // but don't trigger a full user profile fetch unless necessary
-          localStorage.setItem('supabase.auth.last_refresh', Date.now().toString());
-        } else {
-          // No valid session found on focus, but we thought we were logged in
-          console.log("Session expired, clearing user state");
-          setUser(null);
-          localStorage.removeItem('supabase.auth.user.id');
-        }
-      } catch (error) {
-        console.error("Error refreshing session on focus:", error);
-      }
+      logAuthState("Window focused, checking session state");
+      checkSessionStatus(true); // Force a check on focus
     };
     
     window.addEventListener('focus', handleFocus);
     
     // Also set an interval to periodically refresh the token while tab is active
     const tokenRefreshInterval = setInterval(async () => {
-      if (user) {
-        console.log("Performing periodic token refresh");
-        await refreshSession();
+      if (user && document.visibilityState === 'visible') {
+        logAuthState("Performing periodic token refresh");
+        try {
+          await refreshSession();
+        } catch (e) {
+          console.error("Error in periodic token refresh:", e);
+          // If token refresh fails, double-check our session state
+          checkSessionStatus(true);
+        }
       }
-    }, 10 * 60 * 1000); // Every 10 minutes
+    }, 9 * 60 * 1000); // Every 9 minutes (just under typical 10min JWT expiry)
     
     return () => {
       isMounted = false;
@@ -238,16 +447,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('focus', handleFocus);
       clearInterval(tokenRefreshInterval);
       
+      if (sessionCheckIntervalRef.current) {
+        clearInterval(sessionCheckIntervalRef.current);
+      }
+      
+      // Clean up fetch timeout if it exists
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+      
+      // Clean up delayed profile fetch if it exists
+      if (delayedProfileFetchRef.current) {
+        clearTimeout(delayedProfileFetchRef.current);
+      }
+      
       // Clean up cross-tab auth handler
       if (authCleanupRef.current) {
         authCleanupRef.current();
         authCleanupRef.current = null;
       }
     };
-  }, [handleAuthChange, user]);
+  }, [handleAuthChange, checkSessionStatus, user]);
 
   const login = async (email: string, password: string) => {
-    console.log("Login attempt for:", email);
+    logAuthState("Login attempt for:", email);
+    
+    // Check if we already have an active session to avoid duplicate login
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      logAuthState("Already have active session, fetching profile instead of login");
+      
+      try {
+        // Just update the user profile for the existing session
+        const profile = await fetchUserProfile(session.user.id);
+        if (profile) {
+          setUser(profile);
+          localStorage.setItem('cached_user_profile', JSON.stringify(profile));
+          toast({
+            title: "Already logged in",
+            description: "You are already logged in, welcome back!",
+          });
+          return;
+        }
+      } catch (e) {
+        console.error("Error fetching profile for existing session:", e);
+        // Continue with login as fallback
+      }
+    }
+    
     setIsLoading(true);
     
     try {
@@ -271,6 +518,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Store user ID for redundant persistence
       localStorage.setItem('supabase.auth.user.id', userData.id);
+      localStorage.setItem('backup:supabase.auth.user.id', userData.id);
       
       // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(userProfile);
@@ -283,6 +531,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Login error:", error);
       setUser(null);
       localStorage.removeItem('supabase.auth.user.id');
+      localStorage.removeItem('backup:supabase.auth.user.id');
+      localStorage.removeItem('cached_user_profile');
       throw error;
     } finally {
       setIsLoading(false);
@@ -290,7 +540,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signup = async (username: string, email: string, password: string) => {
-    console.log("Signup attempt for:", email);
+    logAuthState("Signup attempt for:", email);
     setIsLoading(true);
     
     try {
@@ -311,6 +561,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Store user ID for redundant persistence
       localStorage.setItem('supabase.auth.user.id', userData.id);
+      localStorage.setItem('backup:supabase.auth.user.id', userData.id);
       
       // Associate any temporary scripts with the user
       await associateTempScriptsWithUser(newUser);
@@ -323,6 +574,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Signup error:", error);
       setUser(null);
       localStorage.removeItem('supabase.auth.user.id');
+      localStorage.removeItem('backup:supabase.auth.user.id');
+      localStorage.removeItem('cached_user_profile');
       throw error;
     } finally {
       setIsLoading(false);
@@ -330,12 +583,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    console.log("Logging out...");
+    logAuthState("Logging out...");
     setIsLoading(true);
     try {
       await signOutUser();
       setUser(null);
       localStorage.removeItem('supabase.auth.user.id');
+      localStorage.removeItem('backup:supabase.auth.user.id');
       localStorage.removeItem('cached_user_profile');
       toast({
         title: "Logged out",
@@ -346,6 +600,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Force clean local storage even if API fails
       setUser(null);
       localStorage.removeItem('supabase.auth.user.id');
+      localStorage.removeItem('backup:supabase.auth.user.id');
       localStorage.removeItem('cached_user_profile');
       toast({
         title: "Error",

@@ -10,9 +10,11 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import AuthDebugger from "./components/AuthDebugger";
 import "./App.css";
 
 const queryClient = new QueryClient();
+const isDevelopment = import.meta.env.DEV;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -37,6 +39,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        {isDevelopment && <AuthDebugger />}
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

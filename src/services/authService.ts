@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import * as bcrypt from 'bcryptjs';
+import { clearAuthData } from '@/integrations/supabase/client';
 
 export interface UserCredentials {
   email: string;
@@ -15,8 +16,22 @@ export interface AuthError extends Error {
   originalError?: any;
 }
 
+type LoginResponse = {
+  id: string;
+  username: string;
+  email: string;
+  created_at: string;
+};
+
+// Extended debug logging for auth operations
+const logAuthAction = (action: string, details?: any) => {
+  console.log(`[AUTH SERVICE] ${action}`, details ? details : '');
+};
+
 // Authenticate user with Supabase
 export const authenticateWithSupabase = async (email: string, password: string) => {
+  logAuthAction('Authenticating with Supabase', { email });
+  
   try {
     // First clear any existing session to prevent conflicts
     localStorage.removeItem('supabase.auth.user.id');
@@ -27,7 +42,7 @@ export const authenticateWithSupabase = async (email: string, password: string) 
     });
     
     if (error) {
-      console.error("Supabase auth error:", error);
+      logAuthAction('Supabase authentication error', error);
       
       if (error.message === "Email not confirmed" || error.code === "email_not_confirmed") {
         const authError: AuthError = new Error("Please check your inbox and confirm your email before logging in.");
@@ -47,40 +62,51 @@ export const authenticateWithSupabase = async (email: string, password: string) 
       }
     }
     
+    logAuthAction('Supabase authentication successful', { userId: data.user?.id });
     return data;
   } catch (error) {
-    console.error("Authentication error:", error);
+    logAuthAction('Supabase authentication exception', error);
     throw error;
   }
 };
 
 // Verify user against database
-export const verifyUserCredentials = async (email: string, password: string) => {
+export const verifyUserCredentials = async (email: string, password: string): Promise<LoginResponse> => {
+  logAuthAction('Verifying user credentials', { email });
+  
   try {
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, username, email, password_hash, created_at')
+      .select('*')
       .eq('email', email)
-      .maybeSingle();
+      .single();
     
     if (userError) {
-      console.error("User verification error:", userError);
-      throw new Error("Invalid email or password");
+      logAuthAction('User verification error', userError);
+      throw { message: 'Error verifying user credentials', code: 'verification_error' };
     }
     
     if (!userData) {
-      throw new Error("Invalid email or password");
+      logAuthAction('User not found');
+      throw { message: 'Invalid email or password', code: 'invalid_credentials' };
     }
     
-    return userData;
+    logAuthAction('User credentials verified', { userId: userData.id });
+    return userData as LoginResponse;
   } catch (error) {
-    console.error("Verification error:", error);
+    logAuthAction('User verification exception', error);
+    // If error wasn't already transformed
+    if (!error.code) {
+      throw { message: 'Error during login', code: 'login_error', originalError: error };
+    }
     throw error;
   }
 };
 
 // Sign up a new user
 export const signupUser = async (username: string, email: string, password: string) => {
+  logAuthAction('Signing up new user', { email, username });
+  
   try {
     // Hash the password
     const saltRounds = 10;
@@ -102,12 +128,13 @@ export const signupUser = async (username: string, email: string, password: stri
     });
     
     if (authError) {
-      console.error("Auth signup error:", authError);
+      logAuthAction('Supabase signup error', authError);
       throw authError;
     }
     
     if (!authData.user) {
-      throw new Error("Failed to create user");
+      logAuthAction('No user returned from Supabase signup');
+      throw { message: 'Failed to create user account', code: 'signup_failed' };
     }
     
     // Create user profile in our table
@@ -123,8 +150,10 @@ export const signupUser = async (username: string, email: string, password: stri
       .single();
     
     if (userError) {
-      console.error("Error creating user record:", userError);
-      throw userError;
+      logAuthAction('Database user creation error', userError);
+      // Attempt to clean up the auth user since the database insert failed
+      await supabase.auth.signOut();
+      throw { message: 'Failed to create user profile', code: 'db_error' };
     }
     
     // Explicitly store the session in localStorage for redundancy
@@ -133,15 +162,21 @@ export const signupUser = async (username: string, email: string, password: stri
       localStorage.setItem('supabase.auth.user.id', authData.user.id);
     }
     
-    return { authData, userData };
+    logAuthAction('User signup complete', { userId: userData.id });
+    return { userData, authData };
   } catch (error) {
-    console.error("Signup error:", error);
+    logAuthAction('Signup exception', error);
+    if (!error.code) {
+      throw { message: 'Error during signup', code: 'signup_error', originalError: error };
+    }
     throw error;
   }
 };
 
 // Sign out the current user
 export const signOutUser = async () => {
+  logAuthAction('Signing out user');
+  
   try {
     // Clear all auth-related storage before signing out
     localStorage.removeItem('supabase.auth.token');
@@ -155,17 +190,25 @@ export const signOutUser = async () => {
     });
     
     if (error) {
-      console.error("Sign out error:", error);
+      logAuthAction('Signout error', error);
       throw error;
     }
+    
+    // Also clear any cached auth data
+    clearAuthData();
+    logAuthAction('User signed out successfully');
   } catch (error) {
-    console.error("Sign out error:", error);
+    logAuthAction('Signout exception', error);
+    // Clear auth data even if the API call fails
+    clearAuthData();
     throw error;
   }
 };
 
 // Resend confirmation email
 export const resendConfirmationEmail = async (email: string) => {
+  logAuthAction('Resending confirmation email', { email });
+  
   try {
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -176,11 +219,13 @@ export const resendConfirmationEmail = async (email: string) => {
     });
     
     if (error) {
-      console.error("Error resending confirmation email:", error);
+      logAuthAction('Resend confirmation error', error);
       throw error;
     }
+    
+    logAuthAction('Confirmation email sent');
   } catch (error) {
-    console.error("Error resending confirmation email:", error);
+    logAuthAction('Resend confirmation exception', error);
     throw error;
   }
 };
