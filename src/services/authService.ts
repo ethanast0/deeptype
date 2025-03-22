@@ -17,13 +17,11 @@ export interface AuthError extends Error {
 }
 
 type LoginResponse = {
-  id: string;
-  username: string;
-  email: string;
-  created_at: string;
+  userId?: string;
+  error?: AuthError;
 };
 
-// Extended debug logging for auth operations
+// Simple logging for auth operations
 const logAuthAction = (action: string, details?: any) => {
   console.log(`[AUTH SERVICE] ${action}`, details ? details : '');
 };
@@ -33,9 +31,6 @@ export const authenticateWithSupabase = async (email: string, password: string) 
   logAuthAction('Authenticating with Supabase', { email });
   
   try {
-    // First clear any existing session to prevent conflicts
-    localStorage.removeItem('supabase.auth.user.id');
-    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -54,19 +49,11 @@ export const authenticateWithSupabase = async (email: string, password: string) 
       throw error;
     }
     
-    // Explicitly store the session in localStorage for redundancy
-    if (data.session) {
-      localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
-      if (data.user) {
-        localStorage.setItem('supabase.auth.user.id', data.user.id);
-      }
-    }
-    
     logAuthAction('Supabase authentication successful', { userId: data.user?.id });
-    return data;
+    return { user: data.user, session: data.session, error: null };
   } catch (error) {
     logAuthAction('Supabase authentication exception', error);
-    throw error;
+    return { user: null, session: null, error };
   }
 };
 
@@ -83,23 +70,30 @@ export const verifyUserCredentials = async (email: string, password: string): Pr
     
     if (userError) {
       logAuthAction('User verification error', userError);
-      throw { message: 'Error verifying user credentials', code: 'verification_error' };
+      const error: AuthError = new Error('Error verifying user credentials');
+      error.code = 'verification_error';
+      return { error };
     }
     
     if (!userData) {
       logAuthAction('User not found');
-      throw { message: 'Invalid email or password', code: 'invalid_credentials' };
+      const error: AuthError = new Error('Invalid email or password');
+      error.code = 'invalid_credentials';
+      return { error };
     }
     
     logAuthAction('User credentials verified', { userId: userData.id });
-    return userData as LoginResponse;
+    return { userId: userData.id };
   } catch (error) {
     logAuthAction('User verification exception', error);
     // If error wasn't already transformed
     if (!error.code) {
-      throw { message: 'Error during login', code: 'login_error', originalError: error };
+      const authError: AuthError = new Error('Error during login');
+      authError.code = 'login_error';
+      authError.originalError = error;
+      return { error: authError };
     }
-    throw error;
+    return { error };
   }
 };
 
@@ -111,9 +105,6 @@ export const signupUser = async (username: string, email: string, password: stri
     // Hash the password
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
-    
-    // Clear any existing auth state
-    localStorage.removeItem('supabase.auth.user.id');
     
     // Create auth user in Supabase
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -129,12 +120,14 @@ export const signupUser = async (username: string, email: string, password: stri
     
     if (authError) {
       logAuthAction('Supabase signup error', authError);
-      throw authError;
+      return { error: authError };
     }
     
     if (!authData.user) {
       logAuthAction('No user returned from Supabase signup');
-      throw { message: 'Failed to create user account', code: 'signup_failed' };
+      const error: AuthError = new Error('Failed to create user account');
+      error.code = 'signup_failed';
+      return { error };
     }
     
     // Create user profile in our table
@@ -153,23 +146,22 @@ export const signupUser = async (username: string, email: string, password: stri
       logAuthAction('Database user creation error', userError);
       // Attempt to clean up the auth user since the database insert failed
       await supabase.auth.signOut();
-      throw { message: 'Failed to create user profile', code: 'db_error' };
-    }
-    
-    // Explicitly store the session in localStorage for redundancy
-    if (authData.session) {
-      localStorage.setItem('supabase.auth.token', JSON.stringify(authData.session));
-      localStorage.setItem('supabase.auth.user.id', authData.user.id);
+      const error: AuthError = new Error('Failed to create user profile');
+      error.code = 'db_error';
+      return { error };
     }
     
     logAuthAction('User signup complete', { userId: userData.id });
-    return { userData, authData };
+    return { userId: userData.id };
   } catch (error) {
     logAuthAction('Signup exception', error);
     if (!error.code) {
-      throw { message: 'Error during signup', code: 'signup_error', originalError: error };
+      const authError: AuthError = new Error('Error during signup');
+      authError.code = 'signup_error';
+      authError.originalError = error;
+      return { error: authError };
     }
-    throw error;
+    return { error };
   }
 };
 
@@ -178,12 +170,6 @@ export const signOutUser = async () => {
   logAuthAction('Signing out user');
   
   try {
-    // Clear all auth-related storage before signing out
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('supabase.auth.refreshToken');
-    localStorage.removeItem('supabase.auth.user.id');
-    localStorage.removeItem('supabase.auth.event');
-    
     // Ensure we call the Supabase signOut with the right parameters
     const { error } = await supabase.auth.signOut({
       scope: 'local' // Only sign out from this browser, not all devices
@@ -191,17 +177,18 @@ export const signOutUser = async () => {
     
     if (error) {
       logAuthAction('Signout error', error);
-      throw error;
+      return { error };
     }
     
     // Also clear any cached auth data
     clearAuthData();
     logAuthAction('User signed out successfully');
+    return { error: null };
   } catch (error) {
     logAuthAction('Signout exception', error);
     // Clear auth data even if the API call fails
     clearAuthData();
-    throw error;
+    return { error };
   }
 };
 
@@ -220,46 +207,30 @@ export const resendConfirmationEmail = async (email: string) => {
     
     if (error) {
       logAuthAction('Resend confirmation error', error);
-      throw error;
+      return { error };
     }
     
     logAuthAction('Confirmation email sent');
+    return { error: null };
   } catch (error) {
     logAuthAction('Resend confirmation exception', error);
-    throw error;
+    return { error };
   }
 };
 
 // Get current session
 export const getCurrentSession = async () => {
   try {
-    // Check localStorage first for our backup session info
-    const storedUserId = localStorage.getItem('supabase.auth.user.id');
-    const session = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
     
-    if (session.error) {
-      console.error("Error getting session:", session.error);
-      // If there's an error but we have a stored user ID, we'll try to recover
-      if (storedUserId) {
-        return { user: { id: storedUserId } };
-      }
+    if (error) {
+      console.error("Error getting session:", error);
       return null;
     }
     
-    // If we have a session, ensure the userId is also stored for redundancy
-    if (session.data.session?.user) {
-      localStorage.setItem('supabase.auth.user.id', session.data.session.user.id);
-    } else if (storedUserId) {
-      // We have a stored user ID but no active session - try to refresh
-      const refreshResult = await supabase.auth.refreshSession();
-      if (!refreshResult.error && refreshResult.data.session) {
-        return refreshResult.data.session;
-      }
-    }
-    
-    return session.data.session;
+    return data.session;
   } catch (error) {
-    console.error("Get session error:", error);
+    console.error("Exception getting session:", error);
     return null;
   }
 };

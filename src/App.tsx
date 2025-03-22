@@ -10,7 +10,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import AuthDebugger from "./components/AuthDebugger";
+import { AuthDebugger } from "./components/AuthDebugger";
 import "./App.css";
 
 const queryClient = new QueryClient();

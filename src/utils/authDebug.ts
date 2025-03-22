@@ -9,10 +9,23 @@ let DEBUG_ENABLED = true;
 // Object to store debug info
 const authDebugInfo = {
   sessionChecks: [] as any[],
-  localStorage: {} as Record<string, any>,
-  authEvents: [] as any[],
+  localStorage: [] as any[],
+  events: [] as any[],
   errors: [] as any[],
+  currentStorage: {} as Record<string, any>,
 };
+
+// Track important auth-related localStorage keys
+const AUTH_KEYS = [
+  'supabase.auth.token',
+  'supabase.auth.expires_at',
+  'supabase.auth.user.id',
+  'backup:supabase.auth.token',
+  'backup:supabase.auth.user.id',
+  'supabase_auth_session_fallback',
+  'supabase_auth_user_fallback',
+  'user_profile'
+];
 
 // Timestamp format helper
 const formatTime = () => {
@@ -20,70 +33,69 @@ const formatTime = () => {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 };
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Only log in development mode
+const isDevelopment = isBrowser && import.meta.env?.DEV === true;
+
 /**
- * Log a message with timestamp and optional data object
+ * Log an authentication-related debug message
  */
 export const authDebug = (message: string, data?: any) => {
-  if (!DEBUG_ENABLED) return;
-
-  const logEntry = {
-    time: formatTime(),
-    message,
-    data,
-    stackTrace: new Error().stack?.split('\n').slice(2).join('\n')
-  };
+  if (!isDevelopment) return;
   
-  // Always log to console for immediate feedback
-  console.log(`[AUTH DEBUG] ${logEntry.time} - ${message}`, data || '');
-  
-  // Store in our debug info object
-  authDebugInfo.authEvents.push(logEntry);
+  const timestamp = new Date().toISOString();
+  console.log(`[AUTH DEBUG ${timestamp}]`, message, data || '');
 };
 
 /**
- * Specifically trace session checks with their results
+ * Log authentication errors
  */
-export const traceSessionCheck = (source: string, result: any) => {
-  if (!DEBUG_ENABLED) return;
+export const logAuthError = (message: string, error: any) => {
+  if (!isDevelopment) return;
   
-  const entry = {
-    time: formatTime(),
-    source,
-    hasSession: !!result?.user,
-    userId: result?.user?.id,
-    tokenExpiry: result?.expires_at ? new Date(result.expires_at * 1000).toISOString() : 'N/A',
-    stackTrace: new Error().stack?.split('\n').slice(2).join('\n')
-  };
-  
-  authDebugInfo.sessionChecks.push(entry);
-  
-  console.log(`[SESSION CHECK] ${entry.time} - ${source} - Has session: ${entry.hasSession}`, entry.userId ? `User ID: ${entry.userId}` : '');
+  const timestamp = new Date().toISOString();
+  console.error(`[AUTH ERROR ${timestamp}]`, message, error);
 };
 
 /**
- * Monitor localStorage operations related to auth
+ * Log session check results
+ */
+export const traceSessionCheck = (source: string, hasSession: boolean, userId?: string) => {
+  if (!isDevelopment) return;
+  
+  authDebug(`Session check [${source}]: ${hasSession ? 'Session found' : 'No session'}`, { userId });
+};
+
+/**
+ * Monitor localStorage operations related to authentication
  */
 export const watchLocalStorage = () => {
   if (typeof window === 'undefined' || !DEBUG_ENABLED) return;
   
-  const keysToWatch = [
-    'supabase.auth.token',
-    'supabase.auth.refreshToken',
-    'supabase.auth.user.id',
-    'backup:supabase.auth.user.id',
-    'cached_user_profile',
-    'supabase.auth.event'
-  ];
+  // Update current storage snapshot
+  const updateStorageSnapshot = () => {
+    AUTH_KEYS.forEach(key => {
+      try {
+        const value = localStorage.getItem(key);
+        if (value) {
+          if (key.includes('token')) {
+            authDebugInfo.currentStorage[key] = '[TOKEN HIDDEN]';
+          } else {
+            authDebugInfo.currentStorage[key] = value;
+          }
+        } else {
+          delete authDebugInfo.currentStorage[key];
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+  };
   
-  // Store initial state
-  keysToWatch.forEach(key => {
-    try {
-      const value = localStorage.getItem(key);
-      authDebugInfo.localStorage[key] = value ? "present" : "absent";
-    } catch (e) {
-      authDebugInfo.localStorage[key] = "error reading";
-    }
-  });
+  // Initial snapshot
+  updateStorageSnapshot();
   
   // Hook original methods to monitor changes
   const originalSetItem = localStorage.setItem;
@@ -91,77 +103,105 @@ export const watchLocalStorage = () => {
   const originalClear = localStorage.clear;
   
   localStorage.setItem = function(key: string, value: string) {
-    if (keysToWatch.includes(key)) {
-      const stackTrace = new Error().stack;
-      console.log(`[STORAGE SET] ${formatTime()} - Setting ${key}`, { 
-        value: key.includes('token') ? "[[token data - hidden]]" : value,
-        stackTrace: stackTrace?.split('\n').slice(2).join('\n')
+    const result = originalSetItem.call(this, key, value);
+    
+    if (AUTH_KEYS.includes(key) || key.includes('supabase.auth')) {
+      const timestamp = formatTime();
+      authDebugInfo.localStorage.push({
+        timestamp,
+        operation: 'SET',
+        key,
+        valueType: typeof value
       });
-      authDebugInfo.localStorage[key] = "present";
+      
+      // Update snapshot
+      updateStorageSnapshot();
+      
+      // Only log in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[STORAGE SET] ${timestamp} - Setting ${key} - ${key.includes('token') ? '[TOKEN HIDDEN]' : 'value set'}`);
+      }
     }
-    return originalSetItem.call(this, key, value);
+    
+    return result;
   };
   
   localStorage.removeItem = function(key: string) {
-    if (keysToWatch.includes(key)) {
-      const stackTrace = new Error().stack;
-      console.log(`[STORAGE REMOVE] ${formatTime()} - Removing ${key}`, {
-        stackTrace: stackTrace?.split('\n').slice(2).join('\n')
+    const result = originalRemoveItem.call(this, key);
+    
+    if (AUTH_KEYS.includes(key) || key.includes('supabase.auth')) {
+      const timestamp = formatTime();
+      authDebugInfo.localStorage.push({
+        timestamp,
+        operation: 'REMOVE',
+        key
       });
-      authDebugInfo.localStorage[key] = "removed";
+      
+      // Update snapshot
+      updateStorageSnapshot();
+      
+      // Only log in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[STORAGE REMOVE] ${timestamp} - Removing ${key}`);
+      }
     }
-    return originalRemoveItem.call(this, key);
+    
+    return result;
   };
   
   localStorage.clear = function() {
-    const stackTrace = new Error().stack;
-    console.log(`[STORAGE CLEAR] ${formatTime()} - Clearing all storage`, {
-      stackTrace: stackTrace?.split('\n').slice(2).join('\n')
+    const timestamp = formatTime();
+    authDebugInfo.localStorage.push({
+      timestamp,
+      operation: 'CLEAR',
+      affectedKeys: Object.keys(authDebugInfo.currentStorage)
     });
-    keysToWatch.forEach(key => {
-      authDebugInfo.localStorage[key] = "cleared";
-    });
-    return originalClear.call(this);
+    
+    // Only log in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[STORAGE CLEAR] ${timestamp} - Clearing all storage`);
+    }
+    
+    const result = originalClear.call(this);
+    
+    // Update snapshot
+    updateStorageSnapshot();
+    
+    return result;
   };
-};
-
-/**
- * Log auth related errors
- */
-export const logAuthError = (source: string, error: any) => {
-  if (!DEBUG_ENABLED) return;
-  
-  const entry = {
-    time: formatTime(),
-    source,
-    error: error instanceof Error ? { 
-      message: error.message, 
-      name: error.name, 
-      stack: error.stack 
-    } : error,
-    stackTrace: new Error().stack?.split('\n').slice(2).join('\n')
-  };
-  
-  authDebugInfo.errors.push(entry);
-  
-  console.error(`[AUTH ERROR] ${entry.time} - ${source}:`, error);
 };
 
 /**
  * Get a complete dump of the auth debug info
  */
 export const getAuthDebugInfo = () => {
+  // Update storage snapshot before returning
+  if (typeof window !== 'undefined') {
+    AUTH_KEYS.forEach(key => {
+      try {
+        const value = localStorage.getItem(key);
+        if (value) {
+          if (key.includes('token')) {
+            authDebugInfo.currentStorage[key] = '[TOKEN HIDDEN]';
+          } else {
+            authDebugInfo.currentStorage[key] = value;
+          }
+        } else {
+          delete authDebugInfo.currentStorage[key];
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    });
+  }
+  
   return {
-    ...authDebugInfo,
-    currentState: {
-      timestamp: formatTime(),
-      localStorage: Object.fromEntries(
-        Object.keys(authDebugInfo.localStorage).map(key => [
-          key, 
-          key.includes('token') ? "[[token data - hidden]]" : localStorage.getItem(key) ? "present" : "absent"
-        ])
-      )
-    }
+    timestamp: formatTime(),
+    sessionChecks: authDebugInfo.sessionChecks,
+    localStorage: authDebugInfo.localStorage,
+    events: authDebugInfo.events,
+    errors: authDebugInfo.errors,
+    currentStorage: authDebugInfo.currentStorage
   };
 };
 
@@ -176,4 +216,7 @@ export const setAuthDebugEnabled = (enabled: boolean) => {
 // Start localStorage watching if in browser
 if (typeof window !== 'undefined') {
   watchLocalStorage();
-} 
+}
+
+// Export types for better intellisense
+export type { }; 

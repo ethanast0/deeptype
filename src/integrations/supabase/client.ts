@@ -19,6 +19,12 @@ const MAX_RECOVERY_ATTEMPTS = 3;
 // Track operation sequence to help diagnose race conditions
 let operationCounter = 0;
 
+// Debounce timing for refresh operations
+let refreshTimeout: NodeJS.Timeout | null = null;
+const REFRESH_DEBOUNCE_MS = 2000; // Minimum time between refresh attempts
+let lastRefreshTime = 0;
+const MIN_REFRESH_INTERVAL_MS = 5000; // Minimum time between refresh attempts
+
 // Custom storage wrapper to add redundancy to auth session persistence
 // This helps prevent data loss if localStorage gets corrupted or cleared unexpectedly
 const createRedundantStorage = () => {
@@ -248,80 +254,155 @@ export const clearAuthData = () => {
   }
 };
 
-// Function to refresh the session when needed
+// Safe session refresh with proper checks
 export const refreshSession = async () => {
-  operationCounter++;
-  const opId = operationCounter;
+  // Check if it's too soon to refresh again
+  const now = Date.now();
+  if (now - lastRefreshTime < MIN_REFRESH_INTERVAL_MS) {
+    console.log("[AUTH] Skipping refresh: too soon since last refresh");
+    return { success: false, message: "Throttled" };
+  }
+  
+  // Set last refresh time to prevent rapid refresh attempts
+  lastRefreshTime = now;
+  
+  // Clear any pending refresh
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout);
+    refreshTimeout = null;
+  }
   
   try {
-    authDebug(`[${opId}] Attempting to refresh session`);
+    // Check if we have a session first to avoid unnecessary refresh attempts
+    const { data: sessionData } = await supabase.auth.getSession();
+    
+    if (!sessionData.session) {
+      console.log("[AUTH] No session to refresh");
+      return { success: false, message: "No session" };
+    }
+    
+    // Perform the refresh
+    console.log("[AUTH] Refreshing session");
     const { data, error } = await supabase.auth.refreshSession();
     
     if (error) {
-      logAuthError(`[${opId}] Error refreshing session`, error);
+      console.error("[AUTH] Session refresh error:", error);
       return { success: false, error };
     }
     
-    const { session } = data;
-    if (session) {
-      authDebug(`[${opId}] Session refreshed successfully`, {
-        userId: session.user.id,
-        expiresAt: new Date(session.expires_at * 1000).toISOString()
-      });
-      
-      // Store redundant copy of the refreshed session
-      storeRedundantAuthData(session);
-      return { success: true, session };
+    if (!data.session) {
+      console.log("[AUTH] Refresh completed but no session returned");
+      return { success: false, message: "No session after refresh" };
     }
     
-    authDebug(`[${opId}] Session refresh returned no session`);
-    return { success: false, error: new Error('No session returned from refresh') };
+    console.log("[AUTH] Session refreshed successfully");
+    return { success: true, session: data.session };
   } catch (error) {
-    logAuthError(`[${opId}] Unexpected error refreshing session`, error);
+    console.error("[AUTH] Session refresh exception:", error);
     return { success: false, error };
   }
 };
 
-// Get the current session with better error handling
+// Get the current session
 export const getCurrentSession = async () => {
-  operationCounter++;
-  const opId = operationCounter;
-  
   try {
-    authDebug(`[${opId}] Getting current session`);
+    console.log("[AUTH] Getting current session");
     const { data, error } = await supabase.auth.getSession();
     
     if (error) {
-      logAuthError(`[${opId}] Error getting session`, error);
+      console.error("[AUTH] Error getting session:", error);
+      return null;
+    }
+    
+    if (!data.session) {
+      console.log("[AUTH] No current session found");
+      return null;
+    }
+    
+    console.log("[AUTH] Current session found:", data.session.user.id);
+    return data.session;
+  } catch (error) {
+    console.error("[AUTH] Exception getting session:", error);
+    return null;
+  }
+};
+
+// Initialize authentication
+export const initializeAuth = async () => {
+  console.log("[AUTH] Initializing auth");
+  
+  try {
+    // Check for an existing session
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("[AUTH] Error getting session during init:", error);
       return { success: false, error };
     }
     
+    // Set up visibility change listener with debounce
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // Only refresh if it's been a while since the last refresh
+        const now = Date.now();
+        if (now - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
+          console.log("[AUTH] Skipping visibility refresh: too soon");
+          return;
+        }
+        
+        // Clear any existing timeout
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout);
+        }
+        
+        // Set a small debounce for the refresh to avoid race conditions
+        refreshTimeout = setTimeout(() => {
+          console.log("[AUTH] Visibility changed, refreshing session");
+          refreshSession().catch(e => 
+            console.error("[AUTH] Error refreshing session on visibility change:", e)
+          );
+        }, 500); // Short debounce to allow for session rehydration
+      }
+    });
+    
+    if (data.session) {
+      console.log("[AUTH] Session found during init:", data.session.user.id);
+    } else {
+      console.log("[AUTH] No session found during init");
+    }
+    
+    return { success: true, session: data.session };
+  } catch (error) {
+    console.error("[AUTH] Exception during auth initialization:", error);
+    return { success: false, error };
+  }
+};
+
+// Check for persisted session
+export const checkPersistedSession = async () => {
+  try {
+    // Try to get session from Supabase
+    const { data, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error("Error checking persisted session:", error);
+      
+      // Try recovery if Supabase getSession fails
+      return attemptSessionRecovery();
+    }
+    
     const { session } = data;
-    traceSessionCheck(`getCurrentSession-${opId}`, session);
     
     if (session) {
-      authDebug(`[${opId}] Got valid session`, {
-        userId: session.user.id,
-        expiresAt: new Date(session.expires_at * 1000).toISOString()
-      });
-      
       // Store redundant copy
       storeRedundantAuthData(session);
       return { success: true, session };
     }
     
-    authDebug(`[${opId}] No current session found`);
-    
-    // Try to recover session from fallback
-    const fallbackResult = await attemptSessionRecovery();
-    if (fallbackResult.success) {
-      authDebug(`[${opId}] Retrieved session from fallback mechanism`);
-      return fallbackResult;
-    }
-    
-    return { success: false, error: new Error('No active session') };
+    // Try to recover from redundant storage if no session found
+    return attemptSessionRecovery();
   } catch (error) {
-    logAuthError(`[${opId}] Unexpected error getting current session`, error);
+    console.error("Unexpected error checking persisted session:", error);
     return { success: false, error };
   }
 };
@@ -329,26 +410,18 @@ export const getCurrentSession = async () => {
 // Attempt to recover session from redundant storage
 export const attemptSessionRecovery = async () => {
   if (sessionRecoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
-    authDebug(`Maximum recovery attempts (${MAX_RECOVERY_ATTEMPTS}) reached`);
     return { success: false, error: new Error('Max recovery attempts reached') };
   }
   
   sessionRecoveryAttempts++;
-  operationCounter++;
-  const opId = operationCounter;
-  
-  authDebug(`[${opId}] Attempting session recovery (attempt ${sessionRecoveryAttempts}/${MAX_RECOVERY_ATTEMPTS})`);
   
   const storedAuth = getRedundantAuthData();
   if (!storedAuth) {
-    authDebug(`[${opId}] No stored auth data found for recovery`);
-    
     // As a last resort, check for a stored user ID
     const userId = localStorage.getItem('supabase.auth.user.id') || 
                    localStorage.getItem('backup:supabase.auth.user.id');
                    
     if (userId) {
-      authDebug(`[${opId}] Found stored user ID: ${userId}, but no full session data`);
       return { 
         success: true, 
         partial: true,
@@ -361,136 +434,54 @@ export const attemptSessionRecovery = async () => {
   
   try {
     // Try to set the session using access token from redundant storage
-    authDebug(`[${opId}] Setting session from redundant storage`, {
-      userId: storedAuth.user.id
-    });
-    
     const { data, error } = await supabase.auth.setSession({
       access_token: storedAuth.session.access_token,
       refresh_token: storedAuth.session.refresh_token
     });
     
     if (error) {
-      logAuthError(`[${opId}] Error setting session from redundant storage`, error);
+      console.error("Error setting session from redundant storage:", error);
       return { success: false, error };
     }
     
     if (data.session) {
       // Reset recovery attempts counter on success
       sessionRecoveryAttempts = 0;
-      
-      authDebug(`[${opId}] Successfully recovered session`, {
-        userId: data.session.user.id,
-        expiresAt: new Date(data.session.expires_at * 1000).toISOString()
-      });
       return { success: true, session: data.session };
     }
     
-    authDebug(`[${opId}] Session recovery did not return a valid session`);
     return { success: false, error: new Error('Session recovery failed') };
   } catch (error) {
-    logAuthError(`[${opId}] Unexpected error recovering session`, error);
+    console.error("Unexpected error recovering session:", error);
     return { success: false, error };
   }
 };
 
-// Initialize auth with better debugging and error handling
-export const initializeAuth = async () => {
-  if (!isBrowser || isInitialized) {
-    return { success: false, error: new Error('Already initialized or not in browser'), cleanup: () => {} };
-  }
-  
-  isInitialized = true;
-  operationCounter++;
-  const opId = operationCounter;
-  
-  authDebug(`[${opId}] Initializing authentication`);
-  
+// Check current session before refreshing
+const safeCheckAndRefreshSession = async () => {
   try {
-    // Check for persisted session first
-    const sessionResult = await checkPersistedSession();
-    
-    // Set up auth state change handler
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      authDebug(`[${opId}] Auth state changed: ${event}`, {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        event
-      });
-      
-      if (session) {
-        // Store redundant copy of session on any auth change
-        storeRedundantAuthData(session);
-      } else if (event === 'SIGNED_OUT') {
-        // Clear auth data on sign out
-        clearAuthData();
-      }
-    });
-    
-    // Set up a visibility change handler to refresh session when tab becomes visible
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        authDebug(`[${opId}] Document became visible, refreshing session`);
-        refreshSession().catch(error => {
-          logAuthError(`[${opId}] Error refreshing session on visibility change`, error);
-        });
-      }
-    });
-    
-    authDebug(`[${opId}] Auth initialization complete`, {
-      foundPersistedSession: sessionResult.success
-    });
-    
-    return {
-      success: true,
-      session: sessionResult.success ? sessionResult.session : null,
-      cleanup: data.subscription.unsubscribe
-    };
-  } catch (error) {
-    logAuthError(`[${opId}] Error initializing auth`, error);
-    return { success: false, error, cleanup: () => {} };
-  }
-};
-
-// Check for persisted session with better debugging
-export const checkPersistedSession = async () => {
-  operationCounter++;
-  const opId = operationCounter;
-  
-  authDebug(`[${opId}] Checking for persisted session`);
-  
-  try {
-    // Try to get session from Supabase
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      logAuthError(`[${opId}] Error checking persisted session`, error);
-      
-      // Try recovery if Supabase getSession fails
-      return attemptSessionRecovery();
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      console.log("No session to refresh");
+      return;
     }
     
-    const { session } = data;
-    traceSessionCheck(`checkPersistedSession-${opId}`, session);
+    // Session exists, check if it needs to be refreshed
+    const expiresAt = data.session.expires_at * 1000;
+    const now = Date.now();
+    const timeUntilExpiry = expiresAt - now;
     
-    if (session) {
-      authDebug(`[${opId}] Found persisted session`, {
-        userId: session.user.id,
-        expiresAt: new Date(session.expires_at * 1000).toISOString()
-      });
-      
-      // Store redundant copy
-      storeRedundantAuthData(session);
-      return { success: true, session };
+    // Only refresh if token expires within 15 minutes or has expired
+    if (timeUntilExpiry < 15 * 60 * 1000) {
+      console.log("Token expiring soon, refreshing");
+      await refreshSession();
+    } else {
+      console.log("Token still valid, skipping refresh");
     }
-    
-    authDebug(`[${opId}] No persisted session found, checking redundant storage`);
-    
-    // Try to recover from redundant storage if no session found
-    return attemptSessionRecovery();
   } catch (error) {
-    logAuthError(`[${opId}] Unexpected error checking persisted session`, error);
-    return { success: false, error };
+    console.error("Error during safe session check:", error);
+    // If there's an error, try a normal getSession as a fallback
+    await supabase.auth.getSession();
   }
 };
 
