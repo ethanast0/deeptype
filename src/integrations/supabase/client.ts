@@ -8,6 +8,9 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';
 
+// Prevent multiple initializations
+let isInitialized = false;
+
 // Create and export the Supabase client
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
@@ -76,7 +79,10 @@ export const getCurrentSession = async () => {
 
 // Initialize supabase auth with cross-tab communication
 export const initializeAuth = () => {
-  if (!isBrowser) return null;
+  if (!isBrowser || isInitialized) return null;
+  isInitialized = true;
+  
+  console.log("Initializing auth connections...");
   
   // Set up cross-tab auth state change listener
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

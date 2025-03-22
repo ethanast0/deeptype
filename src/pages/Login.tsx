@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,7 +24,11 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    // Add a debug log to see when this effect runs
+    console.log("Login effect triggered, user state:", !!user);
+    
     if (user) {
+      console.log("User authenticated, navigating to home");
       navigate('/');
     }
   }, [user, navigate]);

@@ -33,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const authCleanupRef = useRef<(() => void) | null>(null);
+  const initializationCompleted = useRef(false);
   const { toast } = useToast();
 
   const handleAuthChange = useCallback(async (userId: string | null) => {
@@ -44,8 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
+      console.log("Fetching user profile for ID:", userId);
       const userProfile = await fetchUserProfile(userId);
       if (userProfile) {
+        console.log("Setting user profile:", userProfile);
         setUser(userProfile);
         // Store user ID in localStorage for redundant persistence
         localStorage.setItem('supabase.auth.user.id', userId);
@@ -63,7 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state
   useEffect(() => {
+    if (initializationCompleted.current) {
+      console.log("Auth already initialized, skipping");
+      return;
+    }
+    
     console.log("Initializing auth state...");
+    initializationCompleted.current = true;
     let isMounted = true;
     
     // Initialize cross-tab auth support
