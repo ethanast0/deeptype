@@ -190,11 +190,13 @@ if (typeof window !== 'undefined') {
   // Use set timeout to ensure this happens after any potential error
   // in the main javascript thread but still very early
   setTimeout(() => {
-    initializeAuthentication().then(cleanup => {
-      authCleanup = cleanup;
-    }).catch(e => {
-      console.error('Failed to initialize authentication:', e);
-    });
+    initializeAuthentication()
+      .then(result => {
+        authCleanup = result;
+      })
+      .catch(e => {
+        console.error('Failed to initialize authentication:', e);
+      });
   }, 0);
 }
 
