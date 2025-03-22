@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -8,10 +7,14 @@ export interface User {
   createdAt?: string;
 }
 
-// Fetch user profile from database
+const LOCAL_STORAGE_USER_KEY = 'cached_user_profile';
+
+// Fetch user profile from database with cache fallback
 export const fetchUserProfile = async (id: string): Promise<User | null> => {
   try {
     console.log("Fetching user profile for ID:", id);
+    
+    // Try to get from Supabase
     const { data, error } = await supabase
       .from('users')
       .select('id, username, email, created_at')
@@ -19,24 +22,82 @@ export const fetchUserProfile = async (id: string): Promise<User | null> => {
       .maybeSingle();
     
     if (error) {
-      console.error("Error fetching user profile:", error);
+      console.error("Error fetching user profile from Supabase:", error);
+      // Try to get from local cache as fallback
+      const cachedUser = getCachedUserProfile(id);
+      if (cachedUser) {
+        console.log("Using cached user profile:", cachedUser);
+        return cachedUser;
+      }
       return null;
     }
     
     if (!data) {
-      console.log("No user profile found for ID:", id);
+      console.log("No user profile found in database for ID:", id);
+      // Try to get from local cache as fallback
+      const cachedUser = getCachedUserProfile(id);
+      if (cachedUser) {
+        console.log("Using cached user profile:", cachedUser);
+        return cachedUser;
+      }
       return null;
     }
     
-    console.log("User profile found:", data);
-    return {
+    // Create user profile object
+    const userProfile = {
       id: data.id,
       username: data.username,
       email: data.email,
       createdAt: data.created_at
     };
+    
+    console.log("User profile found:", userProfile);
+    
+    // Cache the profile for future use
+    cacheUserProfile(userProfile);
+    
+    return userProfile;
   } catch (error) {
     console.error("Error in fetchUserProfile:", error);
+    
+    // Try to get from local cache as fallback
+    const cachedUser = getCachedUserProfile(id);
+    if (cachedUser) {
+      console.log("Using cached user profile after error:", cachedUser);
+      return cachedUser;
+    }
+    
+    return null;
+  }
+};
+
+// Cache the user profile in localStorage
+const cacheUserProfile = (user: User): void => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(user));
+    }
+  } catch (error) {
+    console.error("Error caching user profile:", error);
+  }
+};
+
+// Get cached user profile from localStorage
+const getCachedUserProfile = (id: string): User | null => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const cachedUserJson = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+      if (cachedUserJson) {
+        const cachedUser = JSON.parse(cachedUserJson) as User;
+        // Only return if it's the same user ID
+        if (cachedUser.id === id) {
+          return cachedUser;
+        }
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting cached user profile:", error);
     return null;
   }
 };

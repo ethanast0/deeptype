@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -19,17 +19,35 @@ const Login = () => {
   const [showResendOption, setShowResendOption] = useState(false);
   const { login, isLoading, user, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const redirectedFrom = useRef(location.state?.from || '/');
+  const loginAttempt = useRef(false);
+
+  // Clear any old auth errors when component mounts
+  useEffect(() => {
+    setError(null);
+    
+    // Check if we're coming back with a verified parameter
+    const params = new URLSearchParams(location.search);
+    if (params.get('verified') === 'true') {
+      toast({
+        title: "Email Verified",
+        description: "Your email has been verified. You can now log in.",
+      });
+    }
+  }, [location, toast]);
 
   // Redirect if already logged in
   useEffect(() => {
-    // Add a debug log to see when this effect runs
+    // Add debug log to see when this effect runs
     console.log("Login effect triggered, user state:", !!user);
     
     if (user) {
       console.log("User authenticated, navigating to home");
-      navigate('/');
+      // Redirect to the page they were trying to access, or home
+      navigate(redirectedFrom.current || '/');
     }
   }, [user, navigate]);
 
@@ -38,6 +56,7 @@ const Login = () => {
     setError(null);
     setShowResendOption(false);
     setSubmitting(true);
+    loginAttempt.current = true;
     
     if (!email || !password) {
       setError("Please fill in all fields");
@@ -46,8 +65,13 @@ const Login = () => {
     }
     
     try {
+      console.log("Attempting login with email:", email);
+      // Clear any lingering localStorage data that might interfere
+      localStorage.removeItem('supabase.auth.user.id');
+      
       await login(email, password);
-      navigate('/');
+      
+      // Success will redirect via the useEffect above
     } catch (error: any) {
       console.error("Login error:", error);
       
@@ -80,6 +104,24 @@ const Login = () => {
       setError(error.message || "Failed to resend confirmation email. Please try again.");
     } finally {
       setIsResendingEmail(false);
+    }
+  };
+
+  // Handle case where auth is in limbo (thinks logged in but can't get profile)
+  const handleForceLogout = async () => {
+    try {
+      // Clear all auth data
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.refreshToken');
+      localStorage.removeItem('supabase.auth.user.id');
+      localStorage.removeItem('cached_user_profile');
+      
+      // Force reload the page to clear any in-memory state
+      window.location.reload();
+    } catch (error) {
+      console.error("Error during forced logout:", error);
+      // Last resort - redirect to login with cleared state
+      window.location.href = '/login?reset=true';
     }
   };
 
@@ -166,6 +208,21 @@ const Login = () => {
                 ) : "Login"}
               </Button>
             </form>
+            
+            {/* Emergency logout button - only show if they've tried to log in but are stuck */}
+            {loginAttempt.current && isLoading && (
+              <div className="mt-4 text-center">
+                <p className="text-xs text-monkey-subtle mb-2">Having trouble? Try resetting your session:</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-red-400 hover:text-red-500 border-red-800/30"
+                  onClick={handleForceLogout}
+                >
+                  Reset Session
+                </Button>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-monkey-subtle">
