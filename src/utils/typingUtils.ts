@@ -70,7 +70,7 @@ export const defaultQuotes = [
   "your words your rhythm their typing joy",
   "create calm funny sharp or weird scripts for the world to type",
   "typing is better when it comes from you",
-  "give your friends something better to type and watch it spread"
+  "give your friends something better to type and watch it spread",
   "built by a typist who touched 168 wpm on monkeytype",
   "what are the odds that you used an ink pen with the same care you now type a password",
   "ink stains on fingers felt like proof you had something to say",
