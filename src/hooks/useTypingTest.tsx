@@ -7,16 +7,12 @@ import {
   calculateAccuracy, 
   defaultQuotes 
 } from '../utils/typingUtils';
-import { useAuth } from '../contexts/AuthContext';
-import { typingHistoryService } from '../services/typingHistoryService';
-import { useToast } from '../hooks/use-toast';
 
 interface UseTypingTestProps {
   quotes?: string[];
-  scriptId?: string;
 }
 
-const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
+const useTypingTest = ({ quotes = defaultQuotes }: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
@@ -32,46 +28,15 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
   
-  const { user } = useAuth();
-  const { toast } = useToast();
-  
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const resultRecordedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (quotes.length > 0) {
       loadNewQuote();
     }
   }, [quotes]);
-
-  useEffect(() => {
-    const recordHistory = async () => {
-      if (isFinished && user && scriptId && !resultRecordedRef.current) {
-        resultRecordedRef.current = true;
-        try {
-          const success = await typingHistoryService.recordSession(
-            user.id,
-            scriptId,
-            stats.wpm,
-            stats.accuracy
-          );
-          
-          if (success) {
-            toast({
-              title: "Progress saved",
-              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
-            });
-          }
-        } catch (error) {
-          console.error('Error recording typing history:', error);
-        }
-      }
-    };
-    
-    recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast]);
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -96,7 +61,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     processQuote(quote);
     resetTest();
     focusInput();
-    resultRecordedRef.current = false;
   }, [quotes, processQuote]);
 
   const startTimer = useCallback(() => {
@@ -131,7 +95,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     setCurrentWordIndex(0);
     setCurrentCharIndex(0);
     startTimeRef.current = null;
-    resultRecordedRef.current = false;
     setStats({
       wpm: 0,
       accuracy: 100,

@@ -1,16 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -18,38 +17,26 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const { signup, isLoading, user } = useAuth();
+  const { signup, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSubmitting(true);
     
     if (!username || !email || !password || !confirmPassword) {
       setError("Please fill in all fields");
-      setSubmitting(false);
       return;
     }
     
     if (password !== confirmPassword) {
       setError("Passwords do not match");
-      setSubmitting(false);
       return;
     }
     
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
-      setSubmitting(false);
       return;
     }
     
@@ -57,7 +44,7 @@ const Signup = () => {
       await signup(username, email, password);
       toast({
         title: "Account created",
-        description: "Check your email to confirm your account",
+        description: "Your account has been created successfully!",
       });
       navigate('/');
     } catch (error: any) {
@@ -70,8 +57,6 @@ const Signup = () => {
       } else {
         setError(errorMessage);
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -98,9 +83,9 @@ const Signup = () => {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm text-monkey-subtle">
+                <label htmlFor="username" className="text-sm text-monkey-subtle">
                   Username
-                </Label>
+                </label>
                 <Input
                   id="username"
                   type="text"
@@ -108,13 +93,12 @@ const Signup = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-slate-700 border-slate-600"
-                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm text-monkey-subtle">
+                <label htmlFor="email" className="text-sm text-monkey-subtle">
                   Email
-                </Label>
+                </label>
                 <Input
                   id="email"
                   type="email"
@@ -122,13 +106,12 @@ const Signup = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-slate-700 border-slate-600"
-                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm text-monkey-subtle">
+                <label htmlFor="password" className="text-sm text-monkey-subtle">
                   Password
-                </Label>
+                </label>
                 <Input
                   id="password"
                   type="password"
@@ -136,13 +119,12 @@ const Signup = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-slate-700 border-slate-600"
-                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm text-monkey-subtle">
+                <label htmlFor="confirmPassword" className="text-sm text-monkey-subtle">
                   Confirm Password
-                </Label>
+                </label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -150,20 +132,14 @@ const Signup = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="bg-slate-700 border-slate-600"
-                  disabled={submitting}
                 />
               </div>
               <Button 
                 type="submit" 
                 className="w-full bg-monkey-accent hover:bg-monkey-accent/90 text-slate-900"
-                disabled={submitting || isLoading}
+                disabled={isLoading}
               >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </> 
-                ) : "Sign Up"}
+                {isLoading ? "Creating account..." : "Sign Up"}
               </Button>
             </form>
           </CardContent>
