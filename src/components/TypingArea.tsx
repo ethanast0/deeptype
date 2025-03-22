@@ -1,14 +1,19 @@
+
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
+
 interface TypingAreaProps {
   quotes?: string[];
   className?: string;
+  scriptId?: string;
 }
+
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
-  className
+  className,
+  scriptId
 }) => {
   const {
     words,
@@ -23,13 +28,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentWordIndex,
     currentCharIndex
   } = useTypingTest({
-    quotes
+    quotes,
+    scriptId
   });
 
   // Auto-focus on mount and when resetting
   useEffect(() => {
     focusInput();
   }, [focusInput]);
+  
   return <div className={cn("typing-area-container", className)}>
       <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
       
@@ -61,4 +68,5 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
     </div>;
 };
+
 export default TypingArea;
