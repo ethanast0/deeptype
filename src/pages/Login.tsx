@@ -42,7 +42,7 @@ const Login = () => {
       try {
         authDebug("Login component checking for existing session");
         const { data } = await supabase.auth.getSession();
-        traceSessionCheck('Login-checkExistingSession', data.session);
+        traceSessionCheck('Login-checkExistingSession', data.session ? true : false);
         
         if (data.session?.user) {
           authDebug("Login component detected active session", {
@@ -68,7 +68,7 @@ const Login = () => {
         const { data } = await supabase.auth.getSession();
         
         // Compare with state
-        traceSessionCheck('Login-delayedCheck', data.session);
+        traceSessionCheck('Login-delayedCheck', data.session ? true : false);
         authDebug("Delayed check state comparison", {
           hasSession: !!data.session?.user,
           alreadyLoggedInState: alreadyLoggedIn,
@@ -202,7 +202,7 @@ const Login = () => {
       
       // Check if we already have a session before attempting login
       const { data: sessionData } = await supabase.auth.getSession();
-      traceSessionCheck('login-precheck', sessionData.session);
+      traceSessionCheck('login-precheck', sessionData.session ? true : false);
       
       if (sessionData.session?.user) {
         authDebug("Found existing session before login attempt", {

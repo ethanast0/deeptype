@@ -1,3 +1,4 @@
+
 import { initializeAuth, checkPersistedSession, refreshSession, supabase, clearAuthData, attemptSessionRecovery } from '@/integrations/supabase/client';
 
 // Check for authentication errors that might block normal login
@@ -99,10 +100,11 @@ export const initializeAuthentication = async () => {
       
       if (!session) {
         console.log('No persistent session found, attempting recovery');
-        session = await attemptSessionRecovery();
+        const recoveryResult = await attemptSessionRecovery();
+        session = recoveryResult.session;
       }
       
-      if (session?.user) {
+      if (session?.user?.id) {
         console.log('Auth init: Found valid session for user', session.user.id);
         
         // Store the user ID in both places for redundancy

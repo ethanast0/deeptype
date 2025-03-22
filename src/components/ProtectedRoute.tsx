@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,8 +39,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         }
 
         // No user in context, try to refresh the session
-        const session = await refreshSession();
-        setIsAuthenticated(!!session?.user);
+        const result = await refreshSession();
+        setIsAuthenticated(!!result?.session?.user);
       } catch (error) {
         console.error('Error validating authentication:', error);
         setIsAuthenticated(false);
