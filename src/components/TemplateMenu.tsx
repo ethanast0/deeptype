@@ -43,13 +43,13 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   const getIcon = (templateId: string) => {
     switch (templateId) {
-      case 'physics':
+      case 'Comedy':
         return <Atom className="h-5 w-5" />;
-      case 'history':
+      case 'Calm':
         return <BookOpen className="h-5 w-5" />;
-      case 'coding':
+      case 'Theory':
         return <Code className="h-5 w-5" />;
-      case 'legends':
+      case 'Legend':
         return <Crown className="h-5 w-5" />;
       default:
         return <Heart className="h-5 w-5" />;
