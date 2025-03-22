@@ -26,9 +26,7 @@ const Header: React.FC<HeaderProps> = ({
             test
           </Link>
           
-          <Link to="#" className="hover:text-monkey-text transition-colors duration-200">
-            settings
-          </Link>
+          
           
           {user ? <Link to="/profile" className="text-monkey-accent hover:text-monkey-text transition-colors duration-200">
               {user.username}
