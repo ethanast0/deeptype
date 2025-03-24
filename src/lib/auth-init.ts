@@ -92,7 +92,7 @@ export const initializeAuthentication = async () => {
     checkForAuthErrors();
     
     // Initialize cross-tab auth handling
-    const authHandler = initializeAuth();
+    const authHandler = await initializeAuth();
     let tokenRefreshCleanup: (() => void) | null = null;
     
     try {

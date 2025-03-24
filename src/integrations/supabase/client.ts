@@ -328,12 +328,12 @@ export const getCurrentSession = async () => {
 };
 
 // Initialize authentication
-export const initializeAuth = () => {
+export const initializeAuth = async () => {
   console.log("[AUTH] Initializing auth");
   
   try {
     // Check for an existing session
-    const { data, error } = supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
     
     if (error) {
       console.error("[AUTH] Error getting session during init:", error);

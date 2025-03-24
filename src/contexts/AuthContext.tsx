@@ -38,7 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const lastSessionCheckRef = useRef<number>(0);
   const { toast } = useToast();
 
-  // Simple logging for auth state
   const logAuthState = (action: string, details?: any) => {
     console.log(`[AUTH CONTEXT] ${action}`, details ? details : '');
   };
@@ -51,17 +50,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // Clear any existing fetch timeout
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
     
     userProfileFetchAttempted.current = true;
     
-    // Set a timeout to ensure the fetch completes in a reasonable time
     fetchTimeoutRef.current = setTimeout(() => {
       logAuthState("User profile fetch timed out, using fallback");
-      // If fetch is taking too long, try to use cached data
       const cachedUserJson = localStorage.getItem('user_profile');
       if (cachedUserJson) {
         try {
@@ -77,7 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Create minimal user object if no cache
       const minimalUser = {
         id: userId,
         username: "User",
@@ -85,13 +80,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUser(minimalUser);
       setIsLoading(false);
-    }, 3000); // 3 second timeout for initial fetch
+    }, 3000);
     
     try {
       logAuthState("Fetching user profile for ID:", userId);
       const profile = await fetchUserProfile(userId);
       
-      // Clear the timeout as we got a response
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
         fetchTimeoutRef.current = null;
@@ -100,11 +94,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (profile) {
         logAuthState("Setting user profile:", profile);
         setUser(profile);
-        
-        // Cache the profile
         localStorage.setItem('user_profile', JSON.stringify(profile));
       } else {
-        // No profile found - this indicates a server error or no data
         logAuthState("No profile found for ID", userId);
         const cachedUserJson = localStorage.getItem('user_profile');
         
@@ -128,7 +119,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("Error fetching user profile:", error);
       
-      // If fetch fails, try to use cached profile
       const cachedUserJson = localStorage.getItem('user_profile');
       if (cachedUserJson) {
         try {
@@ -151,12 +141,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Initialize auth and set up event listeners
   useEffect(() => {
     let isMounted = true;
     logAuthState("Initializing auth state...");
     
-    // Initialize auth only once
     if (authInitialized.current) {
       logAuthState("Auth already initialized, skipping");
       return () => {};
@@ -164,7 +152,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     authInitialized.current = true;
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       logAuthState(`Auth state changed: ${event}`, session?.user?.id);
       
@@ -207,10 +194,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
     
-    // Initial session check
     const checkInitialSession = async () => {
       try {
-        // Use Supabase's getSession to check for an existing session
         const { data } = await supabase.auth.getSession();
         
         if (!isMounted) return;
@@ -232,39 +217,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     
-    // Initialize auth with better session handling
-    initializeAuth()
-      .then(result => {
+    const initAuth = async () => {
+      try {
+        const result = await initializeAuth();
+        if (!isMounted) return;
+        
         if (result.success && result.session) {
           logAuthState("Auth initialized with session:", result.session.user.id);
-          if (isMounted) {
-            handleAuthChange(result.session.user.id);
-          }
+          handleAuthChange(result.session.user.id);
         } else {
           logAuthState("Auth initialized but no session found");
-          if (isMounted) {
-            setUser(null);
-            setIsLoading(false);
-          }
+          setUser(null);
+          setIsLoading(false);
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error("Error initializing auth:", error);
         if (isMounted) {
           setUser(null);
           setIsLoading(false);
         }
-      });
+      }
+    };
     
-    // Check for initial session
+    initAuth();
+    
     checkInitialSession();
     
-    // Add window focus event listener to verify session
     const handleFocus = async () => {
-      // Don't check too frequently to avoid race conditions
       const now = Date.now();
       if (now - lastSessionCheckRef.current < 5000) {
-        return; // Skip if checked within last 5 seconds
+        return;
       }
       
       lastSessionCheckRef.current = now;
@@ -275,14 +257,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         
         if (data.session) {
-          // We have a valid session
           if (!user || user.id !== data.session.user.id) {
-            // Handle case where session exists but our React state doesn't match
             logAuthState("Focus check: session found but user state mismatch");
             handleAuthChange(data.session.user.id);
           }
         } else if (user) {
-          // We don't have a session but we have a user in state
           logAuthState("Focus check: no session but user in state, clearing");
           setUser(null);
         }
@@ -304,18 +283,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [handleAuthChange, user]);
 
-  // Login with email and password
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       logAuthState("Login attempt for:", email);
       
-      // Initial validation
       if (!email || !password) {
         throw new Error("Email and password are required");
       }
       
-      // First verify user credentials
       const response = await verifyUserCredentials(email, password);
       
       if ('error' in response && response.error) {
@@ -327,7 +303,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Invalid login credentials");
       }
       
-      // Then authenticate with Supabase to get a session
       const authResponse = await authenticateWithSupabase(email, password);
       
       if ('error' in authResponse && authResponse.error) {
@@ -337,16 +312,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!authResponse.user) {
         throw new Error("Authentication failed");
       }
-      
-      // NOTE: We don't need to call handleAuthChange here because the
-      // the auth state change listener will handle it for us
-            
     } catch (error: any) {
       console.error("Login error:", error);
       setIsLoading(false);
       setUser(null);
       
-      // Format error for display
       if (error.message && error.message.includes("Email not confirmed")) {
         error.code = "email_not_confirmed";
       }
@@ -355,25 +325,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Signup with username, email, and password
   const signup = async (username: string, email: string, password: string) => {
     try {
       setIsLoading(true);
       logAuthState("Signup attempt for:", email);
       
-      // Initial validation
       if (!username || !email || !password) {
         throw new Error("Username, email, and password are required");
       }
       
-      // Register the user
       const response = await signupUser(username, email, password);
       
       if ('error' in response && response.error) {
         throw response.error;
       }
       
-      // No need to set user state as we require email confirmation
       toast({
         title: "Account created",
         description: "Please check your email to confirm your account.",
@@ -383,7 +349,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error("Signup error:", error);
       
-      // Format error for toast
       let errorMessage = error.message;
       if (error.code === "23505") {
         errorMessage = "Email or username already exists.";
@@ -401,7 +366,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Logout user
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -413,11 +377,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw response.error;
       }
       
-      // Reset state
       setUser(null);
-      
-      // Note: Auth state listener will handle cleanup
-      
     } catch (error: any) {
       console.error("Logout error:", error);
       
@@ -433,12 +393,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Resend confirmation email
   const resendConfirmationEmail = async (email: string) => {
     try {
       logAuthState("Resending confirmation email to:", email);
       
-      // Initial validation
       if (!email) {
         throw new Error("Email is required");
       }
