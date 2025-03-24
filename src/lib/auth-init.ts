@@ -1,3 +1,4 @@
+
 import { initializeAuth, checkPersistedSession, refreshSession, supabase, clearAuthData, attemptSessionRecovery } from '@/integrations/supabase/client';
 
 // Check for authentication errors that might block normal login
@@ -99,7 +100,10 @@ export const initializeAuthentication = async () => {
       
       if (!session) {
         console.log('No persistent session found, attempting recovery');
-        session = await attemptSessionRecovery();
+        const recoveryResult = await attemptSessionRecovery();
+        if (recoveryResult.success && recoveryResult.session) {
+          session = recoveryResult.session;
+        }
       }
       
       if (session?.user) {
@@ -188,8 +192,8 @@ if (typeof window !== 'undefined') {
   // Use set timeout to ensure this happens after any potential error
   // in the main javascript thread but still very early
   setTimeout(() => {
-    initializeAuthentication().then(cleanup => {
-      authCleanup = cleanup;
+    initializeAuthentication().then(result => {
+      authCleanup = result;
     }).catch(e => {
       console.error('Failed to initialize authentication:', e);
     });

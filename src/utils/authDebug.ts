@@ -62,7 +62,7 @@ export const logAuthError = (message: string, error: any) => {
 /**
  * Log session check results
  */
-export const traceSessionCheck = (source: string, hasSession: boolean, userId?: string) => {
+export const traceSessionCheck = (source: string, hasSession: boolean, userId?: string | null) => {
   if (!isDevelopment) return;
   
   authDebug(`Session check [${source}]: ${hasSession ? 'Session found' : 'No session'}`, { userId });
@@ -219,4 +219,4 @@ if (typeof window !== 'undefined') {
 }
 
 // Export types for better intellisense
-export type { }; 
+export type { };
