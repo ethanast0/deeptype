@@ -65,6 +65,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <div className="flex gap-4 mt-8">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        <div className="text-gray-500 text-sm ml-auto">Tip: Use backspace to jump to last correct character when errors are present</div>
       </div>
     </div>;
 };

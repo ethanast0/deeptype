@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -151,6 +152,72 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     });
   }, [currentQuote, stopTimer]);
 
+  const findLastCorrectPosition = useCallback(() => {
+    // Get the current word
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return { wordIndex: 0, charIndex: 0 };
+    
+    // Check if we have any errors in the current word
+    let hasErrors = false;
+    let lastCorrectCharIndex = 0;
+    
+    for (let i = 0; i < currentWord.characters.length; i++) {
+      if (i < currentCharIndex) {
+        if (currentWord.characters[i].state === 'correct') {
+          lastCorrectCharIndex = i + 1; // +1 because we want to position after the correct char
+        } else if (currentWord.characters[i].state === 'incorrect') {
+          hasErrors = true;
+        }
+      }
+    }
+    
+    return {
+      hasErrors,
+      wordIndex: currentWordIndex,
+      charIndex: lastCorrectCharIndex
+    };
+  }, [words, currentWordIndex, currentCharIndex]);
+
+  const smartBackspace = useCallback(() => {
+    const { hasErrors, wordIndex, charIndex } = findLastCorrectPosition();
+    
+    if (hasErrors) {
+      // If errors exist, jump to the last correct character position
+      setCurrentCharIndex(charIndex);
+      
+      // Update character states
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        // Reset states for characters after the cursor
+        for (let i = charIndex; i < newWords[wordIndex].characters.length; i++) {
+          if (i === charIndex) {
+            newWords[wordIndex].characters[i].state = 'current';
+          } else {
+            newWords[wordIndex].characters[i].state = 'inactive';
+          }
+        }
+        
+        return newWords;
+      });
+    } else if (currentCharIndex > 0) {
+      // If no errors and not at the beginning, perform standard backspace
+      setCurrentCharIndex(prev => prev - 1);
+      
+      // Update character state
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        if (currentCharIndex > 0) {
+          newWords[currentWordIndex].characters[currentCharIndex - 1].state = 'current';
+          if (currentCharIndex < newWords[currentWordIndex].characters.length) {
+            newWords[currentWordIndex].characters[currentCharIndex].state = 'inactive';
+          }
+        }
+        return newWords;
+      });
+    }
+  }, [findLastCorrectPosition, currentCharIndex, currentWordIndex]);
+
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     
@@ -227,6 +294,9 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         loadNewQuote();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        smartBackspace();
       }
     };
     
@@ -235,7 +305,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote]);
+  }, [loadNewQuote, smartBackspace]);
 
   useEffect(() => {
     return () => {
