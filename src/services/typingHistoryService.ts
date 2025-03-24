@@ -16,8 +16,17 @@ export const typingHistoryService = {
   // Record a new typing session in Supabase
   recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number): Promise<boolean> => {
     try {
+      if (!userId || !scriptId) {
+        console.error('Missing required parameters:', { userId, scriptId });
+        return false;
+      }
+      
+      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy });
+      
       // Check if we already have a session for this script today
       const today = new Date().toISOString().split('T')[0];
+      const currentTime = new Date().toLocaleTimeString();
+      
       const { data: existingSessions, error: fetchError } = await supabase
         .from('typing_history')
         .select('*')
@@ -31,20 +40,44 @@ export const typingHistoryService = {
       }
       
       if (existingSessions && existingSessions.length > 0) {
-        // Update existing session
+        // Update existing session if new score is better
         const existingSession = existingSessions[0];
-        const { error: updateError } = await supabase
-          .from('typing_history')
-          .update({
-            speed_wpm: Math.max(existingSession.speed_wpm, wpm),
-            accuracy: Math.max(existingSession.accuracy, accuracy),
-            points: existingSession.points + 1
-          })
-          .eq('id', existingSession.id);
         
-        if (updateError) {
-          console.error('Error updating typing session:', updateError);
-          return false;
+        // Only update if new WPM is higher
+        if (wpm > existingSession.speed_wpm) {
+          const { error: updateError } = await supabase
+            .from('typing_history')
+            .update({
+              speed_wpm: Math.round(wpm),
+              accuracy: Math.round(accuracy * 100) / 100,
+              points: existingSession.points + 1,
+              time: currentTime
+            })
+            .eq('id', existingSession.id);
+          
+          if (updateError) {
+            console.error('Error updating typing session:', updateError);
+            return false;
+          }
+          
+          console.log('Updated existing typing session with better score');
+          return true;
+        } else {
+          // Just increment points
+          const { error: updateError } = await supabase
+            .from('typing_history')
+            .update({
+              points: existingSession.points + 1
+            })
+            .eq('id', existingSession.id);
+          
+          if (updateError) {
+            console.error('Error updating typing session points:', updateError);
+            return false;
+          }
+          
+          console.log('Updated existing typing session points');
+          return true;
         }
       } else {
         // Create new session
@@ -53,8 +86,10 @@ export const typingHistoryService = {
           .insert({
             user_id: userId,
             script_id: scriptId,
-            speed_wpm: wpm,
-            accuracy: accuracy,
+            speed_wpm: Math.round(wpm),
+            accuracy: Math.round(accuracy * 100) / 100,
+            date: today,
+            time: currentTime,
             points: 1
           });
         
@@ -62,11 +97,12 @@ export const typingHistoryService = {
           console.error('Error recording new typing session:', insertError);
           return false;
         }
+        
+        console.log('Created new typing session record');
+        return true;
       }
-      
-      return true;
     } catch (error) {
-      console.error('Error recording typing session:', error);
+      console.error('Unexpected error recording typing session:', error);
       return false;
     }
   },

@@ -1,21 +1,83 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
 import QuoteUploader from '../components/QuoteUploader';
 import TemplateMenu from '../components/TemplateMenu';
 import { defaultQuotes } from '../utils/typingUtils';
+import { supabase } from '../integrations/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../hooks/use-toast';
 
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
+  const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Fetch or create default script on load
+  useEffect(() => {
+    const setupDefaultScript = async () => {
+      if (!user) return;
+      
+      try {
+        // Try to find existing default script
+        const { data: scripts, error } = await supabase
+          .from('scripts')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('title', 'Default')
+          .maybeSingle();
+        
+        if (error) {
+          console.error('Error fetching default script:', error);
+          return;
+        }
+        
+        if (scripts) {
+          // Use existing default script
+          setActiveScriptId(scripts.id);
+        } else {
+          // Create a new default script
+          const { data: newScript, error: createError } = await supabase
+            .from('scripts')
+            .insert({
+              user_id: user.id,
+              title: 'Default',
+              content: JSON.stringify(defaultQuotes),
+              category: 'Default',
+              created_by: user.id
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('Error creating default script:', createError);
+            return;
+          }
+          
+          setActiveScriptId(newScript.id);
+        }
+      } catch (error) {
+        console.error('Unexpected error during script setup:', error);
+      }
+    };
+    
+    if (user) {
+      setupDefaultScript();
+    }
+  }, [user]);
   
   const handleQuotesLoaded = (newQuotes: string[]) => {
     setQuotes(newQuotes);
   };
   
-  const handleTemplateSelected = (templateQuotes: string[]) => {
+  const handleTemplateSelected = (templateQuotes: string[], scriptId?: string) => {
     setQuotes(templateQuotes);
+    if (scriptId) {
+      setActiveScriptId(scriptId);
+    }
   };
 
   return (
@@ -29,7 +91,7 @@ const Index = () => {
         
         <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         
-        <TypingArea quotes={quotes} />
+        <TypingArea quotes={quotes} scriptId={activeScriptId} />
         
         <QuoteUploader onQuotesLoaded={handleQuotesLoaded} />
       </main>

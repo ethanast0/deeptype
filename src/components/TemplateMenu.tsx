@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from "@/components/ui/separator";
 
 interface TemplateMenuProps {
-  onSelectTemplate: (quotes: string[]) => void;
+  onSelectTemplate: (quotes: string[], scriptId?: string) => void;
 }
 
 const TemplateMenu: React.FC<TemplateMenuProps> = ({
@@ -67,7 +67,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   const handleSelectSavedScript = (script: SavedScript) => {
     setActiveTemplateId(script.id);
-    onSelectTemplate(script.quotes);
+    onSelectTemplate(script.quotes, script.id);
   };
 
   const handleOpenScriptManager = () => {

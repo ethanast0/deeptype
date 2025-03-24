@@ -3,11 +3,13 @@ import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
+
 interface TypingAreaProps {
   quotes?: string[];
   className?: string;
-  scriptId?: string;
+  scriptId?: string | null;
 }
+
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
@@ -34,6 +36,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   useEffect(() => {
     focusInput();
   }, [focusInput]);
+
   return <div className={cn("typing-area-container", className)}>
       <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
       
@@ -66,8 +69,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <div className="flex gap-4 mt-8">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
-        
       </div>
     </div>;
 };
+
 export default TypingArea;

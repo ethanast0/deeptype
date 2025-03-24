@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -13,7 +14,7 @@ import { useToast } from '../hooks/use-toast';
 
 interface UseTypingTestProps {
   quotes?: string[];
-  scriptId?: string;
+  scriptId?: string | null;
 }
 
 const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
@@ -51,6 +52,13 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
       if (isFinished && user && scriptId && !resultRecordedRef.current) {
         resultRecordedRef.current = true;
         try {
+          console.log('Recording typing session:', {
+            userId: user.id,
+            scriptId,
+            wpm: stats.wpm,
+            accuracy: stats.accuracy
+          });
+          
           const success = await typingHistoryService.recordSession(
             user.id,
             scriptId,
@@ -63,9 +71,21 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
               title: "Progress saved",
               description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
             });
+          } else {
+            console.error('Failed to record typing session');
+            toast({
+              title: "Error saving progress",
+              description: "Unable to save your typing results.",
+              variant: "destructive"
+            });
           }
         } catch (error) {
           console.error('Error recording typing history:', error);
+          toast({
+            title: "Error saving progress",
+            description: "An error occurred while saving your typing results.",
+            variant: "destructive"
+          });
         }
       }
     };
