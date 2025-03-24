@@ -41,7 +41,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         // No user in context, try to refresh the session
         const result = await refreshSession();
         // Check if the result contains a session with a user
-        setIsAuthenticated(!!result.success && !!result.session?.user);
+        if (result.success && result.session) {
+          setIsAuthenticated(!!result.session.user);
+        } else {
+          setIsAuthenticated(false);
+        }
       } catch (error) {
         console.error('Error validating authentication:', error);
         setIsAuthenticated(false);

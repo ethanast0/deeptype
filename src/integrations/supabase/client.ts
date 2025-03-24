@@ -328,16 +328,16 @@ export const getCurrentSession = async () => {
 };
 
 // Initialize authentication
-export const initializeAuth = async () => {
+export const initializeAuth = () => {
   console.log("[AUTH] Initializing auth");
   
   try {
     // Check for an existing session
-    const { data, error } = await supabase.auth.getSession();
+    const { data, error } = supabase.auth.getSession();
     
     if (error) {
       console.error("[AUTH] Error getting session during init:", error);
-      return { success: false, error };
+      return { success: false, error, cleanup: () => {} };
     }
     
     // Set up visibility change listener with debounce
@@ -371,10 +371,10 @@ export const initializeAuth = async () => {
       console.log("[AUTH] No session found during init");
     }
     
-    return { success: true, session: data.session };
+    return { success: true, session: data.session, cleanup: () => {} };
   } catch (error) {
     console.error("[AUTH] Exception during auth initialization:", error);
-    return { success: false, error };
+    return { success: false, error, cleanup: () => {} };
   }
 };
 
@@ -396,21 +396,22 @@ export const checkPersistedSession = async () => {
     if (session) {
       // Store redundant copy
       storeRedundantAuthData(session);
-      return { success: true, session };
+      return session;
     }
     
     // Try to recover from redundant storage if no session found
-    return attemptSessionRecovery();
+    const recoveryResult = await attemptSessionRecovery();
+    return recoveryResult.success ? recoveryResult.session : null;
   } catch (error) {
     console.error("Unexpected error checking persisted session:", error);
-    return { success: false, error };
+    return null;
   }
 };
 
 // Attempt to recover session from redundant storage
 export const attemptSessionRecovery = async () => {
   if (sessionRecoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
-    return { success: false, error: new Error('Max recovery attempts reached') };
+    return { success: false, error: new Error('Max recovery attempts reached'), session: null };
   }
   
   sessionRecoveryAttempts++;
@@ -419,8 +420,8 @@ export const attemptSessionRecovery = async () => {
   if (!storedAuth) {
     // As a last resort, check for a stored user ID
     const userId = localStorage.getItem('supabase.auth.user.id') || 
-                   localStorage.getItem('backup:supabase.auth.user.id');
-                   
+                  localStorage.getItem('backup:supabase.auth.user.id');
+                  
     if (userId) {
       return { 
         success: true, 
@@ -429,7 +430,7 @@ export const attemptSessionRecovery = async () => {
       };
     }
     
-    return { success: false, error: new Error('No stored auth data available') };
+    return { success: false, error: new Error('No stored auth data available'), session: null };
   }
   
   try {
@@ -453,7 +454,7 @@ export const attemptSessionRecovery = async () => {
     return { success: false, error: new Error('Session recovery failed') };
   } catch (error) {
     console.error("Unexpected error recovering session:", error);
-    return { success: false, error };
+    return { success: false, error, session: null };
   }
 };
 
@@ -484,5 +485,3 @@ const safeCheckAndRefreshSession = async () => {
     await supabase.auth.getSession();
   }
 };
-
-
