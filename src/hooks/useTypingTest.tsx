@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -153,18 +152,16 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   }, [currentQuote, stopTimer]);
 
   const findLastCorrectPosition = useCallback(() => {
-    // Get the current word
     const currentWord = words[currentWordIndex];
     if (!currentWord) return { wordIndex: 0, charIndex: 0 };
     
-    // Check if we have any errors in the current word
     let hasErrors = false;
     let lastCorrectCharIndex = 0;
     
     for (let i = 0; i < currentWord.characters.length; i++) {
       if (i < currentCharIndex) {
         if (currentWord.characters[i].state === 'correct') {
-          lastCorrectCharIndex = i + 1; // +1 because we want to position after the correct char
+          lastCorrectCharIndex = i + 1;
         } else if (currentWord.characters[i].state === 'incorrect') {
           hasErrors = true;
         }
@@ -179,44 +176,81 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   }, [words, currentWordIndex, currentCharIndex]);
 
   const smartBackspace = useCallback(() => {
-    const { hasErrors, wordIndex, charIndex } = findLastCorrectPosition();
-    
-    if (hasErrors) {
-      // If errors exist, jump to the last correct character position
-      setCurrentCharIndex(charIndex);
+    if (currentWordIndex > 0 && currentCharIndex === 0) {
+      const prevWordIndex = currentWordIndex - 1;
+      const prevWordLength = words[prevWordIndex].characters.length;
       
-      // Update character states
+      setCurrentWordIndex(prevWordIndex);
+      setCurrentCharIndex(prevWordLength);
+      
       setWords(prevWords => {
         const newWords = [...prevWords];
         
-        // Reset states for characters after the cursor
-        for (let i = charIndex; i < newWords[wordIndex].characters.length; i++) {
+        if (prevWordLength > 0) {
+          newWords[prevWordIndex].characters[prevWordLength - 1].state = 'current';
+        }
+        
+        return newWords;
+      });
+      
+      return;
+    }
+    
+    const { hasErrors, charIndex } = findLastCorrectPosition();
+    
+    if (hasErrors && charIndex < currentCharIndex) {
+      setCurrentCharIndex(charIndex);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        for (let i = charIndex; i < newWords[currentWordIndex].characters.length; i++) {
           if (i === charIndex) {
-            newWords[wordIndex].characters[i].state = 'current';
+            newWords[currentWordIndex].characters[i].state = 'current';
           } else {
-            newWords[wordIndex].characters[i].state = 'inactive';
+            newWords[currentWordIndex].characters[i].state = 'inactive';
           }
         }
         
         return newWords;
       });
     } else if (currentCharIndex > 0) {
-      // If no errors and not at the beginning, perform standard backspace
       setCurrentCharIndex(prev => prev - 1);
       
-      // Update character state
       setWords(prevWords => {
         const newWords = [...prevWords];
         if (currentCharIndex > 0) {
           newWords[currentWordIndex].characters[currentCharIndex - 1].state = 'current';
+          
           if (currentCharIndex < newWords[currentWordIndex].characters.length) {
             newWords[currentWordIndex].characters[currentCharIndex].state = 'inactive';
           }
         }
         return newWords;
       });
+      
+      if (currentCharIndex > 0 && currentCharIndex <= words[currentWordIndex].characters.length) {
+        const charState = words[currentWordIndex].characters[currentCharIndex - 1].state;
+        
+        setStats(prev => {
+          const newStats = { ...prev };
+          
+          if (charState === 'correct') {
+            newStats.correctChars = Math.max(0, prev.correctChars - 1);
+          } else if (charState === 'incorrect') {
+            newStats.incorrectChars = Math.max(0, prev.incorrectChars - 1);
+          }
+          
+          newStats.accuracy = calculateAccuracy(
+            newStats.correctChars,
+            newStats.incorrectChars
+          );
+          
+          return newStats;
+        });
+      }
     }
-  }, [findLastCorrectPosition, currentCharIndex, currentWordIndex]);
+  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
