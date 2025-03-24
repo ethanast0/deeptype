@@ -296,6 +296,41 @@ const Login = () => {
     }
   };
 
+  const handleFocus = async () => {
+    // Don't check too frequently to avoid race conditions
+    const now = Date.now();
+    if (now - lastSessionCheckRef.current < 5000) {
+      return; // Skip if checked within last 5 seconds
+    }
+    
+    lastSessionCheckRef.current = now;
+    
+    try {
+      const { data } = await supabase.auth.getSession();
+      
+      if (!isMounted) return;
+      
+      traceSessionCheck('Login-handleFocus', !!data.session, data.session?.user?.id);
+      
+      if (data.session) {
+        // We have a valid session
+        if (!user || user.id !== data.session.user.id) {
+          // Handle case where session exists but our React state doesn't match
+          authDebug("Focus check: session found but user state mismatch");
+          // @ts-expect-error
+          handleAuthChange(data.session.user.id);
+        }
+      } else if (user) {
+        // We don't have a session but we have a user in state
+        authDebug("Focus check: no session but user in state, clearing");
+        // @ts-expect-error
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error during focus session check:", error);
+    }
+  };
+
   if (alreadyLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-900">

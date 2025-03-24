@@ -102,7 +102,10 @@ export const initializeAuthentication = async () => {
         console.log('No persistent session found, attempting recovery');
         const recoveryResult = await attemptSessionRecovery();
         if (recoveryResult.success && recoveryResult.session) {
-          session = recoveryResult.session;
+          // We need to access the session through the recoveryResult.session property
+          const recoveredSession = recoveryResult.session;
+          // Save it to our session variable
+          session = recoveredSession;
         }
       }
       
@@ -170,7 +173,7 @@ export const initializeAuthentication = async () => {
     
     return {
       cleanup: () => {
-        if (authHandler?.cleanup) {
+        if (authHandler && typeof authHandler.cleanup === 'function') {
           authHandler.cleanup();
         }
         if (tokenRefreshCleanup) {
@@ -209,4 +212,4 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export default initializeAuthentication; 
+export default initializeAuthentication;
