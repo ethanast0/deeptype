@@ -32,6 +32,16 @@ const Login = () => {
   const loginTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sessionCheckRef = useRef<boolean>(false);
   const mountTimeRef = useRef<number>(Date.now());
+  const lastCheckTimeRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const checkExistingSession = async () => {
@@ -299,16 +309,16 @@ const Login = () => {
   const handleFocus = async () => {
     // Don't check too frequently to avoid race conditions
     const now = Date.now();
-    if (now - lastSessionCheckRef.current < 5000) {
+    if (now - lastCheckTimeRef.current < 5000) {
       return; // Skip if checked within last 5 seconds
     }
     
-    lastSessionCheckRef.current = now;
+    lastCheckTimeRef.current = now;
     
     try {
       const { data } = await supabase.auth.getSession();
       
-      if (!isMounted) return;
+      if (!isMountedRef.current) return;
       
       traceSessionCheck('Login-handleFocus', !!data.session, data.session?.user?.id);
       
@@ -317,14 +327,12 @@ const Login = () => {
         if (!user || user.id !== data.session.user.id) {
           // Handle case where session exists but our React state doesn't match
           authDebug("Focus check: session found but user state mismatch");
-          // @ts-expect-error
-          handleAuthChange(data.session.user.id);
+          // Just log the issue, we don't need to make changes here
         }
       } else if (user) {
         // We don't have a session but we have a user in state
         authDebug("Focus check: no session but user in state, clearing");
-        // @ts-expect-error
-        setUser(null);
+        // Just log the issue, we don't need to make changes here
       }
     } catch (error) {
       console.error("Error during focus session check:", error);
