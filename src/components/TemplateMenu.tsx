@@ -100,11 +100,11 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
           className="flex items-center justify-center gap-4 text-xs"
         >
           <ToggleGroupItem value="templates" className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent">
-            Top
+            top
           </ToggleGroupItem>
           
           <ToggleGroupItem value="saved" className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent">
-            Saved
+            saved
           </ToggleGroupItem>
           
           <TooltipProvider>
