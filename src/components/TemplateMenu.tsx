@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Crown, Atom, Hash, Clock, Type, Quote, Triangle, Settings, Upload } from "lucide-react";
+import { BookOpen, History, Heart, Code, Book, Save, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
 import { SavedScript, scriptService } from '../services/scriptService';
 import ScriptManager from './ScriptManager';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from "@/components/ui/separator";
 
 interface TemplateMenuProps {
   onSelectTemplate: (quotes: string[], scriptId?: string) => void;
@@ -44,15 +42,15 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const getIcon = (templateId: string) => {
     switch (templateId) {
       case 'Comedy':
-        return <Atom className="h-5 w-5" />;
+        return <BookOpen className="h-4 w-4" />;
       case 'Calm':
-        return <BookOpen className="h-5 w-5" />;
+        return <History className="h-4 w-4" />;
       case 'Theory':
-        return <Code className="h-5 w-5" />;
+        return <Code className="h-4 w-4" />;
       case 'Legend':
-        return <Crown className="h-5 w-5" />;
+        return <Book className="h-4 w-4" />;
       default:
-        return <Heart className="h-5 w-5" />;
+        return <Heart className="h-4 w-4" />;
     }
   };
 
@@ -83,89 +81,75 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   };
 
   return (
-    <div className="w-full mb-6">
-      <div className="flex items-center justify-center text-gray-400 py-4 px-2 rounded-lg w-full overflow-hidden bg-transparent">
-        <div className={`flex items-center justify-center transition-all duration-300 ease-in-out ${isExpanded ? "w-full" : "w-fit mx-auto"}`}>
-          {/* Main template buttons */}
-          {templates.map(template => (
+    <div className="w-full mb-8 flex justify-center">
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        {templates.map(template => (
+          <button
+            key={template.id}
+            onClick={() => handleSelectTemplate(template.id, template.quotes)}
+            className={cn(
+              "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2",
+              activeTemplateId === template.id
+                ? "bg-monkey-accent/20 text-monkey-accent" 
+                : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
+            )}
+          >
+            {getIcon(template.id)}
+            <span>{template.name}</span>
+          </button>
+        ))}
+
+        {user && (
+          <>
             <button
-              key={template.id}
+              onClick={toggleExpand}
               className={cn(
-                "flex items-center gap-2 transition-colors px-3",
-                activeTemplateId === template.id 
-                  ? "text-monkey-accent" 
-                  : "hover:text-monkey-text text-monkey-subtle"
+                "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2",
+                isExpanded 
+                  ? "bg-monkey-accent/20 text-monkey-accent"
+                  : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300",
+                savedScripts.some(s => activeTemplateId === s.id) && "bg-monkey-accent/20 text-monkey-accent"
               )}
-              onClick={() => handleSelectTemplate(template.id, template.quotes)}
             >
-              {getIcon(template.id)}
-              <span>{template.name}</span>
+              <Heart className="h-4 w-4" />
+              <span>Saved</span>
+            </button>
+
+            <button
+              onClick={handleOpenScriptManager}
+              className={cn(
+                "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2",
+                isScriptManagerOpen
+                  ? "bg-monkey-accent/20 text-monkey-accent"
+                  : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              <span>Manage</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {isExpanded && savedScripts.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-3 justify-center animate-fade-in">
+          {savedScripts.map(script => (
+            <button
+              key={script.id}
+              onClick={() => handleSelectSavedScript(script)}
+              className={cn(
+                "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2",
+                activeTemplateId === script.id
+                  ? "bg-monkey-accent/20 text-monkey-accent" 
+                  : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
+              )}
+            >
+              <Heart className="h-4 w-4" />
+              <span>{script.name}</span>
             </button>
           ))}
-
-          {/* Saved button with toggle functionality */}
-          {user && (
-            <button
-              className={cn(
-                "flex items-center gap-2 transition-colors px-3",
-                isExpanded 
-                  ? "text-monkey-text" 
-                  : "hover:text-monkey-text text-monkey-subtle",
-                savedScripts.some(s => activeTemplateId === s.id) && "text-monkey-accent"
-              )}
-              onClick={toggleExpand}
-            >
-              <Heart className="h-5 w-5" />
-              <span>saved</span>
-            </button>
-          )}
-
-          {/* Expanded section with separator */}
-          {user && (
-            <div
-              className={`flex items-center transition-all duration-300 ease-in-out overflow-hidden ${
-                isExpanded ? "opacity-100 max-w-[500px]" : "opacity-0 max-w-0"
-              }`}
-            >
-              {/* Separator after Saved */}
-              <div className="h-5 w-px bg-slate-700 mx-2 flex-shrink-0"></div>
-
-              {/* Script buttons */}
-              {savedScripts.length > 0 ? (
-                savedScripts.map((script) => (
-                  <button
-                    key={script.id}
-                    className={cn(
-                      "flex items-center gap-2 transition-colors px-3 whitespace-nowrap flex-shrink-0",
-                      activeTemplateId === script.id 
-                        ? "text-monkey-accent" 
-                        : "hover:text-monkey-text text-monkey-subtle"
-                    )}
-                    onClick={() => handleSelectSavedScript(script)}
-                  >
-                    <Hash className="h-5 w-5" />
-                    <span>{script.name}</span>
-                  </button>
-                ))
-              ) : (
-                <span className="text-monkey-subtle opacity-50 px-3 whitespace-nowrap flex-shrink-0">No saved scripts</span>
-              )}
-
-              {/* Separator before Change */}
-              <div className="h-5 w-px bg-slate-700 mx-2 flex-shrink-0"></div>
-
-              {/* Settings button only in expanded state */}
-              <button
-                className="hover:text-monkey-text text-monkey-subtle transition-colors px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
-                onClick={handleOpenScriptManager}
-              >
-                <Settings className="h-5 w-5" />
-                <span>change</span>
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {user && <ScriptManager 
         open={isScriptManagerOpen} 
