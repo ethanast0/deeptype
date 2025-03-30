@@ -73,16 +73,15 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   return (
     <div className="w-full mb-6">
-      {/* Compact menu container */}
-      <div className="relative flex items-center justify-center w-full">
-        {/* Navigation arrows positioned outside the container */}
-        <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10">
-          <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
-        </div>
-        
-        {/* Content carousel */}
-        <div className="w-full max-w-2xl bg-slate-950 rounded-md py-2 px-1">
-          <Carousel className="w-full">
+      <div className="relative w-full max-w-2xl mx-auto">
+        <Carousel className="w-full">
+          {/* Position the navigation arrows inside the Carousel context */}
+          <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
+          
+          {/* Content carousel */}
+          <div className="w-full bg-slate-950 rounded-md py-2 px-1">
             <CarouselContent className="items-center">
               {templates.map(template => (
                 <CarouselItem key={template.id} className="flex-shrink-0 basis-auto px-1">
@@ -96,13 +95,13 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
                 </CarouselItem>
               ))}
             </CarouselContent>
-          </Carousel>
-        </div>
-        
-        {/* Right navigation arrow */}
-        <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10">
-          <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
-        </div>
+          </div>
+          
+          {/* Right navigation arrow */}
+          <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
+        </Carousel>
       </div>
     </div>
   );
