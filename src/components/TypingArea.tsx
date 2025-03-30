@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -66,7 +65,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             .limit(1)
             .single();
             
-          // Fetch votes
+          // Fetch votes using RPC
           const { data: upvotesData, error: upvotesError } = await supabase
             .rpc('count_script_votes', { script_id: scriptId, vote_type: 'upvote' });
           
@@ -115,36 +114,34 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     try {
       const voteType = isUpvote ? 'upvote' : 'downvote';
       
-      // First check if user already voted
+      // First check if user already voted using RPC
       const { data: existingVote } = await supabase
-        .from('script_votes')
-        .select()
-        .eq('user_id', user.id)
-        .eq('script_id', scriptId)
-        .maybeSingle();
+        .rpc('check_user_vote', { 
+          p_user_id: user.id, 
+          p_script_id: scriptId 
+        });
         
       if (existingVote) {
         // Update vote if it exists
-        if (existingVote.vote_type !== voteType) {
-          await supabase
-            .from('script_votes')
-            .update({ vote_type: voteType })
-            .eq('id', existingVote.id);
+        await supabase
+          .rpc('update_user_vote', {
+            p_user_id: user.id,
+            p_script_id: scriptId,
+            p_vote_type: voteType
+          });
             
-          setScriptStats(prev => ({
-            ...prev,
-            upvotes: isUpvote ? prev.upvotes + 1 : prev.upvotes - 1,
-            downvotes: isUpvote ? prev.downvotes - 1 : prev.downvotes + 1
-          }));
-        }
+        setScriptStats(prev => ({
+          ...prev,
+          upvotes: isUpvote ? prev.upvotes + 1 : prev.upvotes - 1,
+          downvotes: isUpvote ? prev.downvotes - 1 : prev.downvotes + 1
+        }));
       } else {
         // Insert new vote
         await supabase
-          .from('script_votes')
-          .insert({
-            user_id: user.id,
-            script_id: scriptId,
-            vote_type: voteType
+          .rpc('insert_user_vote', {
+            p_user_id: user.id,
+            p_script_id: scriptId,
+            p_vote_type: voteType
           });
           
         setScriptStats(prev => ({
@@ -166,11 +163,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         isFinished={isFinished} 
         highestWpm={scriptStats.highestWpm}
         timesTyped={scriptStats.timesTyped}
-        upvotes={scriptStats.upvotes}
-        downvotes={scriptStats.downvotes}
-        onUpvote={() => handleVote(true)}
-        onDownvote={() => handleVote(false)}
         showCareerStats={!!user}
+        showBottomStats={false}
       />
       
       <div className="typing-area flex flex-wrap text-2xl my-6" onClick={focusInput}>
@@ -198,6 +192,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         {/* Hidden input to capture keystrokes */}
         <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
       </div>
+      
+      {/* Bottom stats box placed here, below typing area */}
+      <Stats
+        showTopStats={false}
+        upvotes={scriptStats.upvotes}
+        downvotes={scriptStats.downvotes}
+        onUpvote={() => handleVote(true)}
+        onDownvote={() => handleVote(false)}
+        timesTyped={scriptStats.timesTyped}
+      />
       
       <div className="flex justify-center items-center w-full mt-4 mb-8">
         <div className="flex gap-4">

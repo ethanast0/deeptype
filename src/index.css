@@ -132,13 +132,11 @@
   }
   
   .top-stats-container {
-    @apply flex justify-between items-center rounded-t-md;
-    background-color: rgba(37, 39, 41, 0.8);
+    @apply flex justify-between items-center rounded-t-md bg-transparent;
   }
   
   .bottom-stats-container {
-    @apply flex justify-between items-center rounded-b-md;
-    background-color: rgba(37, 39, 41, 0.5);
+    @apply flex justify-between items-center rounded-b-md bg-transparent;
   }
 
   .stat-box {
