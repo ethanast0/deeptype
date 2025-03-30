@@ -73,12 +73,13 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   return (
     <div className="w-full mb-6">
-      <div className="relative w-full max-w-2xl mx-auto flex items-center">
-        {/* Left navigation arrow */}
-        <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800 relative left-0 transform-none mr-2" />
-        
-        {/* Main carousel */}
+      <div className="relative w-full max-w-2xl mx-auto">
         <Carousel className="w-full">
+          {/* Custom positioning for navigation arrows with proper z-index */}
+          <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
+          
           {/* Content carousel */}
           <div className="w-full bg-slate-950 rounded-md py-2 px-1">
             <CarouselContent className="items-center">
@@ -95,10 +96,12 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
               ))}
             </CarouselContent>
           </div>
+          
+          {/* Right navigation arrow */}
+          <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
         </Carousel>
-        
-        {/* Right navigation arrow */}
-        <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800 relative right-0 transform-none ml-2" />
       </div>
     </div>
   );
