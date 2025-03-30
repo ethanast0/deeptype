@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -8,6 +9,7 @@ import { defaultQuotes } from '../utils/typingUtils';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
+
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
@@ -61,15 +63,18 @@ const Index = () => {
       setupDefaultScript();
     }
   }, [user]);
+
   const handleQuotesLoaded = (newQuotes: string[]) => {
     setQuotes(newQuotes);
   };
+
   const handleTemplateSelected = (templateQuotes: string[], scriptId?: string) => {
     setQuotes(templateQuotes);
     if (scriptId) {
       setActiveScriptId(scriptId);
     }
   };
+
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
@@ -88,4 +93,5 @@ const Index = () => {
       <Footer />
     </div>;
 };
+
 export default Index;

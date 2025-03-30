@@ -7,13 +7,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Upload } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
   className?: string;
 }
 
-const QuoteUploader: React.FC<QuoteUploaderProps> = ({
+export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
   onQuotesLoaded,
   className
 }) => {
@@ -134,25 +136,30 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
   
   return (
     <>
-      <div className={cn("mt-24 text-center fixed bottom-8 left-0 right-0", className)}>
-        <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
-        
-        <button 
-          onClick={handleButtonClick} 
-          className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
-                   transition-all duration-300 hover:bg-opacity-30"
-        >
-          upload script
-        </button>
-        
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileSelection} 
-          accept=".json" 
-          className="hidden" 
-        />
-      </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={handleButtonClick} 
+              className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal p-2"
+              aria-label="Upload script"
+            >
+              <Upload size={16} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="bg-slate-800 border-slate-700 text-monkey-text">
+            <p>Upload JSON array of strings.<br />Ask an AI to create one with your favorite topics.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileSelection} 
+        accept=".json" 
+        className="hidden" 
+      />
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-monkey-text">
@@ -189,6 +196,18 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+const QuoteUploader: React.FC<QuoteUploaderProps> = ({
+  onQuotesLoaded,
+  className
+}) => {
+  return (
+    <div className={cn("mt-24 text-center fixed bottom-8 left-0 right-0", className)}>
+      <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
+      <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+    </div>
   );
 };
 
