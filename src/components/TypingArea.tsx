@@ -3,9 +3,6 @@ import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
-import { Upload } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 
 interface TypingAreaProps {
   quotes?: string[];
@@ -72,22 +69,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <div className="flex gap-4 mt-8">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button 
-                onClick={() => document.getElementById('quote-uploader')?.click()} 
-                className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base flex items-center justify-center"
-                aria-label="Upload script"
-              >
-                <Upload size={18} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Upload JSON array of strings</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
     </div>;
 };
