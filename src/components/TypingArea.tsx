@@ -41,7 +41,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   }, [focusInput]);
 
   return <div className={cn("typing-area-container", className)}>
-      <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
+      <div className="w-full flex flex-col mb-2">
+        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
+      </div>
       
       <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
         {words.map((word, wordIndex) => (

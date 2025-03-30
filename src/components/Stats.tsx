@@ -17,41 +17,33 @@ const Stats: React.FC<StatsProps> = ({
   className 
 }) => {
   return (
-    <div className={cn("stats-container", className, {
-      "animate-slide-up": isActive || isFinished
-    })}>
-      <div className="stat-box">
-        <div className="stat-value text-sm">
-          {stats.wpm}
-        </div>
-        <div className="stat-label text-xs">
-          wpm
-        </div>
-      </div>
+    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded bg-zinc-800/50", 
+      className, 
+      {
+        "animate-slide-up": isActive || isFinished
+      }
+    )}>
+      <span>
+        <span className="font-medium text-monkey-text">{stats.wpm}</span>{" wpm"}
+      </span>
+
+      <span className="text-zinc-600">•</span>
       
-      <div className="stat-box">
-        <div className="stat-value text-sm">
-          {stats.accuracy}%
-        </div>
-        <div className="stat-label text-xs">
-          accuracy
-        </div>
-      </div>
-      
-      <div className="stat-box">
-        <div className="stat-value text-sm">
-          {formatTime(stats.elapsedTime)}
-        </div>
-        <div className="stat-label text-xs">
-          time
-        </div>
-      </div>
+      <span>
+        <span className="font-medium text-monkey-text">{stats.accuracy}%</span>{" acc"}
+      </span>
+
+      <span className="text-zinc-600">•</span>
+
+      <span>
+        <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
+      </span>
       
       {isFinished && (
-        <div className="stat-box text-monkey-accent">
-          <div className="stat-value text-sm">Completed!</div>
-          <div className="stat-label text-xs">status</div>
-        </div>
+        <>
+          <span className="text-zinc-600">•</span>
+          <span className="font-medium text-monkey-accent">completed</span>
+        </>
       )}
     </div>
   );
