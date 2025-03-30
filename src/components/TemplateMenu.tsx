@@ -1,13 +1,10 @@
 
 import React, { useState } from 'react';
 import { 
-  BookOpen, History, Heart, Code, Book, AtSign 
+  BookOpen, History, Heart, Code, AtSign 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
-import { useAuth } from '../contexts/AuthContext';
-import { SavedScript } from '../services/scriptService';
-import { useToast } from '@/hooks/use-toast';
 import { 
   Carousel,
   CarouselContent,
@@ -34,14 +31,14 @@ const TemplateItem: React.FC<TemplateItemProps> = ({ id, name, icon, isActive, o
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center justify-center px-5 py-3 rounded-full transition-all",
+        "flex items-center justify-center px-3 py-2 rounded-md transition-all text-sm",
         "focus:outline-none focus:ring-2 focus:ring-monkey-accent/50",
         isActive 
           ? "bg-slate-800 text-monkey-accent" 
           : "bg-slate-900/80 text-gray-400 hover:bg-slate-800/70 hover:text-gray-300"
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {icon}
         <span className="whitespace-nowrap">{name}</span>
       </div>
@@ -62,28 +59,33 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const getIcon = (templateId: string) => {
     switch (templateId) {
       case 'Comedy':
-        return <AtSign className="h-5 w-5" />;
+        return <AtSign className="h-4 w-4" />;
       case 'Calm':
-        return <History className="h-5 w-5" />;
+        return <History className="h-4 w-4" />;
       case 'Theory':
-        return <Code className="h-5 w-5" />;
+        return <Code className="h-4 w-4" />;
       case 'Legend':
-        return <BookOpen className="h-5 w-5" />;
+        return <BookOpen className="h-4 w-4" />;
       default:
-        return <Heart className="h-5 w-5" />;
+        return <Heart className="h-4 w-4" />;
     }
   };
 
   return (
     <div className="w-full mb-6">
-      {/* Make the template menu take full width to match typing area */}
-      <div className="flex items-center justify-center text-gray-400 py-4 px-2 rounded-lg w-full overflow-hidden bg-transparent">
-        {/* Instagram-style horizontally scrollable stories with positioning fixes */}
-        <Carousel className="w-full">
-          <div className="relative w-full">
+      {/* Compact menu container */}
+      <div className="relative flex items-center justify-center w-full">
+        {/* Navigation arrows positioned outside the container */}
+        <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10">
+          <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+        </div>
+        
+        {/* Content carousel */}
+        <div className="w-full max-w-2xl bg-slate-950 rounded-md py-2 px-1">
+          <Carousel className="w-full">
             <CarouselContent className="items-center">
               {templates.map(template => (
-                <CarouselItem key={template.id} className="flex-shrink-0 basis-auto pl-2 pr-2">
+                <CarouselItem key={template.id} className="flex-shrink-0 basis-auto px-1">
                   <TemplateItem
                     id={template.id}
                     name={template.name}
@@ -94,16 +96,13 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
                 </CarouselItem>
               ))}
             </CarouselContent>
-            
-            {/* Position the navigation arrows to avoid overlapping with buttons */}
-            <div className="absolute inset-y-0 left-0 flex items-center">
-              <CarouselPrevious className="relative left-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
-            </div>
-            <div className="absolute inset-y-0 right-0 flex items-center">
-              <CarouselNext className="relative right-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
-            </div>
-          </div>
-        </Carousel>
+          </Carousel>
+        </div>
+        
+        {/* Right navigation arrow */}
+        <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10">
+          <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+        </div>
       </div>
     </div>
   );
