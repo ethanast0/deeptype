@@ -70,7 +70,7 @@ const Index = () => {
       setActiveScriptId(scriptId);
     }
   };
-  return <div className="min-h-screen flex flex-col bg-zinc-950">
+  return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
