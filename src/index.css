@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -132,11 +133,11 @@
   }
   
   .top-stats-container {
-    @apply flex justify-between items-center rounded-t-md bg-transparent;
+    @apply flex justify-between items-center bg-transparent w-full;
   }
   
   .bottom-stats-container {
-    @apply flex justify-between items-center rounded-b-md bg-transparent;
+    @apply flex justify-between items-center bg-transparent w-full;
   }
 
   .stat-box {
@@ -144,11 +145,11 @@
   }
 
   .stat-value {
-    @apply font-medium text-monkey-text;
+    @apply font-medium text-monkey-text text-sm font-mono;
   }
 
   .stat-label {
-    @apply uppercase tracking-wider;
+    @apply uppercase tracking-wider text-xs text-monkey-subtle;
   }
 
   .button {
@@ -165,8 +166,8 @@
   }
   
   .vote-button {
-    @apply flex items-center gap-1 px-3 py-1 rounded-md transition-colors duration-200
-           bg-opacity-10 hover:bg-opacity-20;
+    @apply flex items-center gap-1 p-0 h-auto transition-colors duration-200
+           text-monkey-subtle hover:text-monkey-accent;
   }
   
   .stats-wrapper {
@@ -174,6 +175,14 @@
   }
   
   .left-stats, .right-stats {
-    @apply flex items-center;
+    @apply flex items-center gap-6;
+  }
+  
+  .votes-section {
+    @apply flex items-center gap-2;
+  }
+  
+  .typed-count {
+    @apply text-xs flex items-center text-monkey-subtle;
   }
 }

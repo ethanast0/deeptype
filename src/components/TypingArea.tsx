@@ -67,10 +67,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             
           // Fetch votes using RPC
           const { data: upvotesData, error: upvotesError } = await supabase
-            .rpc('count_script_votes', { script_id: scriptId, vote_type: 'upvote' });
+            .rpc('count_script_votes', { 
+              script_id: scriptId, 
+              vote_type: 'upvote' 
+            });
           
           const { data: downvotesData, error: downvotesError } = await supabase
-            .rpc('count_script_votes', { script_id: scriptId, vote_type: 'downvote' });
+            .rpc('count_script_votes', { 
+              script_id: scriptId, 
+              vote_type: 'downvote' 
+            });
             
           if (!historyError && typingHistory) {
             setScriptStats(prev => ({
