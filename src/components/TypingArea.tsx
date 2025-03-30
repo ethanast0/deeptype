@@ -60,11 +60,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           // Fetch highest WPM
           const { data: highestWpmData, error: wpmError } = await supabase
             .from('typing_history')
-            .select('wpm')
+            .select('speed_wpm')
             .eq('script_id', scriptId)
-            .order('wpm', { ascending: false })
+            .order('speed_wpm', { ascending: false })
             .limit(1)
             .single();
+            
+          // Fetch votes
+          const { data: upvotesData, error: upvotesError } = await supabase
+            .rpc('count_script_votes', { script_id: scriptId, vote_type: 'upvote' });
+          
+          const { data: downvotesData, error: downvotesError } = await supabase
+            .rpc('count_script_votes', { script_id: scriptId, vote_type: 'downvote' });
             
           if (!historyError && typingHistory) {
             setScriptStats(prev => ({
@@ -76,7 +83,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           if (!wpmError && highestWpmData) {
             setScriptStats(prev => ({
               ...prev, 
-              highestWpm: highestWpmData.wpm
+              highestWpm: highestWpmData.speed_wpm
+            }));
+          }
+          
+          if (!upvotesError && typeof upvotesData === 'number') {
+            setScriptStats(prev => ({
+              ...prev,
+              upvotes: upvotesData
+            }));
+          }
+          
+          if (!downvotesError && typeof downvotesData === 'number') {
+            setScriptStats(prev => ({
+              ...prev,
+              downvotes: downvotesData
             }));
           }
         } catch (error) {
@@ -100,7 +121,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         .select()
         .eq('user_id', user.id)
         .eq('script_id', scriptId)
-        .single();
+        .maybeSingle();
         
       if (existingVote) {
         // Update vote if it exists
@@ -137,13 +158,19 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   };
 
-  return <div className={cn("typing-area-container", className)}>
+  return (
+    <div className={cn("typing-area-container", className)}>
       <Stats 
         stats={stats} 
         isActive={isActive} 
         isFinished={isFinished} 
         highestWpm={scriptStats.highestWpm}
         timesTyped={scriptStats.timesTyped}
+        upvotes={scriptStats.upvotes}
+        downvotes={scriptStats.downvotes}
+        onUpvote={() => handleVote(true)}
+        onDownvote={() => handleVote(false)}
+        showCareerStats={!!user}
       />
       
       <div className="typing-area flex flex-wrap text-2xl my-6" onClick={focusInput}>
@@ -172,34 +199,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
       </div>
       
-      <div className="flex justify-between items-center w-full mt-4 mb-8">
-        <div className="votes-container flex items-center gap-2">
-          <button 
-            onClick={() => handleVote(true)} 
-            className="vote-button flex items-center gap-1 text-monkey-subtle hover:text-monkey-accent"
-            aria-label="Upvote"
-          >
-            <ThumbsUp size={18} /> <span>{scriptStats.upvotes}</span>
-          </button>
-          <button 
-            onClick={() => handleVote(false)} 
-            className="vote-button flex items-center gap-1 text-monkey-subtle hover:text-monkey-error"
-            aria-label="Downvote"
-          >
-            <ThumbsDown size={18} /> <span>{scriptStats.downvotes}</span>
-          </button>
-        </div>
-        
-        <div className="text-monkey-subtle text-sm">
-          {scriptStats.timesTyped} people typed this
-        </div>
-        
+      <div className="flex justify-center items-center w-full mt-4 mb-8">
         <div className="flex gap-4">
           <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
           <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default TypingArea;

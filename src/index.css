@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -131,10 +130,15 @@
   .typing-input {
     @apply absolute opacity-0 top-0 left-0 w-full h-full cursor-default;
   }
-
-  .stats-container {
-    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle rounded-md py-2;
+  
+  .top-stats-container {
+    @apply flex justify-between items-center rounded-t-md;
     background-color: rgba(37, 39, 41, 0.8);
+  }
+  
+  .bottom-stats-container {
+    @apply flex justify-between items-center rounded-b-md;
+    background-color: rgba(37, 39, 41, 0.5);
   }
 
   .stat-box {
@@ -165,5 +169,13 @@
   .vote-button {
     @apply flex items-center gap-1 px-3 py-1 rounded-md transition-colors duration-200
            bg-opacity-10 hover:bg-opacity-20;
+  }
+  
+  .stats-wrapper {
+    @apply w-full;
+  }
+  
+  .left-stats, .right-stats {
+    @apply flex items-center;
   }
 }
