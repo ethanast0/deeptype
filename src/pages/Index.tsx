@@ -36,14 +36,15 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-slate-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
+      <main className="flex-1 container max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8 text-center">
           <h2 className="text-lg text-monkey-subtle mb-2">type your favorite things</h2>
         </div>
         
-        <TemplateMenu onSelectTemplate={handleTemplateSelected} />
-        
-        <TypingArea quotes={quotes} scriptId={activeScriptId} />
+        <div className="w-full">
+          <TemplateMenu onSelectTemplate={handleTemplateSelected} />
+          <TypingArea quotes={quotes} scriptId={activeScriptId} />
+        </div>
         
         <QuoteUploader onQuotesLoaded={handleQuotesLoaded} />
       </main>

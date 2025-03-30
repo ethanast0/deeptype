@@ -42,7 +42,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   const handleUploadQuotes = (newQuotes: string[]) => {
     if (loadNewQuote && newQuotes.length > 0) {
-      loadNewQuote(newQuotes[0]);
+      // Fixed: Remove the argument since loadNewQuote() can be called without arguments
+      loadNewQuote();
     }
   };
 

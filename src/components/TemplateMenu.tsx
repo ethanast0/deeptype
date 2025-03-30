@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, 
-  BookOpen, History, Heart, Code, Book, AtSign } from "lucide-react";
+import { 
+  BookOpen, History, Heart, Code, Book, AtSign 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
 import { useAuth } from '../contexts/AuthContext';
@@ -75,24 +76,33 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
 
   return (
     <div className="w-full mb-6">
+      {/* Make the template menu take full width to match typing area */}
       <div className="flex items-center justify-center text-gray-400 py-4 px-2 rounded-lg w-full overflow-hidden bg-transparent">
-        {/* Instagram-style horizontally scrollable stories */}
-        <Carousel className="w-full max-w-lg">
-          <CarouselContent className="items-center">
-            {templates.map(template => (
-              <CarouselItem key={template.id} className="flex-shrink-0 basis-auto pl-2 pr-2">
-                <TemplateItem
-                  id={template.id}
-                  name={template.name}
-                  icon={getIcon(template.id)}
-                  isActive={activeTemplateId === template.id}
-                  onClick={() => handleSelectTemplate(template.id, template.quotes)}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
-          <CarouselNext className="right-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+        {/* Instagram-style horizontally scrollable stories with positioning fixes */}
+        <Carousel className="w-full">
+          <div className="relative w-full">
+            <CarouselContent className="items-center">
+              {templates.map(template => (
+                <CarouselItem key={template.id} className="flex-shrink-0 basis-auto pl-2 pr-2">
+                  <TemplateItem
+                    id={template.id}
+                    name={template.name}
+                    icon={getIcon(template.id)}
+                    isActive={activeTemplateId === template.id}
+                    onClick={() => handleSelectTemplate(template.id, template.quotes)}
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            
+            {/* Position the navigation arrows to avoid overlapping with buttons */}
+            <div className="absolute inset-y-0 left-0 flex items-center">
+              <CarouselPrevious className="relative left-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+            </div>
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <CarouselNext className="relative right-0 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+            </div>
+          </div>
         </Carousel>
       </div>
     </div>
