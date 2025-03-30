@@ -1,182 +1,79 @@
-
-import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Heart, Code, Book, Save, Wrench, AtSign, Crown, Atom, Hash, Clock, Type, Quote, Triangle, Settings, Upload } from "lucide-react";
+import React, { useState } from 'react';
+import { BookOpen, History, Heart, Code, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import templates from "../data/templates";
-import { useAuth } from '../contexts/AuthContext';
-import { SavedScript, scriptService } from '../services/scriptService';
-import ScriptManager from './ScriptManager';
-import { useToast } from '@/hooks/use-toast';
-import { Separator } from "@/components/ui/separator";
-
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 interface TemplateMenuProps {
   onSelectTemplate: (quotes: string[], scriptId?: string) => void;
 }
+interface TemplateItemProps {
+  id: string;
+  name: string;
+  isActive: boolean;
+  icon: React.ReactNode;
+  onClick: () => void;
+}
 
+// Individual template item component
+const TemplateItem: React.FC<TemplateItemProps> = ({
+  id,
+  name,
+  icon,
+  isActive,
+  onClick
+}) => {
+  return <button onClick={onClick} className={cn("flex items-center justify-center px-3 py-2 rounded-md transition-all text-sm", "focus:outline-none focus:ring-2 focus:ring-monkey-accent/50", isActive ? "bg-slate-800 text-monkey-accent" : "bg-slate-900/80 text-gray-400 hover:bg-slate-800/70 hover:text-gray-300")}>
+      <div className="flex items-center gap-1.5">
+        {icon}
+        <span className="whitespace-nowrap">{name}</span>
+      </div>
+    </button>;
+};
 const TemplateMenu: React.FC<TemplateMenuProps> = ({
   onSelectTemplate
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isScriptManagerOpen, setIsScriptManagerOpen] = useState(false);
-  const [savedScripts, setSavedScripts] = useState<SavedScript[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-      loadSavedScripts();
-    } else {
-      setSavedScripts([]);
-    }
-  }, [user]);
-
-  const loadSavedScripts = async () => {
-    if (!user) return;
-    try {
-      const scripts = await scriptService.getScripts(user.id);
-      setSavedScripts(scripts);
-    } catch (error) {
-      console.error("Error loading saved scripts:", error);
-    }
-  };
-
-  const getIcon = (templateId: string) => {
-    switch (templateId) {
-      case 'Comedy':
-        return <Atom className="h-5 w-5" />;
-      case 'Calm':
-        return <BookOpen className="h-5 w-5" />;
-      case 'Theory':
-        return <Code className="h-5 w-5" />;
-      case 'Legend':
-        return <Crown className="h-5 w-5" />;
-      default:
-        return <Heart className="h-5 w-5" />;
-    }
-  };
-
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
-  };
-
   const handleSelectTemplate = (templateId: string, quotes: string[]) => {
     setActiveTemplateId(templateId);
     onSelectTemplate(quotes);
   };
-
-  const handleSelectSavedScript = (script: SavedScript) => {
-    setActiveTemplateId(script.id);
-    onSelectTemplate(script.quotes, script.id);
-  };
-
-  const handleOpenScriptManager = () => {
-    if (!user) {
-      toast({
-        title: "Login required",
-        description: "Please log in to manage your saved scripts.",
-        variant: "destructive"
-      });
-      return;
+  const getIcon = (templateId: string) => {
+    switch (templateId) {
+      case 'Comedy':
+        return <AtSign className="h-4 w-4" />;
+      case 'Calm':
+        return <History className="h-4 w-4" />;
+      case 'Theory':
+        return <Code className="h-4 w-4" />;
+      case 'Legend':
+        return <BookOpen className="h-4 w-4" />;
+      default:
+        return <Heart className="h-4 w-4" />;
     }
-    setIsScriptManagerOpen(true);
   };
-
-  return (
-    <div className="w-full mb-6">
-      <div className="flex items-center justify-center text-gray-400 py-4 px-2 rounded-lg w-full overflow-hidden bg-transparent">
-        <div className={`flex items-center justify-center transition-all duration-300 ease-in-out ${isExpanded ? "w-full" : "w-fit mx-auto"}`}>
-          {/* Main template buttons */}
-          {templates.map(template => (
-            <button
-              key={template.id}
-              className={cn(
-                "flex items-center gap-2 transition-colors px-3",
-                activeTemplateId === template.id 
-                  ? "text-monkey-accent" 
-                  : "hover:text-monkey-text text-monkey-subtle"
-              )}
-              onClick={() => handleSelectTemplate(template.id, template.quotes)}
-            >
-              {getIcon(template.id)}
-              <span>{template.name}</span>
-            </button>
-          ))}
-
-          {/* Saved button with toggle functionality */}
-          {user && (
-            <button
-              className={cn(
-                "flex items-center gap-2 transition-colors px-3",
-                isExpanded 
-                  ? "text-monkey-text" 
-                  : "hover:text-monkey-text text-monkey-subtle",
-                savedScripts.some(s => activeTemplateId === s.id) && "text-monkey-accent"
-              )}
-              onClick={toggleExpand}
-            >
-              <Heart className="h-5 w-5" />
-              <span>saved</span>
-            </button>
-          )}
-
-          {/* Expanded section with separator */}
-          {user && (
-            <div
-              className={`flex items-center transition-all duration-300 ease-in-out overflow-hidden ${
-                isExpanded ? "opacity-100 max-w-[500px]" : "opacity-0 max-w-0"
-              }`}
-            >
-              {/* Separator after Saved */}
-              <div className="h-5 w-px bg-slate-700 mx-2 flex-shrink-0"></div>
-
-              {/* Script buttons */}
-              {savedScripts.length > 0 ? (
-                savedScripts.map((script) => (
-                  <button
-                    key={script.id}
-                    className={cn(
-                      "flex items-center gap-2 transition-colors px-3 whitespace-nowrap flex-shrink-0",
-                      activeTemplateId === script.id 
-                        ? "text-monkey-accent" 
-                        : "hover:text-monkey-text text-monkey-subtle"
-                    )}
-                    onClick={() => handleSelectSavedScript(script)}
-                  >
-                    <Hash className="h-5 w-5" />
-                    <span>{script.name}</span>
-                  </button>
-                ))
-              ) : (
-                <span className="text-monkey-subtle opacity-50 px-3 whitespace-nowrap flex-shrink-0">No saved scripts</span>
-              )}
-
-              {/* Separator before Change */}
-              <div className="h-5 w-px bg-slate-700 mx-2 flex-shrink-0"></div>
-
-              {/* Settings button only in expanded state */}
-              <button
-                className="hover:text-monkey-text text-monkey-subtle transition-colors px-3 flex items-center gap-2 whitespace-nowrap flex-shrink-0"
-                onClick={handleOpenScriptManager}
-              >
-                <Settings className="h-5 w-5" />
-                <span>change</span>
-              </button>
-            </div>
-          )}
-        </div>
+  return <div className="w-full mb-6">
+      <div className="relative w-full max-w-2xl mx-auto">
+        <Carousel className="w-full">
+          {/* Position the navigation arrows inside the Carousel context */}
+          <div className="absolute -left-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselPrevious className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
+          
+          {/* Content carousel */}
+          <div className="w-full bg-slate-950 rounded-md py-2 px-1">
+            <CarouselContent className="items-center bg-transparent">
+              {templates.map(template => <CarouselItem key={template.id} className="flex-shrink-0 basis-auto px-1">
+                  <TemplateItem id={template.id} name={template.name} icon={getIcon(template.id)} isActive={activeTemplateId === template.id} onClick={() => handleSelectTemplate(template.id, template.quotes)} />
+                </CarouselItem>)}
+            </CarouselContent>
+          </div>
+          
+          {/* Right navigation arrow */}
+          <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10">
+            <CarouselNext className="h-8 w-8 bg-slate-900/80 border-slate-700 hover:bg-slate-800" />
+          </div>
+        </Carousel>
       </div>
-
-      {user && <ScriptManager 
-        open={isScriptManagerOpen} 
-        onOpenChange={setIsScriptManagerOpen} 
-        scripts={savedScripts} 
-        userId={user.id} 
-        onScriptsChange={loadSavedScripts} 
-        onSelectTemplate={onSelectTemplate}
-      />}
-    </div>
-  );
+    </div>;
 };
-
 export default TemplateMenu;
