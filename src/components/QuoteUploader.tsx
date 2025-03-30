@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,23 +8,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Upload } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
   className?: string;
 }
-
 export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
   onQuotesLoaded,
   className
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const {
+    user
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [quotes, setQuotes] = useState<string[]>([]);
   const [scriptName, setScriptName] = useState('');
-  
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -39,12 +39,11 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
         if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
           // First load the quotes into the typing area
           onQuotesLoaded(quotesData);
-          
+
           // If user is logged in, prompt to save
           // If not logged in, store in temporary storage
           setQuotes(quotesData);
           setScriptName(`Script ${new Date().toLocaleDateString()}`);
-          
           if (user) {
             setIsDialogOpen(true);
           } else {
@@ -54,7 +53,6 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
               quotes: quotesData
             };
             localStorage.setItem("temp_script", JSON.stringify(tempScript));
-            
             toast({
               title: "Script loaded",
               description: "Sign up or log in to save this script permanently."
@@ -83,11 +81,9 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       fileInputRef.current.value = '';
     }
   };
-  
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
-  
   const handleSaveScript = async () => {
     if (!user) {
       toast({
@@ -98,7 +94,6 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       setIsDialogOpen(false);
       return;
     }
-    
     if (!scriptName.trim()) {
       toast({
         title: "Script name required",
@@ -107,10 +102,8 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       });
       return;
     }
-    
     try {
       const savedScript = await scriptService.saveScript(user.id, scriptName, quotes);
-      
       if (savedScript) {
         toast({
           title: "Script saved",
@@ -133,17 +126,11 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       });
     }
   };
-  
-  return (
-    <>
+  return <>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button 
-              onClick={handleButtonClick} 
-              className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal p-2"
-              aria-label="Upload script"
-            >
+            <button onClick={handleButtonClick} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal p-2" aria-label="Upload script">
               <Upload size={16} />
             </button>
           </TooltipTrigger>
@@ -153,13 +140,7 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
         </Tooltip>
       </TooltipProvider>
       
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileSelection} 
-        accept=".json" 
-        className="hidden" 
-      />
+      <input type="file" ref={fileInputRef} onChange={handleFileSelection} accept=".json" className="hidden" />
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-monkey-text">
@@ -169,46 +150,25 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
             <label htmlFor="scriptName" className="block text-sm text-monkey-subtle mb-2">
               Script Name
             </label>
-            <Input
-              id="scriptName"
-              value={scriptName}
-              onChange={(e) => setScriptName(e.target.value)}
-              className="bg-slate-800 border-slate-700 text-monkey-text"
-              placeholder="Enter a name for your script"
-            />
+            <Input id="scriptName" value={scriptName} onChange={e => setScriptName(e.target.value)} className="bg-slate-800 border-slate-700 text-monkey-text" placeholder="Enter a name for your script" />
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsDialogOpen(false)}
-              className="bg-slate-800 hover:bg-slate-700 border-slate-700"
-            >
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="bg-slate-800 hover:bg-slate-700 border-slate-700">
               Cancel
             </Button>
-            <Button 
-              onClick={handleSaveScript}
-              className="bg-monkey-accent text-black hover:bg-monkey-accent/80"
-            >
+            <Button onClick={handleSaveScript} className="bg-monkey-accent text-black hover:bg-monkey-accent/80">
               Save Script
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
-  );
+    </>;
 };
-
 const QuoteUploader: React.FC<QuoteUploaderProps> = ({
   onQuotesLoaded,
   className
 }) => {
-  return (
-    <div className={cn("mt-24 text-center fixed bottom-8 left-0 right-0", className)}>
-      <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
-      <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
-    </div>
-  );
+  return;
 };
-
 export default QuoteUploader;
