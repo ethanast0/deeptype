@@ -42,8 +42,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   const handleUploadQuotes = (newQuotes: string[]) => {
     if (loadNewQuote && newQuotes.length > 0) {
-      // Fixed: Remove the argument since loadNewQuote() can be called without arguments
-      loadNewQuote();
+      loadNewQuote(newQuotes[0]);
     }
   };
 
@@ -78,7 +77,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       <div className="flex gap-4 mt-4">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-        <button onClick={() => loadNewQuote()} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
         
         <TooltipProvider>
           <Tooltip>
