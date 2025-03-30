@@ -8,10 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Upload } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
   className?: string;
 }
+
 export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
   onQuotesLoaded,
   className
@@ -26,6 +28,7 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [quotes, setQuotes] = useState<string[]>([]);
   const [scriptName, setScriptName] = useState('');
+
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -35,19 +38,13 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
         const content = e.target?.result as string;
         const quotesData = JSON.parse(content);
 
-        // Validate that we have an array of strings
         if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
-          // First load the quotes into the typing area
           onQuotesLoaded(quotesData);
-
-          // If user is logged in, prompt to save
-          // If not logged in, store in temporary storage
           setQuotes(quotesData);
           setScriptName(`Script ${new Date().toLocaleDateString()}`);
           if (user) {
             setIsDialogOpen(true);
           } else {
-            // Store temporarily in localStorage
             const tempScript = {
               name: `Script ${new Date().toLocaleDateString()}`,
               quotes: quotesData
@@ -76,14 +73,15 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
     };
     reader.readAsText(file);
 
-    // Reset the input so the same file can be uploaded again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
+
   const handleSaveScript = async () => {
     if (!user) {
       toast({
@@ -126,6 +124,7 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       });
     }
   };
+
   return <>
       <TooltipProvider>
         <Tooltip>
@@ -165,10 +164,9 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       </Dialog>
     </>;
 };
-const QuoteUploader: React.FC<QuoteUploaderProps> = ({
-  onQuotesLoaded,
-  className
-}) => {
-  return;
+
+const QuoteUploader: React.FC<QuoteUploaderProps> = (props) => {
+  return <QuoteUploaderButton {...props} />;
 };
+
 export default QuoteUploader;
