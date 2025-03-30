@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -9,6 +10,7 @@ import {
 } from '../utils/typingUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
+import { useToast } from '../hooks/use-toast';
 
 interface UseTypingTestProps {
   quotes?: string[];
@@ -30,35 +32,14 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   });
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
-  const [showBalloon, setShowBalloon] = useState<boolean>(false);
-  const [careerStats, setCareerStats] = useState({
-    averageWpm: 0,
-    averageAccuracy: 0,
-    totalSessions: 0,
-    totalScripts: 0
-  });
   
   const { user } = useAuth();
+  const { toast } = useToast();
   
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    const loadCareerStats = async () => {
-      if (user) {
-        try {
-          const stats = await typingHistoryService.getUserStats(user.id);
-          setCareerStats(stats);
-        } catch (error) {
-          console.error('Error loading career stats:', error);
-        }
-      }
-    };
-    
-    loadCareerStats();
-  }, [user]);
 
   useEffect(() => {
     if (quotes.length > 0) {
@@ -78,32 +59,39 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             accuracy: stats.accuracy
           });
           
-          const scriptSessions = await typingHistoryService.getScriptSessions(user.id, scriptId);
-          const previousBest = scriptSessions.reduce((best, session) => 
-            session.speed_wpm > best ? session.speed_wpm : best, 0);
-          
-          if (stats.wpm > previousBest && previousBest > 0) {
-            setShowBalloon(true);
-            setTimeout(() => setShowBalloon(false), 3000);
-          }
-          
-          await typingHistoryService.recordSession(
+          const success = await typingHistoryService.recordSession(
             user.id,
             scriptId,
             stats.wpm,
             stats.accuracy
           );
           
-          const updatedStats = await typingHistoryService.getUserStats(user.id);
-          setCareerStats(updatedStats);
+          if (success) {
+            toast({
+              title: "Progress saved",
+              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
+            });
+          } else {
+            console.error('Failed to record typing session');
+            toast({
+              title: "Error saving progress",
+              description: "Unable to save your typing results.",
+              variant: "destructive"
+            });
+          }
         } catch (error) {
           console.error('Error recording typing history:', error);
+          toast({
+            title: "Error saving progress",
+            description: "An error occurred while saving your typing results.",
+            variant: "destructive"
+          });
         }
       }
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy]);
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast]);
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -164,7 +152,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     setCurrentCharIndex(0);
     startTimeRef.current = null;
     resultRecordedRef.current = false;
-    setShowBalloon(false);
     setStats({
       wpm: 0,
       accuracy: 100,
@@ -399,9 +386,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     handleInput,
     resetTest,
     loadNewQuote,
-    focusInput,
-    careerStats,
-    showBalloon
+    focusInput
   };
 };
 

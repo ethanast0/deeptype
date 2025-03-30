@@ -26,9 +26,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     loadNewQuote,
     focusInput,
     currentWordIndex,
-    currentCharIndex,
-    careerStats,
-    showBalloon
+    currentCharIndex
   } = useTypingTest({
     quotes,
     scriptId
@@ -40,13 +38,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   }, [focusInput]);
 
   return <div className={cn("typing-area-container", className)}>
-      <Stats 
-        stats={stats} 
-        isActive={isActive} 
-        isFinished={isFinished} 
-        careerStats={careerStats}
-        showBalloon={showBalloon}
-      />
+      <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
       
       <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
         {words.map((word, wordIndex) => (
