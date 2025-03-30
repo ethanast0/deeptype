@@ -131,13 +131,9 @@
   .typing-input {
     @apply absolute opacity-0 top-0 left-0 w-full h-full cursor-default;
   }
-  
-  .top-stats-container {
-    @apply flex justify-between items-center bg-transparent w-full;
-  }
-  
-  .bottom-stats-container {
-    @apply flex justify-between items-center bg-transparent w-full;
+
+  .stats-container {
+    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle my-6;
   }
 
   .stat-box {
@@ -145,11 +141,11 @@
   }
 
   .stat-value {
-    @apply font-medium text-monkey-text text-sm font-mono;
+    @apply font-medium text-monkey-text;
   }
 
   .stat-label {
-    @apply uppercase tracking-wider text-xs text-monkey-subtle;
+    @apply uppercase tracking-wider;
   }
 
   .button {
@@ -163,26 +159,5 @@
 
   .mono-text {
     @apply font-mono;
-  }
-  
-  .vote-button {
-    @apply flex items-center gap-1 p-0 h-auto transition-colors duration-200
-           text-monkey-subtle hover:text-monkey-accent;
-  }
-  
-  .stats-wrapper {
-    @apply w-full;
-  }
-  
-  .left-stats, .right-stats {
-    @apply flex items-center gap-6;
-  }
-  
-  .votes-section {
-    @apply flex items-center gap-2;
-  }
-  
-  .typed-count {
-    @apply text-xs flex items-center text-monkey-subtle;
   }
 }
