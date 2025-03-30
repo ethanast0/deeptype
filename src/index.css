@@ -133,7 +133,8 @@
   }
 
   .stats-container {
-    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle my-6;
+    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle rounded-md py-2;
+    background-color: rgba(37, 39, 41, 0.8);
   }
 
   .stat-box {
@@ -159,5 +160,10 @@
 
   .mono-text {
     @apply font-mono;
+  }
+  
+  .vote-button {
+    @apply flex items-center gap-1 px-3 py-1 rounded-md transition-colors duration-200
+           bg-opacity-10 hover:bg-opacity-20;
   }
 }
