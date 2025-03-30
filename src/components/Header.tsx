@@ -15,9 +15,7 @@ const Header: React.FC<HeaderProps> = ({
       <div className="container max-w-6xl mx-auto flex justify-between items-center">
         <div className="flex items-center">
           <h1 className="text-2xl font-medium tracking-tight">
-            <Link to="/">
-              <span className="text-monkey-accent">type</span>gram
-            </Link>
+            
           </h1>
         </div>
         
