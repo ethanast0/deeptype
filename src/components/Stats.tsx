@@ -21,7 +21,7 @@ const Stats: React.FC<StatsProps> = ({
       "animate-slide-up": isActive || isFinished
     })}>
       <div className="stat-box">
-        <div className="stat-value text-lg">
+        <div className="stat-value text-base">
           {stats.wpm}
         </div>
         <div className="stat-label text-xs">
@@ -30,7 +30,7 @@ const Stats: React.FC<StatsProps> = ({
       </div>
       
       <div className="stat-box">
-        <div className="stat-value text-lg">
+        <div className="stat-value text-base">
           {stats.accuracy}%
         </div>
         <div className="stat-label text-xs">
@@ -39,7 +39,7 @@ const Stats: React.FC<StatsProps> = ({
       </div>
       
       <div className="stat-box">
-        <div className="stat-value text-lg">
+        <div className="stat-value text-base">
           {formatTime(stats.elapsedTime)}
         </div>
         <div className="stat-label text-xs">
@@ -49,7 +49,7 @@ const Stats: React.FC<StatsProps> = ({
       
       {isFinished && (
         <div className="stat-box text-monkey-accent">
-          <div className="stat-value text-lg">Completed!</div>
+          <div className="stat-value text-base">Completed!</div>
           <div className="stat-label text-xs">status</div>
         </div>
       )}
