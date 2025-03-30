@@ -3,6 +3,9 @@ import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
+import QuoteUploader from './QuoteUploader';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Upload } from 'lucide-react';
 
 interface TypingAreaProps {
   quotes?: string[];
@@ -37,6 +40,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput();
   }, [focusInput]);
 
+  const handleUploadQuotes = (newQuotes: string[]) => {
+    if (loadNewQuote && newQuotes.length > 0) {
+      loadNewQuote(newQuotes[0]);
+    }
+  };
+
   return <div className={cn("typing-area-container", className)}>
       <Stats stats={stats} isActive={isActive} isFinished={isFinished} />
       
@@ -66,9 +75,56 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
       </div>
 
-      <div className="flex gap-4 mt-8">
+      <div className="flex gap-4 mt-4">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={() => document.getElementById('file-input-upload')?.click()} 
+                className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base flex items-center justify-center"
+                aria-label="Upload script"
+              >
+                <Upload size={16} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-slate-800 text-gray-300 border-slate-700">
+              <p>Upload script (JSON array of strings)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <input 
+          id="file-input-upload"
+          type="file" 
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = event => {
+                try {
+                  const content = event.target?.result as string;
+                  const quotes = JSON.parse(content);
+                  if (Array.isArray(quotes) && quotes.every(quote => typeof quote === 'string')) {
+                    handleUploadQuotes(quotes);
+                  }
+                } catch (error) {
+                  console.error('Error parsing file:', error);
+                }
+              };
+              reader.readAsText(file);
+            }
+          }} 
+          accept=".json" 
+          className="hidden" 
+        />
+      </div>
+      
+      {/* Move the QuoteUploader to an invisible container */}
+      <div className="hidden">
+        <QuoteUploader onQuotesLoaded={handleUploadQuotes} />
       </div>
     </div>;
 };

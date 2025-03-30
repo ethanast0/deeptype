@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Upload } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
@@ -134,25 +135,13 @@ const QuoteUploader: React.FC<QuoteUploaderProps> = ({
   
   return (
     <>
-      <div className={cn("mt-24 text-center fixed bottom-8 left-0 right-0", className)}>
-        <p className="mb-4 text-base font-extralight text-monkey-subtle">use json array of strings [ask gemini/gpt to create one]</p>
-        
-        <button 
-          onClick={handleButtonClick} 
-          className="px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
-                   transition-all duration-300 hover:bg-opacity-30"
-        >
-          upload script
-        </button>
-        
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileSelection} 
-          accept=".json" 
-          className="hidden" 
-        />
-      </div>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileSelection} 
+        accept=".json" 
+        className="hidden" 
+      />
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-monkey-text">
