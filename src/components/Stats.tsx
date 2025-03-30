@@ -17,7 +17,7 @@ const Stats: React.FC<StatsProps> = ({
   className 
 }) => {
   return (
-    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded bg-zinc-800/50", 
+    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded", 
       className, 
       {
         "animate-slide-up": isActive || isFinished
