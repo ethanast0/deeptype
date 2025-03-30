@@ -5,6 +5,8 @@ import Stats from './Stats';
 import { cn } from '../lib/utils';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
+import TypingDisplay from './typing/TypingDisplay';
+import TypingControls from './typing/TypingControls';
 
 interface TypingAreaProps {
   quotes?: string[];
@@ -63,7 +65,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             .eq('script_id', scriptId)
             .order('speed_wpm', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
             
           // Fetch votes using RPC
           const { data: upvotesData, error: upvotesError } = await supabase
@@ -173,31 +175,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         showBottomStats={false}
       />
       
-      <div className="typing-area flex flex-wrap text-2xl my-6" onClick={focusInput}>
-        {words.map((word, wordIndex) => (
-            <React.Fragment key={wordIndex}>
-              {/* Word with characters */}
-              <div className="flex">
-                {word.characters.map((char, charIndex) => (
-                  <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
-                    "text-monkey-accent": char.state === 'correct',
-                    "text-monkey-error": char.state === 'incorrect',
-                    "character-current": char.state === 'current'
-                  })}>
-                    {/* Show caret before current character */}
-                    {wordIndex === currentWordIndex && charIndex === currentCharIndex && <span className="caret" />}
-                    {char.char}
-                  </span>
-                ))}
-              </div>
-              {/* Add space between words (except for the last word) */}
-              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>
-          ))}
-        
-        {/* Hidden input to capture keystrokes */}
-        <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
-      </div>
+      <TypingDisplay
+        words={words}
+        currentWordIndex={currentWordIndex}
+        currentCharIndex={currentCharIndex}
+        focusInput={focusInput}
+        inputRef={inputRef}
+        handleInput={handleInput}
+      />
       
       {/* Bottom stats box placed here, below typing area */}
       <Stats
@@ -209,12 +194,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         timesTyped={scriptStats.timesTyped}
       />
       
-      <div className="flex justify-center items-center w-full mt-4 mb-8">
-        <div className="flex gap-4">
-          <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-          <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
-        </div>
-      </div>
+      <TypingControls
+        resetTest={resetTest}
+        loadNewQuote={loadNewQuote}
+      />
     </div>
   );
 };
