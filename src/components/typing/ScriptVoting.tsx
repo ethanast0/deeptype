@@ -26,14 +26,14 @@ const ScriptVoting: React.FC<ScriptVotingProps> = ({
           className="vote-button flex items-center gap-1 text-monkey-subtle hover:text-monkey-accent p-0 h-auto"
           aria-label="Upvote"
         >
-          <ThumbsUp size={16} /> <span className="text-xs">{upvotes}</span>
+          <ThumbsUp size={16} /> <span>{upvotes}</span>
         </button>
         <button 
           onClick={onDownvote} 
           className="vote-button flex items-center gap-1 text-monkey-subtle hover:text-monkey-error p-0 h-auto"
           aria-label="Downvote"
         >
-          <ThumbsDown size={16} /> <span className="text-xs">{downvotes}</span>
+          <ThumbsDown size={16} /> <span>{downvotes}</span>
         </button>
       </div>
       

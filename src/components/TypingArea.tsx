@@ -94,17 +94,17 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             }));
           }
           
-          if (!upvotesError && upvotesData !== null) {
+          if (!upvotesError && typeof upvotesData === 'number') {
             setScriptStats(prev => ({
               ...prev,
-              upvotes: upvotesData as number
+              upvotes: upvotesData
             }));
           }
           
-          if (!downvotesError && downvotesData !== null) {
+          if (!downvotesError && typeof downvotesData === 'number') {
             setScriptStats(prev => ({
               ...prev,
-              downvotes: downvotesData as number
+              downvotes: downvotesData
             }));
           }
         } catch (error) {
@@ -184,17 +184,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         handleInput={handleInput}
       />
       
-      {/* Bottom stats box placed here, below typing area with minimal gap */}
-      <div className="mt-2">
-        <Stats
-          showTopStats={false}
-          upvotes={scriptStats.upvotes}
-          downvotes={scriptStats.downvotes}
-          onUpvote={() => handleVote(true)}
-          onDownvote={() => handleVote(false)}
-          timesTyped={scriptStats.timesTyped}
-        />
-      </div>
+      {/* Bottom stats box placed here, below typing area */}
+      <Stats
+        showTopStats={false}
+        upvotes={scriptStats.upvotes}
+        downvotes={scriptStats.downvotes}
+        onUpvote={() => handleVote(true)}
+        onDownvote={() => handleVote(false)}
+        timesTyped={scriptStats.timesTyped}
+      />
       
       <TypingControls
         resetTest={resetTest}
