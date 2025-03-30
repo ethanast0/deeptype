@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
-import QuoteUploader from '../components/QuoteUploader';
 import TemplateMenu from '../components/TemplateMenu';
 import { defaultQuotes } from '../utils/typingUtils';
 import { supabase } from '../integrations/supabase/client';
@@ -20,12 +18,10 @@ const Index = () => {
     toast
   } = useToast();
 
-  // Fetch or create default script on load
   useEffect(() => {
     const setupDefaultScript = async () => {
       if (!user) return;
       try {
-        // Try to find existing default script
         const {
           data: scripts,
           error
@@ -35,10 +31,8 @@ const Index = () => {
           return;
         }
         if (scripts) {
-          // Use existing default script
           setActiveScriptId(scripts.id);
         } else {
-          // Create a new default script
           const {
             data: newScript,
             error: createError
@@ -85,9 +79,11 @@ const Index = () => {
         
         <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         
-        <TypingArea quotes={quotes} scriptId={activeScriptId} />
-        
-        <QuoteUploader onQuotesLoaded={handleQuotesLoaded} />
+        <TypingArea 
+          quotes={quotes} 
+          scriptId={activeScriptId} 
+          onQuotesLoaded={handleQuotesLoaded}
+        />
       </main>
       
       <Footer />
