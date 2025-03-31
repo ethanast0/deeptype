@@ -109,7 +109,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
           </ToggleGroupItem>
           
           <TooltipProvider>
-            <Tooltip className="-mt-32">
+            <Tooltip>
               <TooltipTrigger asChild>
                 <ToggleGroupItem value="manage" className="h-6 px-2 rounded-full bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent">
                   <Settings className="h-3.5 w-3.5" />
@@ -124,7 +124,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       </div>
       
       {/* Template buttons - horizontally scrollable on mobile */}
-      <ScrollArea className="w-full max-w-full" orientation="horizontal">
+      <ScrollArea className="w-full max-w-full">
         <div className={cn(
           "flex animate-fade-in",
           isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3"
