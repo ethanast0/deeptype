@@ -72,11 +72,7 @@ const Index = () => {
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
-        <div className="mb-8 text-center">
-          <h2 className="text-lg text-monkey-subtle mb-2">for those who know typing bends time</h2>
-        </div>
-        
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex flex-col justify-center">
         <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         
         <TypingArea 
