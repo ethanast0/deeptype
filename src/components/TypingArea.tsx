@@ -4,12 +4,13 @@ import Stats from './Stats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Users } from 'lucide-react';
-import { scriptService } from '../services/scriptService';
+import { scriptService, QuoteStats } from '../services/scriptService';
 
 interface TypingAreaProps {
   quotes: string[];
   className?: string;
   scriptId?: string | null;
+  quoteIds?: string[]; // Array of quote IDs corresponding to quotes array
   onQuotesLoaded?: (quotes: string[]) => void;
   onTypingStateChange?: (isTyping: boolean) => void;
 }
@@ -17,18 +18,21 @@ interface TypingAreaProps {
 interface ScriptStats {
   typed_count: number;
   unique_typers_count: number;
-  average_wpm: number;
+  avg_wpm: number;
   best_wpm: number;
+  avg_accuracy: number;
 }
 
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
   scriptId,
+  quoteIds = [],
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
   const [scriptStats, setScriptStats] = useState<ScriptStats | null>(null);
+  const [quoteStats, setQuoteStats] = useState<QuoteStats[]>([]);
 
   const {
     words,
@@ -44,7 +48,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentCharIndex
   } = useTypingTest({
     quotes,
-    scriptId
+    scriptId,
+    quoteIds
   });
 
   // Auto-focus on mount and when resetting
@@ -62,15 +67,27 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     const loadScriptStats = async () => {
       if (!scriptId) {
         setScriptStats(null);
+        setQuoteStats([]);
         return;
       }
 
       try {
-        const stats = await scriptService.getScriptStats(scriptId);
-        setScriptStats(stats);
+        const script = await scriptService.getScripts({ limit: 1 });
+        if (script.length > 0) {
+          const { typed_count, unique_typers_count, stats, quote_stats } = script[0];
+          setScriptStats({
+            typed_count,
+            unique_typers_count,
+            avg_wpm: stats?.avg_wpm || 0,
+            best_wpm: stats?.best_wpm || 0,
+            avg_accuracy: stats?.avg_accuracy || 0
+          });
+          setQuoteStats(quote_stats || []);
+        }
       } catch (error) {
         console.error('Error loading script stats:', error);
         setScriptStats(null);
+        setQuoteStats([]);
       }
     };
 
@@ -96,7 +113,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             }
           )}>
             <span>
-              <span className="font-medium text-monkey-text">{scriptStats?.average_wpm || 0}</span>{" wpm"}
+              <span className="font-medium text-monkey-text">{scriptStats?.avg_wpm || 0}</span>{" wpm"}
             </span>
             <span className="text-zinc-600">•</span>
             <span>

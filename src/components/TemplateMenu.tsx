@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Heart, Settings } from "lucide-react";
+import { BookOpen, Heart, Settings, Sparkles, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from '../contexts/AuthContext';
 import { SavedScript, scriptService } from '../services/scriptService';
@@ -15,25 +15,25 @@ interface TemplateMenuProps {
   isTyping?: boolean;
 }
 
-type MenuView = 'templates' | 'saved' | 'manage';
+type MenuView = 'featured' | 'top' | 'new' | 'saved' | 'manage';
 
 const TemplateMenu: React.FC<TemplateMenuProps> = ({
   onSelectTemplate,
   isTyping = false
 }) => {
-  const [menuView, setMenuView] = useState<MenuView>('templates');
+  const [menuView, setMenuView] = useState<MenuView>('featured');
   const [isScriptManagerOpen, setIsScriptManagerOpen] = useState(false);
   const [savedScripts, setSavedScripts] = useState<SavedScript[]>([]);
-  const [topScripts, setTopScripts] = useState<SavedScript[]>([]);
+  const [scripts, setScripts] = useState<SavedScript[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Load top scripts on mount
+  // Load scripts based on current view
   useEffect(() => {
-    loadTopScripts();
-  }, []);
+    loadScripts();
+  }, [menuView]);
 
   // Load saved scripts when user changes
   useEffect(() => {
@@ -44,9 +44,39 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     }
   }, [user]);
 
-  const loadTopScripts = async () => {
-    const scripts = await scriptService.getTopScripts(5);
-    setTopScripts(scripts);
+  const loadScripts = async () => {
+    try {
+      let loadedScripts: SavedScript[] = [];
+      
+      switch (menuView) {
+        case 'featured':
+          loadedScripts = await scriptService.getScripts({ 
+            is_featured: true 
+          });
+          break;
+        case 'top':
+          loadedScripts = await scriptService.getScripts({ 
+            orderBy: 'saves_count',
+            limit: 5 
+          });
+          break;
+        case 'new':
+          loadedScripts = await scriptService.getScripts({ 
+            orderBy: 'created_at',
+            limit: 5 
+          });
+          break;
+      }
+      
+      setScripts(loadedScripts);
+    } catch (error) {
+      console.error('Error loading scripts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load scripts.",
+        variant: "destructive"
+      });
+    }
   };
 
   const loadSavedScripts = async () => {
@@ -72,6 +102,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
         description: "Added to your saved scripts."
       });
       loadSavedScripts();
+      loadScripts(); // Reload current view to update saves count
     }
   };
 
@@ -83,6 +114,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
         description: "Removed from your saved scripts."
       });
       loadSavedScripts();
+      loadScripts(); // Reload current view to update saves count
     }
   };
 
@@ -111,6 +143,21 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     setIsScriptManagerOpen(true);
   };
 
+  const getMenuIcon = (view: MenuView) => {
+    switch (view) {
+      case 'featured':
+        return <Sparkles className="h-4 w-4" />;
+      case 'top':
+        return <BookOpen className="h-4 w-4" />;
+      case 'new':
+        return <Clock className="h-4 w-4" />;
+      case 'saved':
+        return <Heart className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className={cn(
       "w-full -mt-32 flex flex-col items-center justify-center transition-opacity duration-300",
@@ -124,17 +171,35 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
           className="flex items-center justify-center gap-1 text-xs"
         >
           <ToggleGroupItem 
-            value="templates" 
-            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent"
+            value="featured" 
+            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent flex items-center gap-1"
           >
-            Top
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Featured</span>
+          </ToggleGroupItem>
+          
+          <ToggleGroupItem 
+            value="top" 
+            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent flex items-center gap-1"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            <span>Top</span>
+          </ToggleGroupItem>
+
+          <ToggleGroupItem 
+            value="new" 
+            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent flex items-center gap-1"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            <span>New</span>
           </ToggleGroupItem>
           
           <ToggleGroupItem 
             value="saved" 
-            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent"
+            className="h-6 px-2 bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-monkey-accent flex items-center gap-1"
           >
-            Saved
+            <Heart className="h-3.5 w-3.5" />
+            <span>Saved</span>
           </ToggleGroupItem>
           
           <TooltipProvider>
@@ -160,7 +225,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
           "flex animate-fade-in",
           isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3"
         )}>
-          {menuView === 'templates' && topScripts.map(script => (
+          {menuView !== 'saved' && scripts.map(script => (
             <div key={script.id} className="relative group">
               <button
                 onClick={() => handleSelectScript(script)}
@@ -172,8 +237,11 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
                     : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
                 )}
               >
-                <BookOpen className="h-4 w-4" />
+                {getMenuIcon(menuView)}
                 <span>{script.name}</span>
+                {script.saves_count > 0 && (
+                  <span className="text-xs text-monkey-subtle">({script.saves_count})</span>
+                )}
               </button>
               
               <button
