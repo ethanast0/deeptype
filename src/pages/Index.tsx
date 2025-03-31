@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -73,10 +74,6 @@ const Index = () => {
       <Header />
       
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
-        <div className="mb-8 text-center">
-          <h2 className="text-lg text-monkey-subtle mb-2">type your favorite things</h2>
-        </div>
-        
         <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         
         <TypingArea 
@@ -84,6 +81,10 @@ const Index = () => {
           scriptId={activeScriptId} 
           onQuotesLoaded={handleQuotesLoaded}
         />
+        
+        <div className="mt-16 mb-4 text-center">
+          <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
+        </div>
       </main>
       
       <Footer />
