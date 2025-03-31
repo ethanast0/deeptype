@@ -77,57 +77,99 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     loadScriptStats();
   }, [scriptId]);
 
-  return <div className={cn("typing-area-container w-full", className)}>
-      <div className="w-full flex flex-col -mt-4">
-        <div className="flex justify-between items-start w-full">
+  return (
+    <div className={cn("typing-area-container w-full", className)}>
+      <div className="w-full flex flex-col">
+        {/* Top stats bar */}
+        <div className="flex justify-between items-center w-full mb-4">
           <Stats 
             stats={stats} 
             isActive={isActive} 
-            isFinished={isFinished} 
-            className="self-start"
-            scriptStats={scriptStats ? {
-              average_wpm: scriptStats.average_wpm,
-              best_wpm: scriptStats.best_wpm
-            } : null}
+            isFinished={isFinished}
           />
           
-          {scriptStats && (
-            <div className="flex items-center gap-2 text-xs text-monkey-subtle">
-              <Users className="h-3 w-3" />
-              <span>{scriptStats.unique_typers_count} typers</span>
-            </div>
-          )}
+          {/* Global stats */}
+          <div className={cn(
+            "flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded",
+            {
+              "animate-slide-up": isActive || isFinished
+            }
+          )}>
+            <span>
+              <span className="font-medium text-monkey-text">{scriptStats?.average_wpm || 0}</span>{" wpm"}
+            </span>
+            <span className="text-zinc-600">•</span>
+            <span>
+              <span className="font-medium text-monkey-text">{scriptStats?.typed_count || 0}</span>{" typed"}
+            </span>
+          </div>
         </div>
       </div>
       
-      <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
-        {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
-              {/* Word with characters */}
+      {/* Typing area */}
+      <div className="relative">
+        <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
+          {words.map((word, wordIndex) => (
+            <React.Fragment key={wordIndex}>
               <div className="flex">
-                {word.characters.map((char, charIndex) => <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
-            "text-monkey-accent": char.state === 'correct',
-            "text-monkey-error": char.state === 'incorrect',
-            "character-current": char.state === 'current'
-          })}>
-                    {/* Show caret before current character */}
-                    {wordIndex === currentWordIndex && charIndex === currentCharIndex && <span className="caret" />}
+                {word.characters.map((char, charIndex) => (
+                  <span
+                    key={`${wordIndex}-${charIndex}`}
+                    className={cn("character", {
+                      "text-monkey-accent": char.state === 'correct',
+                      "text-monkey-error": char.state === 'incorrect',
+                      "character-current": char.state === 'current'
+                    })}
+                  >
+                    {wordIndex === currentWordIndex && charIndex === currentCharIndex && (
+                      <span className="caret" />
+                    )}
                     {char.char}
-                  </span>)}
+                  </span>
+                ))}
               </div>
-              {/* Add space between words (except for the last word) */}
               {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>)}
-        
-        {/* Hidden input to capture keystrokes */}
-        <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
+            </React.Fragment>
+          ))}
+          
+          <input
+            ref={inputRef}
+            type="text"
+            className="typing-input"
+            onChange={handleInput}
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck="false"
+            aria-label="Typing input"
+          />
+        </div>
+
+        {/* Typers count at bottom right */}
+        <div className="absolute -bottom-6 right-0 flex items-center gap-2 text-xs text-monkey-subtle">
+          <Users className="h-3 w-3" />
+          <span>{scriptStats?.unique_typers_count || 0} people typed this</span>
+        </div>
       </div>
 
-      <div className="flex gap-4 mt-8">
-        <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+      {/* Bottom buttons */}
+      <div className="flex gap-4 mt-12">
+        <button
+          onClick={resetTest}
+          className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
+        >
+          redo
+        </button>
+        <button
+          onClick={loadNewQuote}
+          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
+        >
+          new [shift + enter]
+        </button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default TypingArea;
