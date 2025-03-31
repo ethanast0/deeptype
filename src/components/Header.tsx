@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
+import { useIsMobile } from '../hooks/use-mobile';
 
 interface HeaderProps {
   className?: string;
@@ -11,17 +10,19 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({
   className
 }) => {
-  const {
-    user
-  } = useAuth();
+  const isMobile = useIsMobile();
   
   return <header className={cn("py-6 px-8", className)}>
-      <div className="container max-w-6xl mx-auto flex justify-between items-center">
-        <div className="flex items-center">
-          <h1 className="text-2xl font-medium tracking-tight">
-            typings
-          </h1>
-        </div>
+      <div className="container max-w-6xl mx-auto flex flex-col items-center">
+        <h1 className="text-2xl font-medium tracking-tight">
+          typings
+        </h1>
+        <p className={cn(
+          "text-monkey-subtle mt-1 text-center", 
+          isMobile ? "text-xs" : "text-sm"
+        )}>
+          for those who know typing bends time
+        </p>
       </div>
     </header>;
 };
