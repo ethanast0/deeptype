@@ -1,53 +1,18 @@
 import { supabase } from '../integrations/supabase/client';
 
-export interface QuoteStats {
-  id: string;
-  script_id: string;
-  content: string;
-  quote_index: number;
-  typed_count: number;
-  unique_typers_count: number;
-  avg_wpm: number;
-  best_wpm: number;
-  avg_accuracy: number;
-}
-
 export interface SavedScript {
   id: string;
   name: string;
-  content: string;
-  category: string;
-  created_at: string;
-  user_id: string;
-  is_featured: boolean;
-  saves_count: number;
-  typed_count: number;
-  unique_typers_count: number;
-  quotes?: QuoteStats[];
-}
-
-interface GetScriptsOptions {
-  is_featured?: boolean;
-  orderBy?: string;
-  limit?: number;
-}
-
-interface ScriptRow {
-  id: string;
-  name: string;
-  content: string;
-  category: string;
-  created_at: string;
-  user_id: string;
-  is_featured: boolean;
-  saves_count: number;
-  typed_count: number;
-  unique_typers_count: number;
-  script_quotes?: QuoteStats[];
-}
-
-interface SavedScriptRow {
-  script: ScriptRow;
+  quotes: string[];
+  userId: string;
+  createdAt: string;
+  category?: string;
+  stats?: {
+    typed_count: number;
+    unique_typers_count: number;
+    average_wpm: number;
+    average_accuracy: number;
+  };
 }
 
 // Constants for script management
@@ -55,202 +20,203 @@ const MAX_USER_SCRIPTS = 5;
 
 // Helper functions for script storage
 export const scriptService = {
-  async getScripts(options: GetScriptsOptions = {}): Promise<SavedScript[]> {
+  // Get top scripts from script_views
+  getTopScripts: async (limit: number = 5): Promise<SavedScript[]> => {
     try {
-      let query = supabase
-        .from('scripts')
-        .select(`
-          *,
-          script_quotes (
-            id,
-            content,
-            quote_index,
-            typed_count,
-            unique_typers_count,
-            avg_wpm,
-            best_wpm,
-            avg_accuracy
-          )
-        `);
+      const { data, error } = await supabase
+        .from('script_views')
+        .select('*')
+        .order('unique_typers_count', { ascending: false })
+        .limit(limit);
 
-      if (options.is_featured) {
-        query = query.eq('is_featured', true);
+      if (error) {
+        console.error('Error fetching top scripts:', error);
+        return [];
       }
 
-      if (options.orderBy) {
-        query = query.order(options.orderBy, { ascending: false });
+      return data.map(script => ({
+        id: script.id,
+        name: script.title,
+        quotes: JSON.parse(script.content),
+        userId: script.user_id,
+        createdAt: script.created_at,
+        category: script.category,
+        stats: {
+          typed_count: script.typed_count,
+          unique_typers_count: script.unique_typers_count,
+          average_wpm: script.average_wpm,
+          average_accuracy: script.average_accuracy
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching top scripts:', error);
+      return [];
+    }
+  },
+
+  // Save script to user's saved scripts
+  saveToFavorites: async (scriptId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('saved_scripts')
+        .insert({ script_id: scriptId });
+
+      if (error) {
+        console.error('Error saving script to favorites:', error);
+        return false;
       }
 
-      if (options.limit) {
-        query = query.limit(options.limit);
+      return true;
+    } catch (error) {
+      console.error('Error saving to favorites:', error);
+      return false;
+    }
+  },
+
+  // Remove script from user's saved scripts
+  removeFromFavorites: async (scriptId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('saved_scripts')
+        .delete()
+        .eq('script_id', scriptId);
+
+      if (error) {
+        console.error('Error removing script from favorites:', error);
+        return false;
       }
 
-      const { data, error } = await query;
+      return true;
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      return false;
+    }
+  },
 
-      if (error) throw error;
+  // Get user's saved scripts
+  getSavedScripts: async (): Promise<SavedScript[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('script_views')
+        .select('*')
+        .eq('is_saved', true);
 
-      return (data as unknown as ScriptRow[]).map(script => ({
-        ...script,
-        quotes: script.script_quotes || []
+      if (error) {
+        console.error('Error fetching saved scripts:', error);
+        return [];
+      }
+
+      return data.map(script => ({
+        id: script.id,
+        name: script.title,
+        quotes: JSON.parse(script.content),
+        userId: script.user_id,
+        createdAt: script.created_at,
+        category: script.category,
+        stats: {
+          typed_count: script.typed_count,
+          unique_typers_count: script.unique_typers_count,
+          average_wpm: script.average_wpm,
+          average_accuracy: script.average_accuracy
+        }
+      }));
+    } catch (error) {
+      console.error('Error fetching saved scripts:', error);
+      return [];
+    }
+  },
+
+  // Get scripts from Supabase
+  getScripts: async (userId: string): Promise<SavedScript[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('script_views')
+        .select('*')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error fetching scripts:', error);
+        return [];
+      }
+      
+      return data.map(script => ({
+        id: script.id,
+        name: script.title,
+        quotes: JSON.parse(script.content),
+        userId: script.user_id,
+        createdAt: script.created_at,
+        category: script.category,
+        stats: {
+          typed_count: script.typed_count,
+          unique_typers_count: script.unique_typers_count,
+          average_wpm: script.average_wpm,
+          average_accuracy: script.average_accuracy
+        }
       }));
     } catch (error) {
       console.error('Error fetching scripts:', error);
       return [];
     }
   },
-
-  async getSavedScripts(userId: string): Promise<SavedScript[]> {
+  
+  // Save script to Supabase
+  saveScript: async (userId: string, name: string, quotes: string[], category: string = 'Custom'): Promise<SavedScript | null> => {
     try {
-      const { data, error } = await supabase
-        .from('saved_scripts')
-        .select(`
-          script:script_id (
-            id,
-            name,
-            content,
-            category,
-            user_id,
-            created_at,
-            is_featured,
-            saves_count,
-            typed_count,
-            unique_typers_count,
-            script_quotes (
-              id,
-              content,
-              quote_index,
-              typed_count,
-              unique_typers_count,
-              avg_wpm,
-              best_wpm,
-              avg_accuracy
-            )
-          )
-        `)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      return (data as unknown as SavedScriptRow[])?.map(item => ({
-        ...item.script,
-        quotes: item.script.script_quotes || []
-      })) || [];
-    } catch (error) {
-      console.error('Error fetching saved scripts:', error);
-      throw error;
-    }
-  },
-
-  async saveToFavorites(scriptId: string): Promise<boolean> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-
-    const { error } = await supabase
-      .from('saved_scripts')
-      .insert({ user_id: user.id, script_id: scriptId });
-
-    if (error) {
-      console.error('Error saving script:', error);
-      return false;
-    }
-
-    return true;
-  },
-
-  async removeFromFavorites(scriptId: string): Promise<boolean> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-
-    const { error } = await supabase
-      .from('saved_scripts')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('script_id', scriptId);
-
-    if (error) {
-      console.error('Error removing script:', error);
-      return false;
-    }
-
-    return true;
-  },
-
-  async uploadScript(name: string, content: string, category: string): Promise<boolean> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-
-    try {
-      // Start a transaction by using single batch
-      const quotes = content.split('\n').filter(Boolean);
+      // Check if user already has 5 scripts
+      const existingScripts = await scriptService.getScripts(userId);
       
-      // Insert the script first
-      const { data: script, error: scriptError } = await supabase
+      if (existingScripts.length >= MAX_USER_SCRIPTS) {
+        return null;
+      }
+      
+      // Insert script to Supabase
+      const { data, error } = await supabase
         .from('scripts')
         .insert({
-          name,
-          content,
+          user_id: userId,
+          title: name,
+          content: JSON.stringify(quotes),
           category,
-          user_id: user.id,
-          is_featured: false,
-          saves_count: 0,
-          typed_count: 0,
-          unique_typers_count: 0
+          created_by: userId
         })
-        .select('id')
+        .select()
         .single();
-
-      if (scriptError) throw scriptError;
-
-      // Then insert all quotes
-      const quoteRows = quotes.map((quote, index) => ({
-        script_id: script.id,
-        content: quote,
-        quote_index: index,
-        typed_count: 0,
-        unique_typers_count: 0,
-        avg_wpm: 0,
-        best_wpm: 0,
-        avg_accuracy: 0
-      }));
-
-      const { error: quotesError } = await supabase
-        .from('script_quotes')
-        .insert(quoteRows);
-
-      if (quotesError) throw quotesError;
-
-      return true;
+      
+      if (error) {
+        console.error('Error saving script to Supabase:', error);
+        return null;
+      }
+      
+      // Return in SavedScript format
+      return {
+        id: data.id,
+        name: data.title,
+        quotes: JSON.parse(data.content),
+        userId: data.user_id,
+        createdAt: data.created_at,
+        category: data.category
+      };
     } catch (error) {
-      console.error('Error uploading script:', error);
-      return false;
+      console.error('Error saving script:', error);
+      return null;
     }
   },
-
-  async updateScript(script: SavedScript): Promise<boolean> {
+  
+  // Update script in Supabase
+  updateScript: async (script: SavedScript): Promise<boolean> => {
     try {
-      const { error: scriptError } = await supabase
+      const { error } = await supabase
         .from('scripts')
         .update({
-          name: script.name,
-          content: script.content,
-          category: script.category
+          title: script.name,
+          content: JSON.stringify(script.quotes),
+          category: script.category || 'Custom'
         })
         .eq('id', script.id);
       
-      if (scriptError) throw scriptError;
-
-      // Update quotes if they exist
-      if (script.quotes) {
-        const { error: quotesError } = await supabase
-          .from('script_quotes')
-          .upsert(
-            script.quotes.map(quote => ({
-              script_id: script.id,
-              ...quote
-            }))
-          );
-        
-        if (quotesError) throw quotesError;
+      if (error) {
+        console.error('Error updating script in Supabase:', error);
+        return false;
       }
       
       return true;
@@ -259,16 +225,19 @@ export const scriptService = {
       return false;
     }
   },
-
-  async deleteScript(scriptId: string): Promise<boolean> {
+  
+  // Delete script from Supabase
+  deleteScript: async (scriptId: string): Promise<boolean> => {
     try {
-      // Due to CASCADE delete, this will also delete related quotes
       const { error } = await supabase
         .from('scripts')
         .delete()
         .eq('id', scriptId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting script from Supabase:', error);
+        return false;
+      }
       
       return true;
     } catch (error) {
@@ -276,28 +245,28 @@ export const scriptService = {
       return false;
     }
   },
+  
+  // Get system templates is not needed as templates are handled separately
+  getTemplates: (): SavedScript[] => {
+    return [];
+  },
 
-  async recordTypingHistory(
-    userId: string,
-    scriptId: string,
-    quoteId: string,
-    wpm: number,
-    accuracy: number,
-    elapsedTime: number
-  ): Promise<boolean> {
+  // Record typing history in Supabase
+  recordTypingHistory: async (userId: string, scriptId: string, wpm: number, accuracy: number): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('typing_history')
         .insert({
           user_id: userId,
           script_id: scriptId,
-          quote_id: quoteId,
-          wpm,
-          accuracy,
-          elapsed_time: elapsedTime
+          speed_wpm: wpm,
+          accuracy
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error recording typing history to Supabase:', error);
+        return false;
+      }
       
       return true;
     } catch (error) {
@@ -306,29 +275,49 @@ export const scriptService = {
     }
   },
 
-  async getTypingHistory(userId: string): Promise<any[]> {
+  // Get typing history from Supabase
+  getTypingHistory: async (userId: string): Promise<any[]> => {
     try {
       const { data, error } = await supabase
         .from('typing_history')
-        .select(`
-          *,
-          script:script_id (
-            name,
-            category
-          ),
-          quote:quote_id (
-            content,
-            quote_index
-          )
-        `)
+        .select('*')
         .eq('user_id', userId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching typing history from Supabase:', error);
+        return [];
+      }
       
       return data;
     } catch (error) {
       console.error('Error fetching typing history:', error);
       return [];
     }
-  }
+  },
+
+  // Get script stats from script_views
+  getScriptStats: async (scriptId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('script_views')
+        .select('typed_count, unique_typers_count, average_wpm, best_wpm')
+        .eq('id', scriptId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching script stats:', error);
+        return null;
+      }
+
+      return {
+        typed_count: data.typed_count || 0,
+        unique_typers_count: data.unique_typers_count || 0,
+        average_wpm: data.average_wpm || 0,
+        best_wpm: data.best_wpm || data.average_wpm || 0
+      };
+    } catch (error) {
+      console.error('Error fetching script stats:', error);
+      return null;
+    }
+  },
 };
