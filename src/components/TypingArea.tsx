@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
@@ -38,13 +39,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput();
   }, [focusInput]);
 
-  return <div className={cn("flex flex-col items-center", className)}>
-      <div className="w-full mb-2">
+  return <div className={cn("flex flex-col items-center justify-center w-full", className)}>
+      <div className="w-full mb-4">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
       </div>
       
       <div 
-        className="typing-area flex flex-wrap text-2xl w-full" 
+        className="typing-area flex flex-wrap text-2xl w-full mb-6" 
         onClick={focusInput}
       >
         {words.map((word, wordIndex) => (
@@ -68,7 +69,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
       </div>
 
-      <div className="flex gap-4 mt-8 justify-center w-full">
+      <div className="flex gap-4 mt-2 justify-center w-full">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />

@@ -73,12 +73,12 @@ const Index = () => {
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-4 flex flex-col items-center justify-center">
-        <div className="w-full max-w-3xl mb-6">
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-4 flex flex-col min-h-[calc(100vh-120px)]">
+        <div className="w-full max-w-3xl mx-auto">
           <TemplateMenu onSelectTemplate={handleTemplateSelected} />
         </div>
         
-        <div className="w-full flex flex-col items-center justify-center flex-1">
+        <div className="w-full flex-1 flex items-center justify-center my-6">
           <TypingArea 
             quotes={quotes} 
             scriptId={activeScriptId} 
@@ -87,7 +87,7 @@ const Index = () => {
           />
         </div>
         
-        <div className="mt-12 mb-4 text-center">
+        <div className="mt-auto pb-4 text-center">
           <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
         </div>
       </main>
