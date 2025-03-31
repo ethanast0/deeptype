@@ -73,16 +73,21 @@ const Index = () => {
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
-        <TemplateMenu onSelectTemplate={handleTemplateSelected} />
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-4 flex flex-col items-center justify-center">
+        <div className="w-full max-w-3xl mb-6">
+          <TemplateMenu onSelectTemplate={handleTemplateSelected} />
+        </div>
         
-        <TypingArea 
-          quotes={quotes} 
-          scriptId={activeScriptId} 
-          onQuotesLoaded={handleQuotesLoaded}
-        />
+        <div className="w-full flex flex-col items-center justify-center flex-1">
+          <TypingArea 
+            quotes={quotes} 
+            scriptId={activeScriptId} 
+            onQuotesLoaded={handleQuotesLoaded}
+            className="w-full max-w-3xl"
+          />
+        </div>
         
-        <div className="mt-16 mb-4 text-center">
+        <div className="mt-12 mb-4 text-center">
           <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
         </div>
       </main>
