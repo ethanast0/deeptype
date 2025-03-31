@@ -1,342 +1,203 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
+import React, { useState, useCallback } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SavedScript, scriptService } from '../services/scriptService';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowUp, ArrowDown, Edit, Trash, Plus, Save, Upload } from 'lucide-react';
-import { SavedScript, scriptService } from '@/services/scriptService';
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ScriptManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scripts: SavedScript[];
-  userId: string;
+  userId?: string;
   onScriptsChange: () => void;
-  onSelectTemplate?: (quotes: string[]) => void;
+  onSelectTemplate: (quotes: string[], scriptId?: string) => void;
+  onScriptUploaded?: (quotes: string[]) => void;
 }
 
 const ScriptManager: React.FC<ScriptManagerProps> = ({
   open,
   onOpenChange,
-  scripts,
   userId,
   onScriptsChange,
-  onSelectTemplate
+  onSelectTemplate,
+  onScriptUploaded = () => {}
 }) => {
-  const [editingScript, setEditingScript] = useState<SavedScript | null>(null);
-  const [scriptName, setScriptName] = useState('');
-  const [scriptContent, setScriptContent] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const [name, setName] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('Custom');
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
-  const handleEdit = (script: SavedScript) => {
-    setEditingScript(script);
-    setScriptName(script.name);
-    setScriptContent(script.quotes.join('\n'));
+  const handleSave = async () => {
+    if (!name || !content) {
+      toast({
+        variant: "destructive",
+        title: "Missing Fields",
+        description: "Please fill in all required fields.",
+      } as const);
+      return;
+    }
+
+    try {
+      const script = await scriptService.uploadScript({
+        title: name,
+        content,
+        category,
+        user_id: userId || '',
+        is_featured: false,
+        saves_count: 0,
+        typed_count: 0,
+        unique_typers_count: 0
+      });
+
+      if (script) {
+        toast({
+          title: "Success",
+          description: "Script saved successfully.",
+        } as const);
+        onScriptsChange();
+        onOpenChange(false);
+        setName('');
+        setContent('');
+        setCategory('Custom');
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save script. Please try again.",
+      } as const);
+    }
   };
 
-  const handleCreate = () => {
-    if (scripts.length >= 5) {
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
       toast({
-        title: "Maximum scripts reached",
-        description: "You can only save up to 5 scripts. Please delete some to create new ones.",
-        variant: "destructive"
+        variant: "destructive",
+        title: "Authentication required",
+        description: "Please sign in to upload scripts"
       });
       return;
     }
-    
-    // Instead of showing an empty form, trigger the file upload
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
 
-  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const content = e.target?.result as string;
-        const quotesData = JSON.parse(content);
 
-        // Validate that we have an array of strings
-        if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
-          // Set up for editing form
-          setEditingScript(null);
-          setScriptName(`Script ${new Date().toLocaleDateString()}`);
-          setScriptContent(quotesData.join('\n'));
-          
-          // Also update typing area if callback provided
-          if (onSelectTemplate) {
-            onSelectTemplate(quotesData);
-          }
-        } else {
-          toast({
-            title: "Invalid format",
-            description: "Please upload a JSON array of strings.",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing JSON file:', error);
-        toast({
-          title: "Error parsing file",
-          description: "Please ensure it is a valid JSON file.",
-          variant: "destructive"
-        });
-      }
-    };
-    reader.readAsText(file);
-
-    // Reset the input so the same file can be uploaded again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleSave = async () => {
-    if (!scriptName.trim()) {
-      toast({
-        title: "Script name required",
-        description: "Please provide a name for your script.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const quotes = scriptContent.split('\n').filter(line => line.trim());
-    
-    if (quotes.length === 0) {
-      toast({
-        title: "Script content required",
-        description: "Please provide content for your script.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    setIsUploading(true);
     try {
-      if (editingScript) {
-        // Update existing script
-        const updated = await scriptService.updateScript({
-          ...editingScript,
-          name: scriptName,
-          quotes
-        });
-        
-        if (updated) {
-          toast({
-            title: "Script updated",
-            description: "Your script has been updated in Supabase."
-          });
-          onScriptsChange();
-          setEditingScript(null);
-        } else {
-          toast({
-            title: "Failed to update script",
-            description: "An error occurred while updating your script.",
-            variant: "destructive"
-          });
-        }
-      } else {
-        // Create new script
-        const newScript = await scriptService.saveScript(userId, scriptName, quotes);
-        
-        if (newScript) {
-          toast({
-            title: "Script created",
-            description: "Your new script has been saved to Supabase."
-          });
-          onScriptsChange();
-          setEditingScript(null);
-        } else {
-          toast({
-            title: "Failed to create script",
-            description: "You can have a maximum of 5 saved scripts.",
-            variant: "destructive"
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error saving script:", error);
-      toast({
-        title: "Error",
-        description: "There was an error saving your script.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDelete = async (scriptId: string) => {
-    try {
-      const deleted = await scriptService.deleteScript(scriptId);
+      const content = await file.text();
+      const quotes = content.split('\n').filter(Boolean);
       
-      if (deleted) {
+      if (quotes.length === 0) {
         toast({
-          title: "Script deleted",
-          description: "Your script has been deleted from Supabase."
+          variant: "destructive",
+          title: "Invalid file",
+          description: "No valid quotes found in file"
         });
-        onScriptsChange();
-        
-        if (editingScript?.id === scriptId) {
-          setEditingScript(null);
-        }
-      } else {
+        return;
+      }
+
+      const script = await scriptService.uploadScript({
+        title: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
+        content: quotes.join('\n'),
+        category: 'Custom',
+        user_id: user.id,
+        is_featured: false,
+        saves_count: 0,
+        typed_count: 0,
+        unique_typers_count: 0
+      });
+
+      if (script) {
         toast({
-          title: "Failed to delete script",
-          description: "An error occurred while deleting your script.",
-          variant: "destructive"
-        });
+          title: "Success",
+          description: "Script uploaded successfully.",
+        } as const);
+        onScriptUploaded(quotes);
       }
     } catch (error) {
-      console.error("Error deleting script:", error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: "There was an error deleting your script.",
-        variant: "destructive"
-      });
+        description: "Failed to upload script. Please try again.",
+      } as const);
+    } finally {
+      setIsUploading(false);
+      // Reset the input
+      event.target.value = '';
     }
-  };
-
-  const handleMoveUp = (index: number) => {
-    if (index <= 0) return;
-    
-    // We don't have a direct reordering function with Supabase
-    // So we handle this client-side for now
-    const updatedScripts = [...scripts];
-    const temp = updatedScripts[index];
-    updatedScripts[index] = updatedScripts[index - 1];
-    updatedScripts[index - 1] = temp;
-    
-    // Update UI through the parent component
-    onScriptsChange();
-  };
-
-  const handleMoveDown = (index: number) => {
-    if (index >= scripts.length - 1) return;
-    
-    // We don't have a direct reordering function with Supabase
-    // So we handle this client-side for now
-    const updatedScripts = [...scripts];
-    const temp = updatedScripts[index];
-    updatedScripts[index] = updatedScripts[index + 1];
-    updatedScripts[index + 1] = temp;
-    
-    // Update UI through the parent component
-    onScriptsChange();
-  };
-
-  const cancelEditing = () => {
-    setEditingScript(null);
-  };
+  }, [user, onScriptUploaded, toast]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-monkey-text">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Manage Your Scripts</DialogTitle>
+          <DialogTitle>Add New Script</DialogTitle>
         </DialogHeader>
-        
-        {!editingScript ? (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm text-monkey-subtle">Your saved scripts ({scripts.length}/5)</h3>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleCreate} 
-                disabled={scripts.length >= 5}
-                className="bg-slate-800 hover:bg-slate-700 border-slate-700"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Script
-              </Button>
-              
-              {/* Hidden file input for script upload */}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileSelection} 
-                accept=".json" 
-                className="hidden" 
-              />
-            </div>
-            
-            <div className="max-h-[50vh] overflow-y-auto space-y-2">
-              {scripts.map((script, index) => (
-                <div key={script.id} className="flex items-center justify-between p-2 rounded-md bg-slate-800 border border-slate-700">
-                  <span className="text-sm truncate flex-1">{script.name}</span>
-                  <div className="flex space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleMoveUp(index)} disabled={index === 0}>
-                      <ArrowUp className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleMoveDown(index)} disabled={index === scripts.length - 1}>
-                      <ArrowDown className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(script)}>
-                      <Edit className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(script.id)}>
-                      <Trash className="w-4 h-4 text-monkey-subtle hover:text-monkey-text" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-              
-              {scripts.length === 0 && (
-                <div className="text-center py-4 text-monkey-subtle">
-                  No scripts saved. Upload one to get started.
-                </div>
-              )}
-            </div>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter script name"
+            />
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="scriptName" className="block text-sm text-monkey-subtle mb-1">
-                Script Name
-              </label>
-              <Input
-                id="scriptName"
-                value={scriptName}
-                onChange={(e) => setScriptName(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-monkey-text"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="scriptContent" className="block text-sm text-monkey-subtle mb-1">
-                Script Content (one quote per line)
-              </label>
-              <textarea
-                id="scriptContent"
-                value={scriptContent}
-                onChange={(e) => setScriptContent(e.target.value)}
-                rows={10}
-                className="w-full bg-slate-800 border border-slate-700 rounded-md p-2 text-monkey-text resize-y"
-              />
-            </div>
-            
-            <DialogFooter className="flex gap-2 sm:gap-0">
-              <Button variant="outline" onClick={cancelEditing} className="bg-slate-800 hover:bg-slate-700 border-slate-700">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} className="bg-monkey-accent text-black hover:bg-monkey-accent/80">
-                <Save className="w-4 h-4 mr-2" />
-                Save Script
-              </Button>
-            </DialogFooter>
+          <div>
+            <Label htmlFor="content">Content</Label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Enter script content"
+              className="w-full h-32 p-2 border rounded"
+            />
           </div>
-        )}
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Custom">Custom</SelectItem>
+                <SelectItem value="Code">Code</SelectItem>
+                <SelectItem value="Quote">Quote</SelectItem>
+                <SelectItem value="Article">Article</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>Save</Button>
+          </div>
+
+          <div>
+            <input
+              type="file"
+              accept=".txt,.json"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+              className="hidden"
+              id="script-upload"
+            />
+            <label
+              htmlFor="script-upload"
+              className={`button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base cursor-pointer ${
+                isUploading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {isUploading ? 'uploading...' : 'upload'}
+            </label>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
