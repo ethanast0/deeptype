@@ -40,7 +40,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput();
   }, [focusInput]);
 
-  return <div className={cn("typing-area-container", className)}>
+  return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col mb-2">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
       </div>

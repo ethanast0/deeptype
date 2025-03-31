@@ -73,17 +73,21 @@ const Index = () => {
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
-        <TemplateMenu onSelectTemplate={handleTemplateSelected} />
-        
-        <TypingArea 
-          quotes={quotes} 
-          scriptId={activeScriptId} 
-          onQuotesLoaded={handleQuotesLoaded}
-        />
-        
-        <div className="mt-16 mb-4 text-center">
-          <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex flex-col justify-center">
+        <div className="flex flex-col justify-between h-full">
+          <TemplateMenu onSelectTemplate={handleTemplateSelected} />
+          
+          <div className="flex-1 flex items-center justify-center my-8">
+            <TypingArea 
+              quotes={quotes} 
+              scriptId={activeScriptId} 
+              onQuotesLoaded={handleQuotesLoaded}
+            />
+          </div>
+          
+          <div className="text-center">
+            <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
+          </div>
         </div>
       </main>
       
