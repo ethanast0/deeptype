@@ -225,7 +225,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
           "flex animate-fade-in",
           isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3"
         )}>
-          {menuView !== 'saved' && scripts.map(script => (
+          {menuView !== 'saved' && scripts?.map(script => (
             <div key={script.id} className="relative group">
               <button
                 onClick={() => handleSelectScript(script)}

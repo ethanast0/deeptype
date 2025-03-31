@@ -37,28 +37,19 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
       toast({
         variant: "destructive",
         title: "Missing Fields",
-        description: "Please fill in all required fields.",
-      } as const);
+        description: "Please fill in all required fields."
+      });
       return;
     }
 
     try {
-      const script = await scriptService.uploadScript({
-        title: name,
-        content,
-        category,
-        user_id: userId || '',
-        is_featured: false,
-        saves_count: 0,
-        typed_count: 0,
-        unique_typers_count: 0
-      });
+      const success = await scriptService.uploadScript(name, content, category);
 
-      if (script) {
+      if (success) {
         toast({
           title: "Success",
-          description: "Script saved successfully.",
-        } as const);
+          description: "Script saved successfully."
+        });
         onScriptsChange();
         onOpenChange(false);
         setName('');
@@ -69,8 +60,8 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save script. Please try again.",
-      } as const);
+        description: "Failed to save script. Please try again."
+      });
     }
   };
 
@@ -101,30 +92,25 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         return;
       }
 
-      const script = await scriptService.uploadScript({
-        title: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
-        content: quotes.join('\n'),
-        category: 'Custom',
-        user_id: user.id,
-        is_featured: false,
-        saves_count: 0,
-        typed_count: 0,
-        unique_typers_count: 0
-      });
+      const success = await scriptService.uploadScript(
+        file.name.replace(/\.[^/.]+$/, ''),
+        content,
+        'Custom'
+      );
 
-      if (script) {
+      if (success) {
         toast({
           title: "Success",
-          description: "Script uploaded successfully.",
-        } as const);
+          description: "Script uploaded successfully."
+        });
         onScriptUploaded(quotes);
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to upload script. Please try again.",
-      } as const);
+        description: "Failed to upload script. Please try again."
+      });
     } finally {
       setIsUploading(false);
       // Reset the input
@@ -138,8 +124,8 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Script</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
             <Label htmlFor="name">Name</Label>
             <Input
               id="name"
@@ -148,17 +134,18 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
               placeholder="Enter script name"
             />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label htmlFor="content">Content</Label>
-            <textarea
+            <Input
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Enter script content"
-              className="w-full h-32 p-2 border rounded"
+              className="h-32"
+              type="textarea"
             />
           </div>
-          <div>
+          <div className="grid gap-2">
             <Label htmlFor="category">Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
@@ -166,36 +153,28 @@ const ScriptManager: React.FC<ScriptManagerProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Custom">Custom</SelectItem>
-                <SelectItem value="Code">Code</SelectItem>
-                <SelectItem value="Quote">Quote</SelectItem>
-                <SelectItem value="Article">Article</SelectItem>
+                <SelectItem value="Programming">Programming</SelectItem>
+                <SelectItem value="Literature">Literature</SelectItem>
+                <SelectItem value="Science">Science</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={isUploading}>
+              Save
             </Button>
-            <Button onClick={handleSave}>Save</Button>
-          </div>
-
-          <div>
-            <input
-              type="file"
-              accept=".txt,.json"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-              className="hidden"
-              id="script-upload"
-            />
-            <label
-              htmlFor="script-upload"
-              className={`button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base cursor-pointer ${
-                isUploading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isUploading ? 'uploading...' : 'upload'}
-            </label>
+            <div className="relative">
+              <input
+                type="file"
+                accept=".txt"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isUploading}
+              />
+              <Button variant="outline" disabled={isUploading}>
+                Upload File
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
