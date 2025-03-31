@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -8,7 +7,6 @@ import { defaultQuotes } from '../utils/typingUtils';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/use-toast';
-
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
@@ -18,7 +16,6 @@ const Index = () => {
   const {
     toast
   } = useToast();
-
   useEffect(() => {
     const setupDefaultScript = async () => {
       if (!user) return;
@@ -58,41 +55,29 @@ const Index = () => {
       setupDefaultScript();
     }
   }, [user]);
-
   const handleQuotesLoaded = (newQuotes: string[]) => {
     setQuotes(newQuotes);
   };
-
   const handleTemplateSelected = (templateQuotes: string[], scriptId?: string) => {
     setQuotes(templateQuotes);
     if (scriptId) {
       setActiveScriptId(scriptId);
     }
   };
-
   return <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex flex-col justify-center">
-        <div className="flex flex-col justify-between h-full">
-          <TemplateMenu onSelectTemplate={handleTemplateSelected} />
-          
-          <div className="flex-1 flex items-center justify-center my-8">
-            <TypingArea 
-              quotes={quotes} 
-              scriptId={activeScriptId} 
-              onQuotesLoaded={handleQuotesLoaded}
-            />
-          </div>
-          
-          <div className="text-center">
-            <h2 className="text-sm text-monkey-subtle italic">for those who know typing bends time</h2>
-          </div>
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-10">
+        <div className="mb-8 text-center">
+          <h2 className="text-lg text-monkey-subtle mb-2">type your favorite things</h2>
         </div>
+        
+        <TemplateMenu onSelectTemplate={handleTemplateSelected} className="-mt-12" />
+        
+        <TypingArea quotes={quotes} scriptId={activeScriptId} onQuotesLoaded={handleQuotesLoaded} />
       </main>
       
       <Footer />
     </div>;
 };
-
 export default Index;
