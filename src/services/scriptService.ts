@@ -293,5 +293,31 @@ export const scriptService = {
       console.error('Error fetching typing history:', error);
       return [];
     }
-  }
+  },
+
+  // Get script stats from script_views
+  getScriptStats: async (scriptId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('script_views')
+        .select('typed_count, unique_typers_count, average_wpm, best_wpm')
+        .eq('id', scriptId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching script stats:', error);
+        return null;
+      }
+
+      return {
+        typed_count: data.typed_count || 0,
+        unique_typers_count: data.unique_typers_count || 0,
+        average_wpm: data.average_wpm || 0,
+        best_wpm: data.best_wpm || data.average_wpm || 0
+      };
+    } catch (error) {
+      console.error('Error fetching script stats:', error);
+      return null;
+    }
+  },
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, History, Code, Book, Heart, Settings, Users, Timer } from "lucide-react";
+import { BookOpen, Heart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from '../contexts/AuthContext';
 import { SavedScript, scriptService } from '../services/scriptService';
@@ -111,38 +111,6 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     setIsScriptManagerOpen(true);
   };
 
-  const renderScriptStats = (script: SavedScript) => {
-    if (!script.stats) return null;
-    
-    return (
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              <span>{script.stats.unique_typers_count}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {script.stats.unique_typers_count} people have typed this
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger className="flex items-center gap-1">
-              <Timer className="h-3 w-3" />
-              <span>{Math.round(script.stats.average_wpm)} wpm</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              Average speed: {Math.round(script.stats.average_wpm)} WPM
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-    );
-  };
-
   return (
     <div className={cn(
       "w-full -mt-32 flex flex-col items-center justify-center transition-opacity duration-300",
@@ -197,18 +165,15 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
               <button
                 onClick={() => handleSelectScript(script)}
                 className={cn(
-                  "transition-all duration-300 px-4 py-1.5 rounded-full flex flex-col items-center justify-center gap-1 shrink-0",
+                  "transition-all duration-300 px-4 py-1.5 rounded-full flex items-center gap-2 shrink-0",
                   isMobile ? "mr-3" : "",
                   activeTemplateId === script.id
                     ? "bg-monkey-accent/20 text-monkey-accent"
                     : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  <span>{script.name}</span>
-                </div>
-                {renderScriptStats(script)}
+                <BookOpen className="h-4 w-4" />
+                <span>{script.name}</span>
               </button>
               
               <button
@@ -233,18 +198,15 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
               <button
                 onClick={() => handleSelectScript(script)}
                 className={cn(
-                  "transition-all duration-300 px-4 py-1.5 rounded-full flex flex-col items-center justify-center gap-1 shrink-0",
+                  "transition-all duration-300 px-4 py-1.5 rounded-full flex items-center gap-2 shrink-0",
                   isMobile ? "mr-3" : "",
                   activeTemplateId === script.id
                     ? "bg-monkey-accent/20 text-monkey-accent"
                     : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <Heart className="h-4 w-4" />
-                  <span>{script.name}</span>
-                </div>
-                {renderScriptStats(script)}
+                <Heart className="h-4 w-4" />
+                <span>{script.name}</span>
               </button>
               
               <button

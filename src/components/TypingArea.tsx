@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
+import { Users } from 'lucide-react';
+import { scriptService } from '../services/scriptService';
 
 interface TypingAreaProps {
   quotes: string[];
@@ -12,6 +14,13 @@ interface TypingAreaProps {
   onTypingStateChange?: (isTyping: boolean) => void;
 }
 
+interface ScriptStats {
+  typed_count: number;
+  unique_typers_count: number;
+  average_wpm: number;
+  best_wpm: number;
+}
+
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
@@ -19,6 +28,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
+  const [scriptStats, setScriptStats] = useState<ScriptStats | null>(null);
+
   const {
     words,
     stats,
@@ -46,9 +57,47 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
+  // Load script stats when scriptId changes
+  useEffect(() => {
+    const loadScriptStats = async () => {
+      if (!scriptId) {
+        setScriptStats(null);
+        return;
+      }
+
+      try {
+        const stats = await scriptService.getScriptStats(scriptId);
+        setScriptStats(stats);
+      } catch (error) {
+        console.error('Error loading script stats:', error);
+        setScriptStats(null);
+      }
+    };
+
+    loadScriptStats();
+  }, [scriptId]);
+
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
-        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
+        <div className="flex justify-between items-start w-full">
+          <Stats 
+            stats={stats} 
+            isActive={isActive} 
+            isFinished={isFinished} 
+            className="self-start"
+            scriptStats={scriptStats ? {
+              average_wpm: scriptStats.average_wpm,
+              best_wpm: scriptStats.best_wpm
+            } : null}
+          />
+          
+          {scriptStats && (
+            <div className="flex items-center gap-2 text-xs text-monkey-subtle">
+              <Users className="h-3 w-3" />
+              <span>{scriptStats.unique_typers_count} typers</span>
+            </div>
+          )}
+        </div>
       </div>
       
       <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
