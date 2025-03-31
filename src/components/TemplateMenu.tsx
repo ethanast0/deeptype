@@ -81,7 +81,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       setMenuView(value as MenuView);
     }
   };
-  return <div className="w-full mb-8 flex flex-col items-center justify-center">
+  return <div className="w-full mt-32 flex flex-col items-center justify-center">
       {/* Menu selector - minimal toggle group */}
       <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity">
         <ToggleGroup type="single" value={menuView} onValueChange={handleMenuViewChange} className="flex items-center justify-center gap-1 text-xs">
