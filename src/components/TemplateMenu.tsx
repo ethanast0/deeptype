@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, History, Code, Book, Heart, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,13 +10,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from '../hooks/use-mobile';
-
 interface TemplateMenuProps {
   onSelectTemplate: (quotes: string[], scriptId?: string) => void;
 }
-
 type MenuView = 'templates' | 'saved' | 'manage';
-
 const TemplateMenu: React.FC<TemplateMenuProps> = ({
   onSelectTemplate
 }) => {
@@ -32,7 +28,6 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
   const {
     toast
   } = useToast();
-
   useEffect(() => {
     if (user) {
       loadSavedScripts();
@@ -40,7 +35,6 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       setSavedScripts([]);
     }
   }, [user]);
-
   const loadSavedScripts = async () => {
     if (!user) return;
     try {
@@ -50,7 +44,6 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       console.error("Error loading saved scripts:", error);
     }
   };
-
   const getIcon = (templateId: string) => {
     switch (templateId) {
       case 'Comedy':
@@ -65,17 +58,14 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
         return <Heart className="h-4 w-4" />;
     }
   };
-
   const handleSelectTemplate = (templateId: string, quotes: string[]) => {
     setActiveTemplateId(templateId);
     onSelectTemplate(quotes);
   };
-
   const handleSelectSavedScript = (script: SavedScript) => {
     setActiveTemplateId(script.id);
     onSelectTemplate(script.quotes, script.id);
   };
-
   const handleOpenScriptManager = () => {
     if (!user) {
       toast({
@@ -87,7 +77,6 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     }
     setIsScriptManagerOpen(true);
   };
-
   const handleMenuViewChange = (value: string) => {
     if (value === 'manage') {
       handleOpenScriptManager();
@@ -95,8 +84,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       setMenuView(value as MenuView);
     }
   };
-
-  return <div className="w-full mb-8 flex flex-col items-center justify-center">
+  return <div className="w-full -mt-32 flex flex-col items-center justify-center">
       {/* Menu selector - minimal toggle group */}
       <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity">
         <ToggleGroup type="single" value={menuView} onValueChange={handleMenuViewChange} className="flex items-center justify-center gap-1 text-xs">
@@ -125,54 +113,24 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       
       {/* Template buttons - horizontally scrollable on mobile */}
       <ScrollArea className="w-full max-w-full">
-        <div className={cn(
-          "flex animate-fade-in",
-          isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3"
-        )}>
-          {menuView === 'templates' && templates.map(template => (
-            <button
-              key={template.id}
-              onClick={() => handleSelectTemplate(template.id, template.quotes)}
-              className={cn(
-                "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0",
-                isMobile ? "mr-3" : "",
-                activeTemplateId === template.id 
-                  ? "bg-monkey-accent/20 text-monkey-accent" 
-                  : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
-              )}
-            >
+        <div className={cn("flex animate-fade-in", isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3")}>
+          {menuView === 'templates' && templates.map(template => <button key={template.id} onClick={() => handleSelectTemplate(template.id, template.quotes)} className={cn("transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === template.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
               {getIcon(template.id)}
               <span>{template.name}</span>
-            </button>
-          ))}
+            </button>)}
 
-          {menuView === 'saved' && savedScripts.length > 0 && savedScripts.map(script => (
-            <button
-              key={script.id}
-              onClick={() => handleSelectSavedScript(script)}
-              className={cn(
-                "transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0",
-                isMobile ? "mr-3" : "",
-                activeTemplateId === script.id 
-                  ? "bg-monkey-accent/20 text-monkey-accent" 
-                  : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300"
-              )}
-            >
+          {menuView === 'saved' && savedScripts.length > 0 && savedScripts.map(script => <button key={script.id} onClick={() => handleSelectSavedScript(script)} className={cn("transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === script.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
               <Heart className="h-4 w-4" />
               <span>{script.name}</span>
-            </button>
-          ))}
+            </button>)}
 
-          {menuView === 'saved' && savedScripts.length === 0 && (
-            <div className="text-center py-4 text-monkey-subtle w-full">
+          {menuView === 'saved' && savedScripts.length === 0 && <div className="text-center py-4 text-monkey-subtle w-full">
               No saved scripts. Save a script or upload one to get started.
-            </div>
-          )}
+            </div>}
         </div>
       </ScrollArea>
 
       {user && <ScriptManager open={isScriptManagerOpen} onOpenChange={setIsScriptManagerOpen} scripts={savedScripts} userId={user.id} onScriptsChange={loadSavedScripts} onSelectTemplate={onSelectTemplate} />}
     </div>;
 };
-
 export default TemplateMenu;
