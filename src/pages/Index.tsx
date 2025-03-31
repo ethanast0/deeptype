@@ -11,6 +11,7 @@ import { useToast } from '../hooks/use-toast';
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const {
     user
   } = useAuth();
@@ -73,12 +74,13 @@ const Index = () => {
       <Header />
       
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex flex-col justify-center">
-        <TemplateMenu onSelectTemplate={handleTemplateSelected} />
+        <TemplateMenu onSelectTemplate={handleTemplateSelected} isTyping={isTyping} />
         
         <TypingArea 
           quotes={quotes} 
           scriptId={activeScriptId} 
           onQuotesLoaded={handleQuotesLoaded}
+          onTypingStateChange={setIsTyping}
         />
       </main>
       

@@ -10,12 +10,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from '../hooks/use-mobile';
+
 interface TemplateMenuProps {
   onSelectTemplate: (quotes: string[], scriptId?: string) => void;
+  isTyping?: boolean;
 }
+
 type MenuView = 'templates' | 'saved' | 'manage';
+
 const TemplateMenu: React.FC<TemplateMenuProps> = ({
-  onSelectTemplate
+  onSelectTemplate,
+  isTyping = false
 }) => {
   const [menuView, setMenuView] = useState<MenuView>('templates');
   const [isScriptManagerOpen, setIsScriptManagerOpen] = useState(false);
@@ -84,7 +89,10 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       setMenuView(value as MenuView);
     }
   };
-  return <div className="w-full -mt-32 flex flex-col items-center justify-center">
+  return <div className={cn(
+    "w-full -mt-32 flex flex-col items-center justify-center transition-opacity duration-300",
+    isTyping ? "opacity-0 pointer-events-none" : "opacity-100"
+  )}>
       {/* Menu selector - minimal toggle group */}
       <div className="mb-4 opacity-70 hover:opacity-100 transition-opacity">
         <ToggleGroup type="single" value={menuView} onValueChange={handleMenuViewChange} className="flex items-center justify-center gap-1 text-xs">
@@ -114,12 +122,12 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
       {/* Template buttons - horizontally scrollable on mobile */}
       <ScrollArea className="w-full max-w-full">
         <div className={cn("flex animate-fade-in", isMobile ? "flex-nowrap overflow-x-auto pb-2 px-2" : "flex-wrap items-center justify-center gap-3")}>
-          {menuView === 'templates' && templates.map(template => <button key={template.id} onClick={() => handleSelectTemplate(template.id, template.quotes)} className={cn("transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === template.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
+          {menuView === 'templates' && templates.map(template => <button key={template.id} onClick={() => handleSelectTemplate(template.id, template.quotes)} className={cn("transition-all duration-300 px-4 py-1.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === template.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
               {getIcon(template.id)}
               <span>{template.name}</span>
             </button>)}
 
-          {menuView === 'saved' && savedScripts.length > 0 && savedScripts.map(script => <button key={script.id} onClick={() => handleSelectSavedScript(script)} className={cn("transition-all duration-300 px-6 py-2.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === script.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
+          {menuView === 'saved' && savedScripts.length > 0 && savedScripts.map(script => <button key={script.id} onClick={() => handleSelectSavedScript(script)} className={cn("transition-all duration-300 px-4 py-1.5 rounded-full flex items-center justify-center gap-2 shrink-0", isMobile ? "mr-3" : "", activeTemplateId === script.id ? "bg-monkey-accent/20 text-monkey-accent" : "bg-zinc-800/80 hover:bg-zinc-700/80 text-gray-300")}>
               <Heart className="h-4 w-4" />
               <span>{script.name}</span>
             </button>)}

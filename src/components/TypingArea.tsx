@@ -3,17 +3,21 @@ import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
+
 interface TypingAreaProps {
-  quotes?: string[];
+  quotes: string[];
   className?: string;
   scriptId?: string | null;
   onQuotesLoaded?: (quotes: string[]) => void;
+  onTypingStateChange?: (isTyping: boolean) => void;
 }
+
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
   scriptId,
-  onQuotesLoaded = () => {}
+  onQuotesLoaded = () => {},
+  onTypingStateChange = () => {}
 }) => {
   const {
     words,
@@ -36,12 +40,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   useEffect(() => {
     focusInput();
   }, [focusInput]);
+
+  // Update typing state when active state changes
+  useEffect(() => {
+    onTypingStateChange(isActive);
+  }, [isActive, onTypingStateChange]);
+
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
       </div>
       
-      <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
+      <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
         {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
               {/* Word with characters */}
               <div className="flex">
@@ -70,4 +80,5 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
     </div>;
 };
+
 export default TypingArea;
