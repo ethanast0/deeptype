@@ -9,88 +9,187 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      saved_scripts: {
+        Row: {
+          created_at: string | null
+          script_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          script_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          script_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_scripts_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "script_views"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_scripts_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      script_quotes: {
+        Row: {
+          avg_accuracy: number | null
+          avg_wpm: number | null
+          best_wpm: number | null
+          content: string
+          id: string
+          quote_index: number
+          script_id: string | null
+          typed_count: number | null
+          unique_typers_count: number | null
+        }
+        Insert: {
+          avg_accuracy?: number | null
+          avg_wpm?: number | null
+          best_wpm?: number | null
+          content: string
+          id?: string
+          quote_index: number
+          script_id?: string | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
+        }
+        Update: {
+          avg_accuracy?: number | null
+          avg_wpm?: number | null
+          best_wpm?: number | null
+          content?: string
+          id?: string
+          quote_index?: number
+          script_id?: string | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_quotes_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "script_views"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_quotes_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scripts: {
         Row: {
           category: string
           content: string
           created_at: string | null
-          created_by: string
           id: string
-          title: string
+          is_featured: boolean | null
+          name: string
+          saves_count: number | null
+          typed_count: number | null
+          unique_typers_count: number | null
           user_id: string | null
         }
         Insert: {
           category: string
           content: string
           created_at?: string | null
-          created_by: string
           id?: string
-          title: string
+          is_featured?: boolean | null
+          name: string
+          saves_count?: number | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
           user_id?: string | null
         }
         Update: {
           category?: string
           content?: string
           created_at?: string | null
-          created_by?: string
           id?: string
-          title?: string
+          is_featured?: boolean | null
+          name?: string
+          saves_count?: number | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "scripts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       typing_history: {
         Row: {
           accuracy: number
-          date: string | null
+          created_at: string | null
+          elapsed_time: number
           id: string
-          points: number | null
-          script_id: string
-          speed_wpm: number
-          time: string | null
-          user_id: string
+          quote_id: string | null
+          script_id: string | null
+          user_id: string | null
+          wpm: number
         }
         Insert: {
           accuracy: number
-          date?: string | null
+          created_at?: string | null
+          elapsed_time: number
           id?: string
-          points?: number | null
-          script_id: string
-          speed_wpm: number
-          time?: string | null
-          user_id: string
+          quote_id?: string | null
+          script_id?: string | null
+          user_id?: string | null
+          wpm: number
         }
         Update: {
           accuracy?: number
-          date?: string | null
+          created_at?: string | null
+          elapsed_time?: number
           id?: string
-          points?: number | null
-          script_id?: string
-          speed_wpm?: number
-          time?: string | null
-          user_id?: string
+          quote_id?: string | null
+          script_id?: string | null
+          user_id?: string | null
+          wpm?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "typing_history_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_views"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "typing_history_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "script_quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "typing_history_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "script_views"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "typing_history_script_id_fkey"
             columns: ["script_id"]
             isOneToOne: false
             referencedRelation: "scripts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "typing_history_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -121,22 +220,49 @@ export type Database = {
       }
     }
     Views: {
+      quote_views: {
+        Row: {
+          avg_accuracy: number | null
+          avg_wpm: number | null
+          best_wpm: number | null
+          content: string | null
+          id: string | null
+          quote_index: number | null
+          script_id: string | null
+          typed_count: number | null
+          unique_typers_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_quotes_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "script_views"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_quotes_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       script_views: {
         Row: {
-          id: string
-          title: string
-          content: string
-          user_id: string
-          created_at: string
-          created_by: string
-          category: string
-          typed_count: number
-          unique_typers_count: number
-          average_wpm: number
-          average_accuracy: number
-          best_wpm: number
-          is_saved: boolean
+          avg_accuracy: number | null
+          avg_wpm: number | null
+          best_wpm: number | null
+          category: string | null
+          id: string | null
+          is_featured: boolean | null
+          name: string | null
+          saves_count: number | null
+          typed_count: number | null
+          unique_typers_count: number | null
         }
+        Relationships: []
       }
     }
     Functions: {
