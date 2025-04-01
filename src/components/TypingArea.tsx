@@ -1,10 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, KeyboardEvent } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Users } from 'lucide-react';
-import { scriptService, QuoteStats } from '../services/scriptService';
+import { scriptService } from '../services/scriptService';
+
+interface QuoteStats {
+  id: string;
+  typed_count: number;
+  unique_typers_count: number;
+  avg_wpm: number;
+  best_wpm: number;
+  avg_accuracy: number;
+}
 
 interface TypingAreaProps {
   quotes: string[];
@@ -52,9 +61,31 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     quoteIds
   });
 
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Shift+Enter for new quote
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault();
+      loadNewQuote();
+    }
+    // Tab key to restart
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      resetTest();
+    }
+  };
+
   // Auto-focus on mount and when resetting
   useEffect(() => {
     focusInput();
+    
+    // Add event listener for clicks to focus the input
+    const handleGlobalClick = () => focusInput();
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
   }, [focusInput]);
 
   // Update typing state when active state changes
@@ -72,18 +103,29 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       }
 
       try {
-        const script = await scriptService.getScripts({ limit: 1 });
-        if (script.length > 0) {
-          const { typed_count, unique_typers_count, stats, quote_stats } = script[0];
+        // Use getScriptStats instead of getScripts for this specific scriptId
+        const stats = await scriptService.getScriptStats(scriptId);
+        
+        if (stats) {
           setScriptStats({
-            typed_count,
-            unique_typers_count,
-            avg_wpm: stats?.avg_wpm || 0,
-            best_wpm: stats?.best_wpm || 0,
-            avg_accuracy: stats?.avg_accuracy || 0
+            typed_count: stats.typed_count || 0,
+            unique_typers_count: stats.unique_typers_count || 0,
+            avg_wpm: stats.average_wpm || 0,
+            best_wpm: stats.best_wpm || 0,
+            avg_accuracy: stats.average_wpm || 0  // Using average_wpm as fallback since there's no average_accuracy
           });
-          setQuoteStats(quote_stats || []);
+        } else {
+          // Fallback to empty stats if script not found
+          setScriptStats({
+            typed_count: 0,
+            unique_typers_count: 0,
+            avg_wpm: 0,
+            best_wpm: 0,
+            avg_accuracy: 0
+          });
         }
+        
+        setQuoteStats([]);
       } catch (error) {
         console.error('Error loading script stats:', error);
         setScriptStats(null);
@@ -93,6 +135,36 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
     loadScriptStats();
   }, [scriptId]);
+
+  // Render the typing content
+  const renderTypingContent = () => {
+    return words.map((word, wordIndex) => {
+      // For each word
+      const wordElement = (
+        <div key={`word-${wordIndex}`} className="flex items-center">
+          <div className="flex">
+            {/* Render each character in the word */}
+            {word.characters.map((char, charIndex) => (
+              <span
+                key={`char-${wordIndex}-${charIndex}`}
+                className={cn("character", {
+                  "text-monkey-accent": char.state === 'correct',
+                  "text-monkey-error": char.state === 'incorrect',
+                  "character-current": wordIndex === currentWordIndex && charIndex === currentCharIndex
+                })}
+              >
+                {char.char}
+              </span>
+            ))}
+          </div>
+          {/* Add space after word (except last word) */}
+          {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+        </div>
+      );
+      
+      return wordElement;
+    });
+  };
 
   return (
     <div className={cn("typing-area-container w-full", className)}>
@@ -125,35 +197,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       
       {/* Typing area */}
       <div className="relative">
-        <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
-          {words.map((word, wordIndex) => (
-            <React.Fragment key={wordIndex}>
-              <div className="flex">
-                {word.characters.map((char, charIndex) => (
-                  <span
-                    key={`${wordIndex}-${charIndex}`}
-                    className={cn("character", {
-                      "text-monkey-accent": char.state === 'correct',
-                      "text-monkey-error": char.state === 'incorrect',
-                      "character-current": char.state === 'current'
-                    })}
-                  >
-                    {wordIndex === currentWordIndex && charIndex === currentCharIndex && (
-                      <span className="caret" />
-                    )}
-                    {char.char}
-                  </span>
-                ))}
-              </div>
-              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>
-          ))}
+        <div 
+          className="typing-area flex flex-wrap text-3xl" 
+          onClick={focusInput}
+        >
+          {renderTypingContent()}
           
           <input
             ref={inputRef}
             type="text"
             className="typing-input"
             onChange={handleInput}
+            onKeyDown={handleKeyDown}
             autoComplete="off"
             autoCapitalize="off"
             autoCorrect="off"

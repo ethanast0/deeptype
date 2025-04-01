@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 const config = {
@@ -53,15 +52,21 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Monkey type colors
+        // Monkey type colors - using CSS variables
         monkey: {
-          bg: "#323437",
-          text: "#d1d0c5",
-          subtle: "#646669",
-          accent: "#35B853",  // Changed to green for correct characters
-          error: "#ca4754",
-          caret: "#e2b714",
+          bg: "hsl(var(--monkey-bg))",
+          text: "hsl(var(--monkey-text))",
+          subtle: "hsl(var(--monkey-subtle))",
+          accent: "hsl(var(--monkey-accent))",
+          error: "hsl(var(--monkey-error))",
+          caret: "hsl(var(--monkey-caret))",
         },
+        // Theme colors for components
+        'theme-grey': "hsl(var(--theme-grey))",
+        'theme-zinc': "hsl(var(--theme-zinc))",
+        'theme-slate': "hsl(var(--theme-slate))",
+        'theme-green': "hsl(var(--theme-green))",
+        'theme-red': "hsl(var(--theme-red))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -78,8 +83,8 @@ const config = {
           to: { height: "0" },
         },
         "caret-blink": {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0" },
+          "0%, 70%, 100%": { opacity: "1" },
+          "71%, 99%": { opacity: "0" },
         },
         "slide-up": {
           "0%": { transform: "translateY(10px)", opacity: "0" },

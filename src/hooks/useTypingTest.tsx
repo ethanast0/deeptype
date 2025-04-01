@@ -113,13 +113,12 @@ const useTypingTest = ({ quotes, scriptId, quoteIds = [] }: UseTypingTestProps) 
     if (!user || !scriptId || !currentQuoteId) return;
 
     try {
-      await scriptService.recordTypingHistory({
+      await scriptService.recordTypingHistory(
+        user.id,
         scriptId,
-        quoteId: currentQuoteId,
-        wpm: stats.wpm,
-        accuracy: stats.accuracy,
-        elapsedTime: stats.elapsedTime
-      });
+        stats.wpm,
+        stats.accuracy
+      );
       toast.success('Progress saved!');
     } catch (error) {
       console.error('Error recording typing history:', error);
@@ -129,6 +128,8 @@ const useTypingTest = ({ quotes, scriptId, quoteIds = [] }: UseTypingTestProps) 
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
+    
+    // Start the timer when user begins typing
     if (!isActive && !isFinished) {
       setIsActive(true);
       startTimeRef.current = Date.now();
@@ -136,58 +137,91 @@ const useTypingTest = ({ quotes, scriptId, quoteIds = [] }: UseTypingTestProps) 
 
     // Handle backspace
     if (input.length < currentCharIndex) {
-      const newWords = [...words];
-      const currentWord = newWords[currentWordIndex].characters;
+      // Only handle backspace if we're not at the beginning
       if (currentCharIndex > 0) {
+        const newWords = [...words];
+        const currentWord = newWords[currentWordIndex].characters;
+        
+        // Update the character state
         currentWord[currentCharIndex - 1].state = 'untyped';
-        setCurrentCharIndex(currentCharIndex - 1);
+        
+        // Decrement character counters
         if (currentWord[currentCharIndex - 1].state === 'correct') {
-          correctCharsRef.current--;
+          correctCharsRef.current = Math.max(0, correctCharsRef.current - 1);
         } else if (currentWord[currentCharIndex - 1].state === 'incorrect') {
-          incorrectCharsRef.current--;
+          incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
         }
-        totalCharsRef.current--;
+        totalCharsRef.current = Math.max(0, totalCharsRef.current - 1);
+        
+        // Update cursor position
+        setCurrentCharIndex(currentCharIndex - 1);
+        setWords(newWords);
       }
-      setWords(newWords);
       return;
     }
 
-    // Handle new character
-    const char = input[input.length - 1];
-    const newWords = [...words];
-    const currentWord = newWords[currentWordIndex].characters;
-    
-    if (currentCharIndex < currentWord.length) {
-      const isCorrect = char === currentWord[currentCharIndex].char;
-      currentWord[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
-      if (isCorrect) {
-        correctCharsRef.current++;
-      } else {
-        incorrectCharsRef.current++;
-      }
-      totalCharsRef.current++;
+    // Handle new character input
+    if (input.length > 0) {
+      const char = input[input.length - 1];
+      const newWords = [...words];
       
-      if (currentCharIndex + 1 < currentWord.length) {
-        currentWord[currentCharIndex + 1].state = 'current';
+      // Ensure we have a current word and we haven't reached the end
+      if (currentWordIndex < newWords.length) {
+        const currentWord = newWords[currentWordIndex].characters;
+        
+        // Check if we're still within the current word's characters
+        if (currentCharIndex < currentWord.length) {
+          // Determine if the typed character is correct
+          const isCorrect = char === currentWord[currentCharIndex].char;
+          
+          // Update character state
+          currentWord[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+          
+          // Update character counters
+          if (isCorrect) {
+            correctCharsRef.current++;
+          } else {
+            incorrectCharsRef.current++;
+          }
+          totalCharsRef.current++;
+          
+          // Mark the next character as current if there is one
+          if (currentCharIndex + 1 < currentWord.length) {
+            currentWord[currentCharIndex + 1].state = 'current';
+          }
+          
+          // Update cursor position
+          setCurrentCharIndex(currentCharIndex + 1);
+          
+          // Check if we've completed the word
+          if (currentCharIndex === currentWord.length - 1) {
+            if (currentWordIndex < words.length - 1) {
+              // Move to the next word
+              setCurrentWordIndex(currentWordIndex + 1);
+              setCurrentCharIndex(0);
+              
+              // Mark the first character of the next word as current
+              if (newWords[currentWordIndex + 1].characters.length > 0) {
+                newWords[currentWordIndex + 1].characters[0].state = 'current';
+              }
+            } else {
+              // We've completed all words
+              setIsFinished(true);
+              setIsActive(false);
+              endTimeRef.current = Date.now();
+              recordHistory();
+            }
+          }
+        }
       }
-      setCurrentCharIndex(currentCharIndex + 1);
+      
+      setWords(newWords);
     }
-
-    // Handle word completion
-    if (currentCharIndex === currentWord.length - 1) {
-      if (currentWordIndex < words.length - 1) {
-        setCurrentWordIndex(currentWordIndex + 1);
-        setCurrentCharIndex(0);
-        newWords[currentWordIndex + 1].characters[0].state = 'current';
-      } else {
-        setIsFinished(true);
-        setIsActive(false);
-        endTimeRef.current = Date.now();
-        recordHistory();
-      }
+    
+    // Clear the input field to prepare for the next character
+    if (inputRef.current) {
+      inputRef.current.value = '';
     }
-
-    setWords(newWords);
   }, [words, currentWordIndex, currentCharIndex, isActive, isFinished, recordHistory]);
 
   const resetTest = useCallback(() => {
