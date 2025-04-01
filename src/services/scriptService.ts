@@ -31,7 +31,7 @@ export const scriptService = {
       // Transform data to SavedScript format
       return data.map(script => ({
         id: script.id,
-        name: script.title,
+        name: script.name,
         quotes: JSON.parse(script.content),
         userId: script.user_id,
         createdAt: script.created_at,
@@ -58,10 +58,9 @@ export const scriptService = {
         .from('scripts')
         .insert({
           user_id: userId,
-          title: name,
+          name: name,
           content: JSON.stringify(quotes),
-          category,
-          created_by: userId
+          category
         })
         .select()
         .single();
@@ -74,7 +73,7 @@ export const scriptService = {
       // Return in SavedScript format
       return {
         id: data.id,
-        name: data.title,
+        name: data.name,
         quotes: JSON.parse(data.content),
         userId: data.user_id,
         createdAt: data.created_at,
@@ -92,7 +91,7 @@ export const scriptService = {
       const { error } = await supabase
         .from('scripts')
         .update({
-          title: script.name,
+          name: script.name,
           content: JSON.stringify(script.quotes),
           category: script.category || 'Custom'
         })
@@ -143,8 +142,9 @@ export const scriptService = {
         .insert({
           user_id: userId,
           script_id: scriptId,
-          speed_wpm: wpm,
-          accuracy
+          wpm,
+          accuracy,
+          elapsed_time: 0 // Required field in the new schema
         });
       
       if (error) {

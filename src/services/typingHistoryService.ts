@@ -5,11 +5,11 @@ interface TypingSession {
   id: string;
   userId: string;
   scriptId: string;
-  date: string;
-  time: string;
-  speed_wpm: number;
+  wpm: number;
   accuracy: number;
-  points: number;
+  elapsed_time: number;
+  created_at: string;
+  quote_id?: string;
 }
 
 export const typingHistoryService = {
@@ -23,84 +23,23 @@ export const typingHistoryService = {
       
       console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy });
       
-      // Check if we already have a session for this script today
-      const today = new Date().toISOString().split('T')[0];
-      const currentTime = new Date().toLocaleTimeString();
-      
-      const { data: existingSessions, error: fetchError } = await supabase
+      const { error: insertError } = await supabase
         .from('typing_history')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('script_id', scriptId)
-        .eq('date', today);
+        .insert({
+          user_id: userId,
+          script_id: scriptId,
+          wpm: Math.round(wpm),
+          accuracy: Math.round(accuracy * 100) / 100,
+          elapsed_time: 0 // Required field in the new schema
+        });
       
-      if (fetchError) {
-        console.error('Error checking existing typing sessions:', fetchError);
+      if (insertError) {
+        console.error('Error recording new typing session:', insertError);
         return false;
       }
       
-      if (existingSessions && existingSessions.length > 0) {
-        // Update existing session if new score is better
-        const existingSession = existingSessions[0];
-        
-        // Only update if new WPM is higher
-        if (wpm > existingSession.speed_wpm) {
-          const { error: updateError } = await supabase
-            .from('typing_history')
-            .update({
-              speed_wpm: Math.round(wpm),
-              accuracy: Math.round(accuracy * 100) / 100,
-              points: existingSession.points + 1,
-              time: currentTime
-            })
-            .eq('id', existingSession.id);
-          
-          if (updateError) {
-            console.error('Error updating typing session:', updateError);
-            return false;
-          }
-          
-          console.log('Updated existing typing session with better score');
-          return true;
-        } else {
-          // Just increment points
-          const { error: updateError } = await supabase
-            .from('typing_history')
-            .update({
-              points: existingSession.points + 1
-            })
-            .eq('id', existingSession.id);
-          
-          if (updateError) {
-            console.error('Error updating typing session points:', updateError);
-            return false;
-          }
-          
-          console.log('Updated existing typing session points');
-          return true;
-        }
-      } else {
-        // Create new session
-        const { error: insertError } = await supabase
-          .from('typing_history')
-          .insert({
-            user_id: userId,
-            script_id: scriptId,
-            speed_wpm: Math.round(wpm),
-            accuracy: Math.round(accuracy * 100) / 100,
-            date: today,
-            time: currentTime,
-            points: 1
-          });
-        
-        if (insertError) {
-          console.error('Error recording new typing session:', insertError);
-          return false;
-        }
-        
-        console.log('Created new typing session record');
-        return true;
-      }
+      console.log('Created new typing session record');
+      return true;
     } catch (error) {
       console.error('Unexpected error recording typing session:', error);
       return false;
@@ -124,11 +63,11 @@ export const typingHistoryService = {
         id: session.id,
         userId: session.user_id,
         scriptId: session.script_id,
-        date: session.date,
-        time: session.time,
-        speed_wpm: session.speed_wpm,
+        wpm: session.wpm,
         accuracy: session.accuracy,
-        points: session.points
+        elapsed_time: session.elapsed_time,
+        created_at: session.created_at,
+        quote_id: session.quote_id
       }));
     } catch (error) {
       console.error('Error fetching typing history:', error);
@@ -154,11 +93,11 @@ export const typingHistoryService = {
         id: session.id,
         userId: session.user_id,
         scriptId: session.script_id,
-        date: session.date,
-        time: session.time,
-        speed_wpm: session.speed_wpm,
+        wpm: session.wpm,
         accuracy: session.accuracy,
-        points: session.points
+        elapsed_time: session.elapsed_time,
+        created_at: session.created_at,
+        quote_id: session.quote_id
       }));
     } catch (error) {
       console.error('Error fetching script history:', error);
@@ -180,7 +119,7 @@ export const typingHistoryService = {
         };
       }
       
-      const totalWpm = sessions.reduce((sum, session) => sum + session.speed_wpm, 0);
+      const totalWpm = sessions.reduce((sum, session) => sum + session.wpm, 0);
       const totalAccuracy = sessions.reduce((sum, session) => sum + session.accuracy, 0);
       const uniqueScripts = new Set(sessions.map(session => session.scriptId));
       
