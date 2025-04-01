@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -48,6 +47,91 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  /* Color mode variations - Light */
+  :root[data-color-mode="slate"] {
+    /* Light mode slate colors - default, no changes needed */
+  }
+
+  :root[data-color-mode="gray"] {
+    --background: 0 0% 100%;
+    --foreground: 220 13% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 10%;
+    --primary: 220 13% 20%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 220 13% 96%;
+    --secondary-foreground: 220 13% 10%;
+    --muted: 220 13% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 13% 96%;
+    --accent-foreground: 220 13% 10%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 13% 10%;
+  }
+
+  :root[data-color-mode="zinc"] {
+    --background: 0 0% 100%;
+    --foreground: 240 5% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 5% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 5% 10%;
+    --primary: 240 5% 15%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4% 95%;
+    --secondary-foreground: 240 5% 10%;
+    --muted: 240 4% 95%;
+    --muted-foreground: 240 4% 45%;
+    --accent: 240 4% 95%;
+    --accent-foreground: 240 5% 10%;
+    --border: 240 4% 90%;
+    --input: 240 4% 90%;
+    --ring: 240 5% 10%;
+  }
+
+  :root[data-color-mode="green"] {
+    --background: 0 0% 100%;
+    --foreground: 138 50% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 138 50% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 138 50% 10%;
+    --primary: 142 70% 30%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 138 50% 96%;
+    --secondary-foreground: 138 50% 10%;
+    --muted: 138 50% 96%;
+    --muted-foreground: 138 30% 40%;
+    --accent: 138 50% 96%;
+    --accent-foreground: 138 50% 10%;
+    --border: 138 50% 90%;
+    --input: 138 50% 90%;
+    --ring: 142 70% 30%;
+  }
+
+  :root[data-color-mode="red"] {
+    --background: 0 0% 100%;
+    --foreground: 0 60% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 60% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 60% 10%;
+    --primary: 0 72% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 60% 96%;
+    --secondary-foreground: 0 60% 10%;
+    --muted: 0 60% 96%;
+    --muted-foreground: 0 40% 40%;
+    --accent: 0 60% 96%;
+    --accent-foreground: 0 60% 10%;
+    --border: 0 60% 90%;
+    --input: 0 60% 90%;
+    --ring: 0 72% 42%;
+  }
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
@@ -85,6 +169,91 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* Dark mode color variations */
+  .dark[data-color-mode="slate"] {
+    /* Dark mode slate colors - default, no changes needed */
+  }
+
+  .dark[data-color-mode="gray"] {
+    --background: 220 13% 8%;
+    --foreground: 0 0% 95%;
+    --card: 220 13% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 220 13% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 220 13% 10%;
+    --secondary: 220 13% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 13% 15%;
+    --muted-foreground: 220 9% 60%;
+    --accent: 220 13% 15%;
+    --accent-foreground: 0 0% 95%;
+    --border: 220 13% 22%;
+    --input: 220 13% 22%;
+    --ring: 0 0% 85%;
+  }
+
+  .dark[data-color-mode="zinc"] {
+    --background: 240 5% 8%;
+    --foreground: 0 0% 95%;
+    --card: 240 5% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 240 5% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 240 5% 10%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 4% 65%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 95%;
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 0 0% 85%;
+  }
+
+  .dark[data-color-mode="green"] {
+    --background: 155 30% 6%;
+    --foreground: 138 50% 95%;
+    --card: 155 30% 6%;
+    --card-foreground: 138 50% 95%;
+    --popover: 155 30% 6%;
+    --popover-foreground: 138 50% 95%;
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 155 30% 15%;
+    --secondary-foreground: 138 50% 95%;
+    --muted: 155 30% 15%;
+    --muted-foreground: 138 30% 60%;
+    --accent: 155 30% 15%;
+    --accent-foreground: 138 50% 95%;
+    --border: 155 30% 20%;
+    --input: 155 30% 20%;
+    --ring: 142 70% 45%;
+  }
+
+  .dark[data-color-mode="red"] {
+    --background: 0 30% 7%;
+    --foreground: 0 60% 95%;
+    --card: 0 30% 7%;
+    --card-foreground: 0 60% 95%;
+    --popover: 0 30% 7%;
+    --popover-foreground: 0 60% 95%;
+    --primary: 0 72% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 30% 15%;
+    --secondary-foreground: 0 60% 95%;
+    --muted: 0 30% 15%;
+    --muted-foreground: 0 40% 60%;
+    --accent: 0 30% 15%;
+    --accent-foreground: 0 60% 95%;
+    --border: 0 30% 20%;
+    --input: 0 30% 20%;
+    --ring: 0 72% 50%;
+  }
 }
 
 @layer base {
@@ -93,7 +262,7 @@
   }
 
   body {
-    @apply bg-monkey-bg text-monkey-text font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
@@ -123,7 +292,7 @@
   }
 
   .typing-area {
-    @apply p-4 rounded-md bg-opacity-10 bg-monkey-subtle relative w-full font-mono leading-10;
+    @apply p-4 rounded-md bg-opacity-10 bg-muted relative w-full font-mono leading-10;
     word-break: keep-all;
     white-space: pre-wrap;
   }
@@ -133,7 +302,7 @@
   }
 
   .stats-container {
-    @apply flex flex-wrap justify-center gap-6 text-monkey-subtle my-6;
+    @apply flex flex-wrap justify-center gap-6 text-muted-foreground my-6;
   }
 
   .stat-box {
@@ -141,7 +310,7 @@
   }
 
   .stat-value {
-    @apply font-medium text-monkey-text;
+    @apply font-medium text-foreground;
   }
 
   .stat-label {
@@ -149,12 +318,12 @@
   }
 
   .button {
-    @apply px-4 py-2 rounded-md bg-monkey-subtle bg-opacity-20 text-monkey-text 
-           transition-all duration-300 hover:bg-opacity-30;
+    @apply px-4 py-2 rounded-md bg-secondary text-secondary-foreground
+           transition-all duration-300 hover:bg-secondary/80;
   }
 
   .button-accent {
-    @apply bg-monkey-accent bg-opacity-20 hover:bg-opacity-30;
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
   }
 
   .mono-text {
