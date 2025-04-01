@@ -169,7 +169,6 @@ const getTopScripts = async (limit = 10) => {
 - [ ] Test save/unsave functionality
 - [ ] Validate RLS policies
 - [ ] Performance test with multiple concurrent users
-- [ ] not working
 
 ## Notes
 - Consider implementing caching for frequently accessed stats

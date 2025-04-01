@@ -1,246 +1,373 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  Character, 
+  Word, 
+  TypingStats, 
+  calculateWPM, 
+  calculateAccuracy, 
+  defaultQuotes 
+} from '../utils/typingUtils';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
-import { scriptService } from '../services/scriptService';
-
-interface Character {
-  char: string;
-  state: 'untyped' | 'correct' | 'incorrect' | 'current';
-}
-
-interface Word {
-  characters: Character[];
-}
-
-interface Stats {
-  wpm: number;
-  accuracy: number;
-  elapsedTime: number;
-  correctChars: number;
-  incorrectChars: number;
-  totalChars: number;
-}
+import { typingHistoryService } from '../services/typingHistoryService';
+import { useToast } from '../hooks/use-toast';
 
 interface UseTypingTestProps {
-  quotes: string[];
+  quotes?: string[];
   scriptId?: string | null;
-  quoteIds?: string[];
 }
 
-const useTypingTest = ({ quotes, scriptId, quoteIds = [] }: UseTypingTestProps) => {
-  const { user } = useAuth();
+const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
+  const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [currentCharIndex, setCurrentCharIndex] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-  const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
+  const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
+  const [currentCharIndex, setCurrentCharIndex] = useState<number>(0);
+  const [stats, setStats] = useState<TypingStats>({
+    wpm: 0,
+    accuracy: 100,
+    correctChars: 0,
+    incorrectChars: 0,
+    totalChars: 0,
+    elapsedTime: 0,
+  });
+  const [isActive, setIsActive] = useState<boolean>(false);
+  const [isFinished, setIsFinished] = useState<boolean>(false);
   
-  const inputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const endTimeRef = useRef<number | null>(null);
-  const correctCharsRef = useRef(0);
-  const incorrectCharsRef = useRef(0);
-  const totalCharsRef = useRef(0);
-
-  const stats: Stats = {
-    wpm: calculateWPM(),
-    accuracy: calculateAccuracy(),
-    elapsedTime: getElapsedTime(),
-    correctChars: correctCharsRef.current,
-    incorrectChars: incorrectCharsRef.current,
-    totalChars: totalCharsRef.current
-  };
-
-  function calculateWPM(): number {
-    if (!startTimeRef.current || !isActive) return 0;
-    const elapsedMinutes = getElapsedTime() / 60000;
-    if (elapsedMinutes === 0) return 0;
-    return Math.round((correctCharsRef.current / 5) / elapsedMinutes);
-  }
-
-  function calculateAccuracy(): number {
-    if (totalCharsRef.current === 0) return 0;
-    return Math.round((correctCharsRef.current / totalCharsRef.current) * 100);
-  }
-
-  function getElapsedTime(): number {
-    if (!startTimeRef.current) return 0;
-    const endTime = endTimeRef.current || Date.now();
-    return endTime - startTimeRef.current;
-  }
-
-  const processQuote = useCallback((quote: string): Word[] => {
-    return quote.split(' ').map(word => ({
-      characters: word.split('').map(char => ({
-        char,
-        state: 'untyped'
-      }))
-    }));
-  }, []);
-
-  const loadNewQuote = useCallback(() => {
-    if (quotes.length === 0) return;
-    
-    const nextIndex = (currentQuoteIndex + 1) % quotes.length;
-    setCurrentQuoteIndex(nextIndex);
-    setCurrentQuoteId(quoteIds[nextIndex] || null);
-    setWords(processQuote(quotes[nextIndex]));
-    setCurrentWordIndex(0);
-    setCurrentCharIndex(0);
-    setIsActive(false);
-    setIsFinished(false);
-    startTimeRef.current = null;
-    endTimeRef.current = null;
-    correctCharsRef.current = 0;
-    incorrectCharsRef.current = 0;
-    totalCharsRef.current = 0;
-    
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, [quotes, currentQuoteIndex, processQuote, quoteIds]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const resultRecordedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (quotes.length > 0) {
-      setCurrentQuoteId(quoteIds[0] || null);
-      setWords(processQuote(quotes[0]));
+      loadNewQuote();
     }
-  }, [quotes, processQuote, quoteIds]);
+  }, [quotes]);
 
-  const recordHistory = useCallback(async () => {
-    if (!user || !scriptId || !currentQuoteId) return;
+  useEffect(() => {
+    const recordHistory = async () => {
+      if (isFinished && user && scriptId && !resultRecordedRef.current) {
+        resultRecordedRef.current = true;
+        try {
+          console.log('Recording typing session:', {
+            userId: user.id,
+            scriptId,
+            wpm: stats.wpm,
+            accuracy: stats.accuracy
+          });
+          
+          const success = await typingHistoryService.recordSession(
+            user.id,
+            scriptId,
+            stats.wpm,
+            stats.accuracy
+          );
+          
+          if (success) {
+            toast({
+              title: "Progress saved",
+              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
+            });
+          } else {
+            console.error('Failed to record typing session');
+            toast({
+              title: "Error saving progress",
+              description: "Unable to save your typing results.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('Error recording typing history:', error);
+          toast({
+            title: "Error saving progress",
+            description: "An error occurred while saving your typing results.",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    recordHistory();
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast]);
 
-    try {
-      await scriptService.recordTypingHistory(
-        user.id,
-        scriptId,
-        stats.wpm,
-        stats.accuracy
-      );
-      toast.success('Progress saved!');
-    } catch (error) {
-      console.error('Error recording typing history:', error);
-      toast.error('Failed to save progress');
+  const processQuote = useCallback((quote: string) => {
+    const processedWords: Word[] = quote.split(' ').map(word => ({
+      characters: [...word].map((char, idx) => ({
+        char,
+        state: idx === 0 && currentWordIndex === 0 ? 'current' : 'inactive'
+      }))
+    }));
+    
+    setWords(processedWords);
+    setCurrentWordIndex(0);
+    setCurrentCharIndex(0);
+    
+    const totalChars = quote.length;
+    setStats(prev => ({ ...prev, totalChars }));
+  }, [currentWordIndex]);
+
+  const loadNewQuote = useCallback(() => {
+    const randomIndex = Math.floor(Math.random() * quotes.length);
+    const quote = quotes[randomIndex];
+    setCurrentQuote(quote);
+    processQuote(quote);
+    resetTest();
+    focusInput();
+    resultRecordedRef.current = false;
+  }, [quotes, processQuote]);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current !== null) return;
+    
+    startTimeRef.current = Date.now();
+    timerRef.current = window.setInterval(() => {
+      if (startTimeRef.current) {
+        const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
+        setStats(prev => {
+          return {
+            ...prev,
+            elapsedTime,
+            wpm: calculateWPM(prev.correctChars, elapsedTime)
+          };
+        });
+      }
+    }, 200);
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [user, scriptId, currentQuoteId, stats]);
+  }, []);
+
+  const resetTest = useCallback(() => {
+    stopTimer();
+    setIsActive(false);
+    setIsFinished(false);
+    setCurrentWordIndex(0);
+    setCurrentCharIndex(0);
+    startTimeRef.current = null;
+    resultRecordedRef.current = false;
+    setStats({
+      wpm: 0,
+      accuracy: 100,
+      correctChars: 0,
+      incorrectChars: 0,
+      totalChars: currentQuote.length,
+      elapsedTime: 0,
+    });
+    
+    setWords(prevWords => {
+      return prevWords.map((word, wordIdx) => ({
+        characters: word.characters.map((char, charIdx) => ({
+          ...char,
+          state: wordIdx === 0 && charIdx === 0 ? 'current' : 'inactive'
+        }))
+      }));
+    });
+  }, [currentQuote, stopTimer]);
+
+  const findLastCorrectPosition = useCallback(() => {
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return { wordIndex: 0, charIndex: 0 };
+    
+    let hasErrors = false;
+    let lastCorrectCharIndex = 0;
+    
+    for (let i = 0; i < currentWord.characters.length; i++) {
+      if (i < currentCharIndex) {
+        if (currentWord.characters[i].state === 'correct') {
+          lastCorrectCharIndex = i + 1;
+        } else if (currentWord.characters[i].state === 'incorrect') {
+          hasErrors = true;
+        }
+      }
+    }
+    
+    return {
+      hasErrors,
+      wordIndex: currentWordIndex,
+      charIndex: lastCorrectCharIndex
+    };
+  }, [words, currentWordIndex, currentCharIndex]);
+
+  const smartBackspace = useCallback(() => {
+    if (currentWordIndex > 0 && currentCharIndex === 0) {
+      const prevWordIndex = currentWordIndex - 1;
+      const prevWordLength = words[prevWordIndex].characters.length;
+      
+      setCurrentWordIndex(prevWordIndex);
+      setCurrentCharIndex(prevWordLength);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        if (prevWordLength > 0) {
+          newWords[prevWordIndex].characters[prevWordLength - 1].state = 'current';
+        }
+        
+        return newWords;
+      });
+      
+      return;
+    }
+    
+    const { hasErrors, charIndex } = findLastCorrectPosition();
+    
+    if (hasErrors && charIndex < currentCharIndex) {
+      setCurrentCharIndex(charIndex);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        for (let i = charIndex; i < newWords[currentWordIndex].characters.length; i++) {
+          if (i === charIndex) {
+            newWords[currentWordIndex].characters[i].state = 'current';
+          } else {
+            newWords[currentWordIndex].characters[i].state = 'inactive';
+          }
+        }
+        
+        return newWords;
+      });
+    } else if (currentCharIndex > 0) {
+      setCurrentCharIndex(prev => prev - 1);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        if (currentCharIndex > 0) {
+          newWords[currentWordIndex].characters[currentCharIndex - 1].state = 'current';
+          
+          if (currentCharIndex < newWords[currentWordIndex].characters.length) {
+            newWords[currentWordIndex].characters[currentCharIndex].state = 'inactive';
+          }
+        }
+        return newWords;
+      });
+      
+      if (currentCharIndex > 0 && currentCharIndex <= words[currentWordIndex].characters.length) {
+        const charState = words[currentWordIndex].characters[currentCharIndex - 1].state;
+        
+        setStats(prev => {
+          const newStats = { ...prev };
+          
+          if (charState === 'correct') {
+            newStats.correctChars = Math.max(0, prev.correctChars - 1);
+          } else if (charState === 'incorrect') {
+            newStats.incorrectChars = Math.max(0, prev.incorrectChars - 1);
+          }
+          
+          newStats.accuracy = calculateAccuracy(
+            newStats.correctChars,
+            newStats.incorrectChars
+          );
+          
+          return newStats;
+        });
+      }
+    }
+  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     
-    // Start the timer when user begins typing
     if (!isActive && !isFinished) {
       setIsActive(true);
-      startTimeRef.current = Date.now();
+      startTimer();
     }
-
-    // Handle backspace
-    if (input.length < currentCharIndex) {
-      // Only handle backspace if we're not at the beginning
-      if (currentCharIndex > 0) {
-        const newWords = [...words];
-        const currentWord = newWords[currentWordIndex].characters;
-        
-        // Update the character state
-        currentWord[currentCharIndex - 1].state = 'untyped';
-        
-        // Decrement character counters
-        if (currentWord[currentCharIndex - 1].state === 'correct') {
-          correctCharsRef.current = Math.max(0, correctCharsRef.current - 1);
-        } else if (currentWord[currentCharIndex - 1].state === 'incorrect') {
-          incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
+    
+    e.target.value = '';
+    
+    const typedChar = input.charAt(input.length - 1);
+    if (!typedChar) return;
+    
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return;
+    
+    if (typedChar === ' ') {
+      if (currentCharIndex === currentWord.characters.length) {
+        if (currentWordIndex < words.length - 1) {
+          setCurrentWordIndex(prev => prev + 1);
+          setCurrentCharIndex(0);
+          
+          setWords(prevWords => {
+            const newWords = [...prevWords];
+            
+            if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+              newWords[currentWordIndex + 1].characters[0].state = 'current';
+            }
+            
+            return newWords;
+          });
         }
-        totalCharsRef.current = Math.max(0, totalCharsRef.current - 1);
-        
-        // Update cursor position
-        setCurrentCharIndex(currentCharIndex - 1);
-        setWords(newWords);
       }
       return;
     }
-
-    // Handle new character input
-    if (input.length > 0) {
-      const char = input[input.length - 1];
-      const newWords = [...words];
+    
+    if (currentCharIndex < currentWord.characters.length) {
+      const currentChar = currentWord.characters[currentCharIndex];
       
-      // Ensure we have a current word and we haven't reached the end
-      if (currentWordIndex < newWords.length) {
-        const currentWord = newWords[currentWordIndex].characters;
+      const isCorrect = typedChar === currentChar.char;
+      
+      setStats(prev => ({
+        ...prev,
+        correctChars: prev.correctChars + (isCorrect ? 1 : 0),
+        incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+        accuracy: calculateAccuracy(
+          prev.correctChars + (isCorrect ? 1 : 0), 
+          prev.incorrectChars + (isCorrect ? 0 : 1)
+        )
+      }));
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
         
-        // Check if we're still within the current word's characters
-        if (currentCharIndex < currentWord.length) {
-          // Determine if the typed character is correct
-          const isCorrect = char === currentWord[currentCharIndex].char;
-          
-          // Update character state
-          currentWord[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
-          
-          // Update character counters
-          if (isCorrect) {
-            correctCharsRef.current++;
-          } else {
-            incorrectCharsRef.current++;
-          }
-          totalCharsRef.current++;
-          
-          // Mark the next character as current if there is one
-          if (currentCharIndex + 1 < currentWord.length) {
-            currentWord[currentCharIndex + 1].state = 'current';
-          }
-          
-          // Update cursor position
-          setCurrentCharIndex(currentCharIndex + 1);
-          
-          // Check if we've completed the word
-          if (currentCharIndex === currentWord.length - 1) {
-            if (currentWordIndex < words.length - 1) {
-              // Move to the next word
-              setCurrentWordIndex(currentWordIndex + 1);
-              setCurrentCharIndex(0);
-              
-              // Mark the first character of the next word as current
-              if (newWords[currentWordIndex + 1].characters.length > 0) {
-                newWords[currentWordIndex + 1].characters[0].state = 'current';
-              }
-            } else {
-              // We've completed all words
-              setIsFinished(true);
-              setIsActive(false);
-              endTimeRef.current = Date.now();
-              recordHistory();
-            }
-          }
+        newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+        
+        if (currentCharIndex < currentWord.characters.length - 1) {
+          newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
+        } else if (currentWordIndex === words.length - 1 && 
+                   currentCharIndex === currentWord.characters.length - 1) {
+          setIsFinished(true);
+          stopTimer();
         }
-      }
+        
+        return newWords;
+      });
       
-      setWords(newWords);
+      setCurrentCharIndex(prev => prev + 1);
     }
-    
-    // Clear the input field to prepare for the next character
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, [words, currentWordIndex, currentCharIndex, isActive, isFinished, recordHistory]);
+  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
 
-  const resetTest = useCallback(() => {
-    if (quotes.length === 0) return;
-    setWords(processQuote(quotes[currentQuoteIndex]));
-    setCurrentWordIndex(0);
-    setCurrentCharIndex(0);
-    setIsActive(false);
-    setIsFinished(false);
-    startTimeRef.current = null;
-    endTimeRef.current = null;
-    correctCharsRef.current = 0;
-    incorrectCharsRef.current = 0;
-    totalCharsRef.current = 0;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        loadNewQuote();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        smartBackspace();
+      }
+    };
     
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  }, [quotes, currentQuoteIndex, processQuote]);
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loadNewQuote, smartBackspace]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   const focusInput = useCallback(() => {
     if (inputRef.current) {
@@ -253,13 +380,13 @@ const useTypingTest = ({ quotes, scriptId, quoteIds = [] }: UseTypingTestProps) 
     stats,
     isActive,
     isFinished,
+    currentWordIndex,
+    currentCharIndex,
     inputRef,
     handleInput,
     resetTest,
     loadNewQuote,
-    focusInput,
-    currentWordIndex,
-    currentCharIndex
+    focusInput
   };
 };
 

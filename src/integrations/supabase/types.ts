@@ -121,23 +121,7 @@ export type Database = {
       }
     }
     Views: {
-      script_views: {
-        Row: {
-          id: string
-          title: string
-          content: string
-          user_id: string
-          created_at: string
-          created_by: string
-          category: string
-          typed_count: number
-          unique_typers_count: number
-          average_wpm: number
-          average_accuracy: number
-          best_wpm: number
-          is_saved: boolean
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
       [_ in never]: never
