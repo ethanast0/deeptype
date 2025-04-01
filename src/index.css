@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -46,6 +45,13 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Theme color variables */
+    --theme-grey: 220 13% 91%;
+    --theme-zinc: 240 5.9% 90%;
+    --theme-slate: 210 40% 96.1%;
+    --theme-green: 142 76% 36%;
+    --theme-red: 0 84.2% 60.2%;
   }
 
   .dark {
@@ -84,6 +90,30 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Dark theme color variables */
+    --theme-grey: 217.2 32.6% 17.5%;
+    --theme-zinc: 240 3.7% 15.9%;
+    --theme-slate: 215.4 16.3% 46.9%;
+    --theme-green: 142 76% 36%;
+    --theme-red: 0 62.8% 30.6%;
+  }
+
+  /* Theme color classes */
+  .theme-grey {
+    --theme-color: var(--theme-grey);
+  }
+  .theme-zinc {
+    --theme-color: var(--theme-zinc);
+  }
+  .theme-slate {
+    --theme-color: var(--theme-slate);
+  }
+  .theme-green {
+    --theme-color: var(--theme-green);
+  }
+  .theme-red {
+    --theme-color: var(--theme-red);
   }
 }
 
