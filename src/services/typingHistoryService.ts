@@ -14,24 +14,31 @@ interface TypingSession {
 
 export const typingHistoryService = {
   // Record a new typing session in Supabase
-  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number, elapsedTime: number = 0): Promise<boolean> => {
+  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number, elapsedTime: number = 0, quoteId?: string): Promise<boolean> => {
     try {
       if (!userId || !scriptId) {
         console.error('Missing required parameters:', { userId, scriptId });
         return false;
       }
       
-      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy, elapsedTime });
+      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy, elapsedTime, quoteId });
+      
+      const record: any = {
+        user_id: userId,
+        script_id: scriptId,
+        wpm: Math.round(wpm),
+        accuracy: Math.round(accuracy * 100) / 100,
+        elapsed_time: elapsedTime
+      };
+      
+      // Add quote_id if provided
+      if (quoteId) {
+        record.quote_id = quoteId;
+      }
       
       const { error: insertError } = await supabase
         .from('typing_history')
-        .insert({
-          user_id: userId,
-          script_id: scriptId,
-          wpm: Math.round(wpm),
-          accuracy: Math.round(accuracy * 100) / 100,
-          elapsed_time: elapsedTime
-        });
+        .insert(record);
       
       if (insertError) {
         console.error('Error recording new typing session:', insertError);

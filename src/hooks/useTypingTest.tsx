@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -11,6 +10,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
 import { useToast } from '../hooks/use-toast';
+import { supabase } from '../integrations/supabase/client';
 
 interface UseTypingTestProps {
   quotes?: string[];
@@ -32,6 +32,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   });
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
+  const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,7 +64,8 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             user.id,
             scriptId,
             stats.wpm,
-            stats.accuracy
+            stats.accuracy,
+            stats.elapsedTime
           );
           
           if (success) {
@@ -71,6 +73,10 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
               title: "Progress saved",
               description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
             });
+            
+            if (currentQuoteId) {
+              await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
+            }
           } else {
             console.error('Failed to record typing session');
             toast({
@@ -91,7 +97,27 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast]);
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime]);
+
+  const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
+    try {
+      const { error } = await supabase
+        .from('script_quotes')
+        .update({
+          typed_count: supabase.rpc('increment', { row_id: quoteId, table_name: 'script_quotes', column_name: 'typed_count' }),
+          avg_wpm: wpm,
+          avg_accuracy: accuracy,
+          best_wpm: wpm
+        })
+        .eq('id', quoteId);
+        
+      if (error) {
+        console.error('Error updating quote stats:', error);
+      }
+    } catch (error) {
+      console.error('Error updating quote stats:', error);
+    }
+  };
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -109,15 +135,47 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     setStats(prev => ({ ...prev, totalChars }));
   }, [currentWordIndex]);
 
-  const loadNewQuote = useCallback(() => {
-    const randomIndex = Math.floor(Math.random() * quotes.length);
-    const quote = quotes[randomIndex];
-    setCurrentQuote(quote);
-    processQuote(quote);
+  const loadNewQuote = useCallback(async () => {
+    setCurrentQuoteId(null);
+    
+    if (scriptId) {
+      try {
+        const { data, error } = await supabase
+          .from('script_quotes')
+          .select('id, content')
+          .eq('script_id', scriptId);
+          
+        if (error || !data || data.length === 0) {
+          console.error('Error loading quotes or no quotes found:', error);
+          const randomIndex = Math.floor(Math.random() * quotes.length);
+          const quote = quotes[randomIndex];
+          setCurrentQuote(quote);
+          processQuote(quote);
+        } else {
+          const randomIndex = Math.floor(Math.random() * data.length);
+          const randomQuote = data[randomIndex];
+          setCurrentQuote(randomQuote.content);
+          setCurrentQuoteId(randomQuote.id);
+          processQuote(randomQuote.content);
+        }
+      } catch (error) {
+        console.error('Error loading quote from database:', error);
+        const randomIndex = Math.floor(Math.random() * quotes.length);
+        const quote = quotes[randomIndex];
+        setCurrentQuote(quote);
+        processQuote(quote);
+      }
+    } else {
+      const randomIndex = Math.floor(Math.random() * quotes.length);
+      const quote = quotes[randomIndex];
+      setCurrentQuote(quote);
+      processQuote(quote);
+    }
+    
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
-  }, [quotes, processQuote]);
+  }, [quotes, scriptId, processQuote]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;

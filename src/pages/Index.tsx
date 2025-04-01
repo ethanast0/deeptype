@@ -32,8 +32,10 @@ const Index = () => {
           return;
         }
         
+        let scriptId: string;
+        
         if (scripts) {
-          setActiveScriptId(scripts.id);
+          scriptId = scripts.id;
         } else {
           const { data: newScript, error: createError } = await supabase
             .from('scripts')
@@ -51,7 +53,40 @@ const Index = () => {
             return;
           }
           
-          setActiveScriptId(newScript.id);
+          scriptId = newScript.id;
+          
+          // Also insert quotes into script_quotes table
+          const quoteInserts = defaultQuotes.map((quote, index) => ({
+            script_id: scriptId,
+            content: quote,
+            quote_index: index
+          }));
+          
+          const { error: quotesError } = await supabase
+            .from('script_quotes')
+            .insert(quoteInserts);
+            
+          if (quotesError) {
+            console.error('Error saving default quotes:', quotesError);
+          }
+        }
+        
+        setActiveScriptId(scriptId);
+        
+        // Fetch quotes from script_quotes table
+        const { data: quoteData, error: quotesError } = await supabase
+          .from('script_quotes')
+          .select('content')
+          .eq('script_id', scriptId)
+          .order('quote_index', { ascending: true });
+          
+        if (quotesError) {
+          console.error('Error fetching quotes:', quotesError);
+          return;
+        }
+        
+        if (quoteData && quoteData.length > 0) {
+          setQuotes(quoteData.map(q => q.content));
         }
       } catch (error) {
         console.error('Unexpected error during script setup:', error);
@@ -67,7 +102,7 @@ const Index = () => {
     setQuotes(newQuotes);
   };
 
-  const handleTemplateSelected = (templateQuotes: string[], scriptId?: string) => {
+  const handleTemplateSelected = async (templateQuotes: string[], scriptId?: string) => {
     setQuotes(templateQuotes);
     if (scriptId) {
       setActiveScriptId(scriptId);

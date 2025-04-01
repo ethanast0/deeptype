@@ -232,6 +232,28 @@ export type Database = {
           typed_count: number | null
           unique_typers_count: number | null
         }
+        Insert: {
+          avg_accuracy?: number | null
+          avg_wpm?: number | null
+          best_wpm?: number | null
+          content?: string | null
+          id?: string | null
+          quote_index?: number | null
+          script_id?: string | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
+        }
+        Update: {
+          avg_accuracy?: number | null
+          avg_wpm?: number | null
+          best_wpm?: number | null
+          content?: string | null
+          id?: string | null
+          quote_index?: number | null
+          script_id?: string | null
+          typed_count?: number | null
+          unique_typers_count?: number | null
+        }
         Relationships: [
           {
             foreignKeyName: "script_quotes_script_id_fkey"
@@ -266,7 +288,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      migrate_script_content_to_quotes: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

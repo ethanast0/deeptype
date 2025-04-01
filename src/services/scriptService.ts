@@ -18,7 +18,7 @@ export const scriptService = {
   // Get scripts from Supabase
   getScripts: async (userId: string): Promise<SavedScript[]> => {
     try {
-      const { data, error } = await supabase
+      const { data: scripts, error } = await supabase
         .from('scripts')
         .select('*')
         .eq('user_id', userId);
@@ -28,15 +28,39 @@ export const scriptService = {
         return [];
       }
       
-      // Transform data to SavedScript format
-      return data.map(script => ({
-        id: script.id,
-        name: script.name,
-        quotes: JSON.parse(script.content),
-        userId: script.user_id,
-        createdAt: script.created_at,
-        category: script.category
-      }));
+      // Now we need to fetch quotes for each script
+      const scriptsWithQuotes = await Promise.all(
+        data.map(async (script) => {
+          const { data: quotes, error: quotesError } = await supabase
+            .from('script_quotes')
+            .select('content')
+            .eq('script_id', script.id)
+            .order('quote_index', { ascending: true });
+          
+          if (quotesError) {
+            console.error(`Error fetching quotes for script ${script.id}:`, quotesError);
+            return {
+              id: script.id,
+              name: script.name,
+              quotes: [],
+              userId: script.user_id,
+              createdAt: script.created_at,
+              category: script.category
+            };
+          }
+          
+          return {
+            id: script.id,
+            name: script.name,
+            quotes: quotes.map(q => q.content),
+            userId: script.user_id,
+            createdAt: script.created_at,
+            category: script.category
+          };
+        })
+      );
+      
+      return scriptsWithQuotes;
     } catch (error) {
       console.error('Error fetching scripts:', error);
       return [];
@@ -54,30 +78,46 @@ export const scriptService = {
       }
       
       // Insert script to Supabase
-      const { data, error } = await supabase
+      const { data: scriptData, error: scriptError } = await supabase
         .from('scripts')
         .insert({
           user_id: userId,
           name: name,
-          content: JSON.stringify(quotes),
+          content: JSON.stringify(quotes), // Keep content for backward compatibility
           category
         })
         .select()
         .single();
       
-      if (error) {
-        console.error('Error saving script to Supabase:', error);
+      if (scriptError) {
+        console.error('Error saving script to Supabase:', scriptError);
         return null;
+      }
+      
+      // Now insert each quote separately
+      const quoteInserts = quotes.map((quote, index) => ({
+        script_id: scriptData.id,
+        content: quote,
+        quote_index: index
+      }));
+      
+      const { error: quotesError } = await supabase
+        .from('script_quotes')
+        .insert(quoteInserts);
+      
+      if (quotesError) {
+        console.error('Error saving quotes to Supabase:', quotesError);
+        // Consider rolling back the script insert here
       }
       
       // Return in SavedScript format
       return {
-        id: data.id,
-        name: data.name,
-        quotes: JSON.parse(data.content),
-        userId: data.user_id,
-        createdAt: data.created_at,
-        category: data.category
+        id: scriptData.id,
+        name: scriptData.name,
+        quotes: quotes,
+        userId: scriptData.user_id,
+        createdAt: scriptData.created_at,
+        category: scriptData.category
       };
     } catch (error) {
       console.error('Error saving script:', error);
@@ -88,17 +128,45 @@ export const scriptService = {
   // Update script in Supabase
   updateScript: async (script: SavedScript): Promise<boolean> => {
     try {
-      const { error } = await supabase
+      // Update the script entry
+      const { error: scriptError } = await supabase
         .from('scripts')
         .update({
           name: script.name,
-          content: JSON.stringify(script.quotes),
+          content: JSON.stringify(script.quotes), // Keep content for backward compatibility
           category: script.category || 'Custom'
         })
         .eq('id', script.id);
       
-      if (error) {
-        console.error('Error updating script in Supabase:', error);
+      if (scriptError) {
+        console.error('Error updating script in Supabase:', scriptError);
+        return false;
+      }
+      
+      // Delete existing quotes
+      const { error: deleteError } = await supabase
+        .from('script_quotes')
+        .delete()
+        .eq('script_id', script.id);
+      
+      if (deleteError) {
+        console.error('Error deleting existing quotes:', deleteError);
+        return false;
+      }
+      
+      // Insert new quotes
+      const quoteInserts = script.quotes.map((quote, index) => ({
+        script_id: script.id,
+        content: quote,
+        quote_index: index
+      }));
+      
+      const { error: quotesError } = await supabase
+        .from('script_quotes')
+        .insert(quoteInserts);
+      
+      if (quotesError) {
+        console.error('Error inserting updated quotes:', quotesError);
         return false;
       }
       
@@ -112,6 +180,7 @@ export const scriptService = {
   // Delete script from Supabase
   deleteScript: async (scriptId: string): Promise<boolean> => {
     try {
+      // With cascade delete, this will also delete the quotes
       const { error } = await supabase
         .from('scripts')
         .delete()

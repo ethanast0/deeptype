@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
