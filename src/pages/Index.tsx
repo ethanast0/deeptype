@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -12,48 +13,51 @@ const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const setupDefaultScript = async () => {
       if (!user) return;
       try {
-        const {
-          data: scripts,
-          error
-        } = await supabase.from('scripts').select('id').eq('user_id', user.id).eq('title', 'Default').maybeSingle();
+        const { data: scripts, error } = await supabase
+          .from('scripts')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('name', 'Default')
+          .maybeSingle();
+          
         if (error) {
           console.error('Error fetching default script:', error);
           return;
         }
+        
         if (scripts) {
           setActiveScriptId(scripts.id);
         } else {
-          const {
-            data: newScript,
-            error: createError
-          } = await supabase.from('scripts').insert({
-            user_id: user.id,
-            title: 'Default',
-            content: JSON.stringify(defaultQuotes),
-            category: 'Default',
-            created_by: user.id
-          }).select().single();
+          const { data: newScript, error: createError } = await supabase
+            .from('scripts')
+            .insert({
+              user_id: user.id,
+              name: 'Default',
+              content: JSON.stringify(defaultQuotes),
+              category: 'Default',
+            })
+            .select()
+            .single();
+            
           if (createError) {
             console.error('Error creating default script:', createError);
             return;
           }
+          
           setActiveScriptId(newScript.id);
         }
       } catch (error) {
         console.error('Unexpected error during script setup:', error);
       }
     };
+    
     if (user) {
       setupDefaultScript();
     }
@@ -70,7 +74,8 @@ const Index = () => {
     }
   };
 
-  return <div className="min-h-screen flex flex-col bg-background">
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-10 flex flex-col justify-center">
@@ -85,7 +90,8 @@ const Index = () => {
       </main>
       
       <Footer />
-    </div>;
+    </div>
+  );
 };
 
 export default Index;

@@ -14,14 +14,14 @@ interface TypingSession {
 
 export const typingHistoryService = {
   // Record a new typing session in Supabase
-  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number): Promise<boolean> => {
+  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number, elapsedTime: number = 0): Promise<boolean> => {
     try {
       if (!userId || !scriptId) {
         console.error('Missing required parameters:', { userId, scriptId });
         return false;
       }
       
-      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy });
+      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy, elapsedTime });
       
       const { error: insertError } = await supabase
         .from('typing_history')
@@ -30,7 +30,7 @@ export const typingHistoryService = {
           script_id: scriptId,
           wpm: Math.round(wpm),
           accuracy: Math.round(accuracy * 100) / 100,
-          elapsed_time: 0 // Required field in the new schema
+          elapsed_time: elapsedTime
         });
       
       if (insertError) {

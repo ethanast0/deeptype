@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface User {
@@ -202,10 +203,9 @@ export const associateTempScriptsWithUser = async (user: User) => {
       .from('scripts')
       .insert({
         user_id: user.id,
-        title: parsedScript.name,
+        name: parsedScript.name,
         content: JSON.stringify(parsedScript.quotes),
         category: 'Custom',
-        created_by: user.id
       })
       .select();
     
