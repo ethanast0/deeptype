@@ -1,3 +1,4 @@
+
 import React from "react";
 import { ThemeToggle } from "./ui/theme-toggle";
 import { ColorModeSelector } from "./ui/color-mode-selector";
@@ -9,11 +10,11 @@ interface ThemeSwitcherProps {
 
 const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({ className }) => {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-3", className)}>
       <ThemeToggle />
       <ColorModeSelector />
     </div>
   );
 };
 
-export default ThemeSwitcher; 
+export default ThemeSwitcher;
