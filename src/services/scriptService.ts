@@ -30,7 +30,7 @@ export const scriptService = {
       
       // Now we need to fetch quotes for each script
       const scriptsWithQuotes = await Promise.all(
-        data.map(async (script) => {
+        scripts.map(async (script) => {
           const { data: quotes, error: quotesError } = await supabase
             .from('script_quotes')
             .select('content')
