@@ -288,6 +288,14 @@ export type Database = {
       }
     }
     Functions: {
+      increment: {
+        Args: {
+          row_id: string
+          table_name: string
+          column_name: string
+        }
+        Returns: undefined
+      }
       migrate_script_content_to_quotes: {
         Args: Record<PropertyKey, never>
         Returns: undefined

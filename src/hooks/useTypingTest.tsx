@@ -108,7 +108,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             row_id: quoteId, 
             table_name: 'script_quotes', 
             column_name: 'typed_count' 
-          }),
+          }) as unknown as number,
           avg_wpm: wpm,
           avg_accuracy: accuracy,
           best_wpm: wpm
