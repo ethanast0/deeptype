@@ -44,14 +44,14 @@ export const typingHistoryService = {
         .insert(record);
       
       if (insertError) {
-        console.error('Error recording new typing session:', insertError);
+        console.error('Error updating typing stats:', insertError);
         return false;
       }
       
-      console.log('Created new typing session record');
+      console.log('Your typing stats have been updated');
       return true;
     } catch (error) {
-      console.error('Unexpected error recording typing session:', error);
+      console.error('Unexpected error updating typing stats:', error);
       return false;
     }
   },
