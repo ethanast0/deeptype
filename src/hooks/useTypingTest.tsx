@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -57,15 +58,20 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             userId: user.id,
             scriptId,
             wpm: stats.wpm,
-            accuracy: stats.accuracy
+            accuracy: stats.accuracy,
+            elapsedTime: stats.elapsedTime
           });
+          
+          // Round elapsed time to an integer for database compatibility
+          const roundedElapsedTime = Math.round(stats.elapsedTime);
           
           const success = await typingHistoryService.recordSession(
             user.id,
             scriptId,
             stats.wpm,
             stats.accuracy,
-            stats.elapsedTime
+            roundedElapsedTime,
+            currentQuoteId || undefined
           );
           
           if (success) {
@@ -101,22 +107,32 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
-      const { error } = await supabase
+      // Fixed RPC call to increment function
+      const { data: incrementResult, error: incrementError } = await supabase.rpc(
+        'increment',
+        { 
+          row_id: quoteId, 
+          table_name: 'script_quotes', 
+          column_name: 'typed_count' 
+        }
+      );
+
+      if (incrementError) {
+        console.error('Error incrementing typed count:', incrementError);
+      }
+
+      // Update other stats directly
+      const { error: updateError } = await supabase
         .from('script_quotes')
         .update({
-          typed_count: supabase.rpc('increment', { 
-            row_id: quoteId, 
-            table_name: 'script_quotes', 
-            column_name: 'typed_count' 
-          }) as unknown as number,
           avg_wpm: wpm,
           avg_accuracy: accuracy,
           best_wpm: wpm
         })
         .eq('id', quoteId);
         
-      if (error) {
-        console.error('Error updating quote stats:', error);
+      if (updateError) {
+        console.error('Error updating quote stats:', updateError);
       }
     } catch (error) {
       console.error('Error updating quote stats:', error);

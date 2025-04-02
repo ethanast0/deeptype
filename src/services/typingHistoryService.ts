@@ -23,12 +23,15 @@ export const typingHistoryService = {
       
       console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy, elapsedTime, quoteId });
       
+      // Ensure elapsedTime is an integer as expected by the database
+      const roundedElapsedTime = Math.round(elapsedTime);
+      
       const record: any = {
         user_id: userId,
         script_id: scriptId,
         wpm: Math.round(wpm),
         accuracy: Math.round(accuracy * 100) / 100,
-        elapsed_time: elapsedTime
+        elapsed_time: roundedElapsedTime
       };
       
       // Add quote_id if provided
