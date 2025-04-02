@@ -101,7 +101,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('script_quotes')
         .update({
           typed_count: supabase.rpc('increment', { 
@@ -114,6 +114,10 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
           best_wpm: wpm
         })
         .eq('id', quoteId);
+        
+      if (error) {
+        console.error('Error updating quote stats:', error);
+      }
     } catch (error) {
       console.error('Error updating quote stats:', error);
     }
