@@ -59,6 +59,7 @@ export const typingHistoryService = {
   // Get all typing sessions for a user from Supabase
   getUserSessions: async (userId: string): Promise<TypingSession[]> => {
     try {
+      console.log('Fetching user sessions for user ID:', userId);
       const { data, error } = await supabase
         .from('typing_history')
         .select('*')
@@ -69,6 +70,7 @@ export const typingHistoryService = {
         return [];
       }
       
+      console.log(`Retrieved ${data.length} typing sessions`);
       return data.map(session => ({
         id: session.id,
         userId: session.user_id,
@@ -118,9 +120,11 @@ export const typingHistoryService = {
   // Get user stats from Supabase
   getUserStats: async (userId: string) => {
     try {
+      console.log('Calculating user stats for user ID:', userId);
       const sessions = await typingHistoryService.getUserSessions(userId);
       
       if (sessions.length === 0) {
+        console.log('No typing sessions found for user');
         return {
           averageWpm: 0,
           averageAccuracy: 0,
@@ -133,12 +137,15 @@ export const typingHistoryService = {
       const totalAccuracy = sessions.reduce((sum, session) => sum + session.accuracy, 0);
       const uniqueScripts = new Set(sessions.map(session => session.scriptId));
       
-      return {
+      const stats = {
         averageWpm: Math.round(totalWpm / sessions.length),
         averageAccuracy: parseFloat((totalAccuracy / sessions.length).toFixed(2)),
         totalSessions: sessions.length,
         totalScripts: uniqueScripts.size
       };
+      
+      console.log('Calculated user stats:', stats);
+      return stats;
     } catch (error) {
       console.error('Error calculating user stats:', error);
       return {
