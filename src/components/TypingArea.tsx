@@ -1,7 +1,7 @@
-
 import React, { useEffect } from 'react';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
+import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 
@@ -49,7 +49,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
-        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
+        <div className="flex justify-between items-center">
+          <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
+          <HistoricalStats className="self-end" />
+        </div>
       </div>
       
       <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
