@@ -56,7 +56,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           {user && <HistoricalStats 
             className="self-end" 
             displayAccuracy={false}
-            autoRefresh={true}
           />}
         </div>
       </div>

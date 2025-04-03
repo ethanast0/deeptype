@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
+import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { Skeleton } from './ui/skeleton';
 
 interface HistoricalStatsProps {
   className?: string;
   displayAccuracy: boolean;  // Remove optional '?' to force explicit choice
-  autoRefresh: boolean;      // Remove optional '?' to force explicit choice
 }
 
 interface UserStats {
@@ -20,7 +20,6 @@ interface UserStats {
 const HistoricalStats: React.FC<HistoricalStatsProps> = ({
   className,
   displayAccuracy,
-  autoRefresh,
 }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
@@ -39,10 +38,10 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({
     }
     
     try {
-      console.log('Fetching historical stats for user:', user.id);
+      console.debug('Fetching historical stats for user:', user.id);
       setIsLoading(true);
       const userStats = await typingHistoryService.getUserStats(user.id);
-      console.log('Received historical stats:', userStats);
+      console.debug('Received historical stats:', userStats);
       setStats(userStats);
       setError(null);
     } catch (err) {
@@ -53,22 +52,40 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchStats();
+  }, [user]);
 
-    let intervalId: NodeJS.Timeout;
-    if (autoRefresh) {
-      console.debug('HistoricalStats: Auto-refresh enabled');
-      intervalId = setInterval(fetchStats, 5000);
-    }
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.debug('Setting up realtime subscription for user:', user.id);
     
+    const channel = supabase
+      .channel('realtime:typing_history')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'typing_history',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.debug('📡 Realtime change detected:', payload);
+          fetchStats(); // Recompute stats on any change
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
     return () => {
-      if (intervalId) {
-        console.debug('HistoricalStats: Cleaning up auto-refresh');
-        clearInterval(intervalId);
-      }
+      console.debug('Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
     };
-  }, [user, autoRefresh]);
+  }, [user?.id]);
 
   // Don't render anything if user is not authenticated.
   if (!user) return null;
@@ -125,7 +142,6 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({
 // Add prop documentation
 HistoricalStats.defaultProps = {
   displayAccuracy: false,  // Default to hiding accuracy
-  autoRefresh: true       // Default to auto-refresh enabled
 };
 
 export default HistoricalStats;
