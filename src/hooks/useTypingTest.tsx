@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -38,6 +39,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
   const [scriptWpm, setScriptWpm] = useState<number>(0);
   const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
   const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
+  const [shouldLoadNewQuote, setShouldLoadNewQuote] = useState<boolean>(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -177,6 +179,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
+    setShouldLoadNewQuote(false);
   }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
@@ -396,10 +399,10 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
   }, []);
 
   useEffect(() => {
-    if (quotes.length > 0) {
+    if (quotes.length > 0 && currentQuote === '') {
       loadNewQuote();
     }
-  }, [quotes, loadNewQuote]);
+  }, [quotes, loadNewQuote, currentQuote]);
 
   useEffect(() => {
     const recordHistory = async () => {
@@ -452,9 +455,8 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
               setHasCompletedScript(true);
             } else {
               if (newCompletedQuotes < quotes.length) {
-                setTimeout(() => {
-                  loadNewQuote();
-                }, 1000);
+                // Change: Instead of immediately loading a new quote, set a flag
+                setShouldLoadNewQuote(true);
               }
             }
           } else {
@@ -478,6 +480,18 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     
     recordHistory();
   }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
+
+  // Add a new useEffect that responds to the shouldLoadNewQuote flag
+  useEffect(() => {
+    if (shouldLoadNewQuote) {
+      // Add a delay before loading the next quote
+      const timer = setTimeout(() => {
+        loadNewQuote();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldLoadNewQuote, loadNewQuote]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
