@@ -6,8 +6,8 @@ import { Skeleton } from './ui/skeleton';
 
 interface HistoricalStatsProps {
   className?: string;
-  displayAccuracy?: boolean; // Toggle the display of average accuracy; default is false.
-  autoRefresh?: boolean;      // Toggle auto-refresh; default is false.
+  displayAccuracy: boolean;  // Remove optional '?' to force explicit choice
+  autoRefresh: boolean;      // Remove optional '?' to force explicit choice
 }
 
 interface UserStats {
@@ -19,8 +19,8 @@ interface UserStats {
 
 const HistoricalStats: React.FC<HistoricalStatsProps> = ({
   className,
-  displayAccuracy = false,
-  autoRefresh = false,
+  displayAccuracy,
+  autoRefresh,
 }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
@@ -58,10 +58,13 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({
 
     let intervalId: NodeJS.Timeout;
     if (autoRefresh) {
-      intervalId = setInterval(fetchStats, 5000); // Auto-refresh every 5 seconds.
+      console.debug('HistoricalStats: Auto-refresh enabled');
+      intervalId = setInterval(fetchStats, 5000);
     }
+    
     return () => {
       if (intervalId) {
+        console.debug('HistoricalStats: Cleaning up auto-refresh');
         clearInterval(intervalId);
       }
     };
@@ -117,6 +120,12 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({
       </span>
     </div>
   );
+};
+
+// Add prop documentation
+HistoricalStats.defaultProps = {
+  displayAccuracy: false,  // Default to hiding accuracy
+  autoRefresh: true       // Default to auto-refresh enabled
 };
 
 export default HistoricalStats;

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -54,7 +53,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <div className="w-full flex flex-col -mt-4">
         <div className="flex justify-between items-center">
           <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
-          {user && <HistoricalStats className="self-end" />}
+          {user && <HistoricalStats 
+            className="self-end" 
+            displayAccuracy={false}
+            autoRefresh={true}
+          />}
         </div>
       </div>
       
