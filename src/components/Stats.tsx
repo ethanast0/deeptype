@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { TypingStats, formatTime } from '../utils/typingUtils';
 import { cn } from '../lib/utils';
+import { Loader2 } from 'lucide-react';
 
 interface StatsProps {
   stats: TypingStats;
@@ -10,6 +12,7 @@ interface StatsProps {
   isScriptLoaded?: boolean;
   currentScriptQuoteIndex?: number;
   totalScriptQuotes?: number;
+  isQuoteLoading?: boolean;
 }
 
 const Stats: React.FC<StatsProps> = ({ 
@@ -19,7 +22,8 @@ const Stats: React.FC<StatsProps> = ({
   className,
   isScriptLoaded = false,
   currentScriptQuoteIndex = 0,
-  totalScriptQuotes = 0
+  totalScriptQuotes = 0,
+  isQuoteLoading = false
 }) => {
   return (
     <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded", 
@@ -57,6 +61,16 @@ const Stats: React.FC<StatsProps> = ({
         <>
           <span className="text-zinc-600">•</span>
           <span className="font-medium text-monkey-accent">completed</span>
+        </>
+      )}
+      
+      {isQuoteLoading && (
+        <>
+          <span className="text-zinc-600">•</span>
+          <span className="font-medium text-monkey-accent flex items-center">
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            loading
+          </span>
         </>
       )}
     </div>

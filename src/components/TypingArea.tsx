@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -37,7 +38,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentScriptQuoteIndex,
     totalScriptQuotes,
     isScriptLoaded,
-    loadNewQuote
+    loadNewQuote,
+    isQuoteLoading
   } = useTypingTest({
     quotes,
     scriptId
@@ -53,6 +55,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
+  // Log current state for debugging
+  useEffect(() => {
+    console.log("TypingArea state:", {
+      quoteCount: quotes.length,
+      scriptId,
+      wordCount: words.length,
+      isActive,
+      isFinished,
+      isScriptLoaded,
+      currentScriptQuoteIndex,
+      totalScriptQuotes,
+      isQuoteLoading
+    });
+  }, [quotes, scriptId, words, isActive, isFinished, isScriptLoaded, currentScriptQuoteIndex, totalScriptQuotes, isQuoteLoading]);
+
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
         <div className="flex justify-between items-center">
@@ -64,6 +81,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             isScriptLoaded={isScriptLoaded}
             currentScriptQuoteIndex={currentScriptQuoteIndex}
             totalScriptQuotes={totalScriptQuotes}
+            isQuoteLoading={isQuoteLoading}
           />
           {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
         </div>
@@ -92,8 +110,20 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       <div className="flex gap-4 mt-8">
-        <button onClick={handleRedo} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        <button 
+          onClick={handleRedo} 
+          className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          disabled={isQuoteLoading}
+        >
+          redo
+        </button>
+        <button 
+          onClick={loadNewQuote} 
+          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          disabled={isQuoteLoading}
+        >
+          new [shift + enter]
+        </button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
       </div>
     </div>;
