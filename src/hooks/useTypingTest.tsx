@@ -16,9 +16,10 @@ import { supabase } from '../integrations/supabase/client';
 interface UseTypingTestProps {
   quotes?: string[];
   scriptId?: string | null;
+  onQuoteComplete?: () => void;
 }
 
-const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
+const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
@@ -34,6 +35,10 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
+  const [completedQuotes, setCompletedQuotes] = useState<number>(0);
+  const [scriptWpm, setScriptWpm] = useState<number>(0);
+  const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
+  const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -42,6 +47,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
+  const processedQuotesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (quotes.length > 0) {
@@ -83,6 +89,33 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             if (currentQuoteId) {
               await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
             }
+
+            // Add current WPM to list of script WPMs
+            setScriptWpmValues(prev => [...prev, stats.wpm]);
+            
+            // Check if we've completed all quotes in the script
+            const newCompletedQuotes = completedQuotes + 1;
+            setCompletedQuotes(newCompletedQuotes);
+            
+            if (onQuoteComplete) {
+              onQuoteComplete();
+            }
+            
+            // If we've completed all quotes, show completion message
+            if (newCompletedQuotes >= quotes.length && quotes.length > 0) {
+              const avgWpm = scriptWpmValues.length > 0 
+                ? scriptWpmValues.reduce((sum, wpm) => sum + wpm, 0) / scriptWpmValues.length 
+                : stats.wpm;
+              setScriptWpm(Math.round(avgWpm));
+              setHasCompletedScript(true);
+            } else {
+              // Load next quote if available
+              if (newCompletedQuotes < quotes.length) {
+                setTimeout(() => {
+                  loadNewQuote();
+                }, 1000);
+              }
+            }
           } else {
             console.error('Failed to record typing session');
             toast({
@@ -103,7 +136,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime]);
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
@@ -172,11 +205,29 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
           setCurrentQuote(quote);
           processQuote(quote);
         } else {
-          const randomIndex = Math.floor(Math.random() * data.length);
-          const randomQuote = data[randomIndex];
-          setCurrentQuote(randomQuote.content);
-          setCurrentQuoteId(randomQuote.id);
-          processQuote(randomQuote.content);
+          // Filter out quotes that have already been typed in this session
+          const availableQuotes = data.filter(quote => !processedQuotesRef.current.has(quote.id));
+          
+          // If all quotes have been typed, reset and use all quotes again
+          if (availableQuotes.length === 0) {
+            processedQuotesRef.current.clear();
+            setCompletedQuotes(0);
+            setScriptWpmValues([]);
+            setHasCompletedScript(false);
+            const randomIndex = Math.floor(Math.random() * data.length);
+            const randomQuote = data[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+          } else {
+            const randomIndex = Math.floor(Math.random() * availableQuotes.length);
+            const randomQuote = availableQuotes[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+            // Mark this quote as processed
+            processedQuotesRef.current.add(randomQuote.id);
+          }
         }
       } catch (error) {
         console.error('Error loading quote from database:', error);
@@ -195,7 +246,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
-  }, [quotes, scriptId, processQuote]);
+  }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
@@ -366,11 +417,23 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
     
+    // Handle space character - count it as a character for WPM calculation
     if (typedChar === ' ') {
+      // If at the end of the current word, move to next word
       if (currentCharIndex === currentWord.characters.length) {
         if (currentWordIndex < words.length - 1) {
           setCurrentWordIndex(prev => prev + 1);
           setCurrentCharIndex(0);
+          
+          // Count the space as a correct character for WPM calculation
+          setStats(prev => ({
+            ...prev,
+            correctChars: prev.correctChars + 1,
+            accuracy: calculateAccuracy(
+              prev.correctChars + 1, 
+              prev.incorrectChars
+            )
+          }));
           
           setWords(prevWords => {
             const newWords = [...prevWords];
@@ -382,6 +445,16 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             return newWords;
           });
         }
+      } else {
+        // If space is pressed in the middle of a word, count it as incorrect
+        setStats(prev => ({
+          ...prev,
+          incorrectChars: prev.incorrectChars + 1,
+          accuracy: calculateAccuracy(
+            prev.correctChars,
+            prev.incorrectChars + 1
+          )
+        }));
       }
       return;
     }
@@ -464,7 +537,9 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     handleInput,
     resetTest,
     loadNewQuote,
-    focusInput
+    focusInput,
+    scriptWpm,
+    hasCompletedScript
   };
 };
 
