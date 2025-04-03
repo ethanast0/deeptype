@@ -1,12 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
 import { cn } from '../lib/utils';
 import { Skeleton } from './ui/skeleton';
+import { supabase } from '../integrations/supabase/client';
 
 interface HistoricalStatsProps {
   className?: string;
+  displayAccuracy?: boolean;
 }
 
 interface UserStats {
@@ -16,7 +17,7 @@ interface UserStats {
   totalScripts: number;
 }
 
-const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
+const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAccuracy = true }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
     averageWpm: 0,
@@ -27,29 +28,52 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        console.log('Fetching historical stats for user:', user.id);
-        setIsLoading(true);
-        const userStats = await typingHistoryService.getUserStats(user.id);
-        console.log('Received historical stats:', userStats);
-        setStats(userStats);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching user stats:', err);
-        setError('Failed to load statistics');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchStats = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      console.log('Fetching historical stats for user:', user.id);
+      setIsLoading(true);
+      const userStats = await typingHistoryService.getUserStats(user.id);
+      console.log('Received historical stats:', userStats);
+      setStats(userStats);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching user stats:', err);
+      setError('Failed to load statistics');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStats();
+
+    if (!user) return;
+
+    const channel = supabase
+      .channel('typing_history_updates')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'typing_history', 
+          filter: `user_id=eq.${user.id}` 
+        },
+        (payload) => {
+          console.log('New typing history record received:', payload);
+          fetchStats(); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Don't render anything if user is not authenticated
@@ -82,11 +106,12 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
         <span className="font-medium text-monkey-text">{stats.averageWpm}</span>{" avg wpm"}
       </span>
 
-      <span className="text-zinc-600">•</span>
-      
-      <span>
-        <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
-      </span>
+      {displayAccuracy && <>
+        <span className="text-zinc-600">•</span>
+        <span>
+          <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
+        </span>
+      </>}
 
       <span className="text-zinc-600">•</span>
 
