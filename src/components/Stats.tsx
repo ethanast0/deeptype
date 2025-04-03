@@ -2,17 +2,18 @@
 import React from 'react';
 import { TypingStats, formatTime } from '../utils/typingUtils';
 import { cn } from '../lib/utils';
-import { Loader2 } from 'lucide-react';
+
+interface QuoteProgress {
+  current: number;
+  total: number;
+}
 
 interface StatsProps {
   stats: TypingStats;
   isActive: boolean;
   isFinished: boolean;
   className?: string;
-  isScriptLoaded?: boolean;
-  currentScriptQuoteIndex?: number;
-  totalScriptQuotes?: number;
-  isQuoteLoading?: boolean;
+  quoteProgress?: QuoteProgress;
 }
 
 const Stats: React.FC<StatsProps> = ({ 
@@ -20,10 +21,7 @@ const Stats: React.FC<StatsProps> = ({
   isActive, 
   isFinished,
   className,
-  isScriptLoaded = false,
-  currentScriptQuoteIndex = 0,
-  totalScriptQuotes = 0,
-  isQuoteLoading = false
+  quoteProgress 
 }) => {
   return (
     <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded", 
@@ -48,29 +46,19 @@ const Stats: React.FC<StatsProps> = ({
         <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
       </span>
       
-      {isScriptLoaded && totalScriptQuotes > 0 && (
+      {quoteProgress && (
         <>
           <span className="text-zinc-600">•</span>
           <span>
-             <span className="font-medium text-monkey-text">{currentScriptQuoteIndex + 1}</span> / {totalScriptQuotes}
+            <span className="font-medium text-monkey-text">{quoteProgress.current}/{quoteProgress.total}</span>{" quotes"}
           </span>
         </>
       )}
-
+      
       {isFinished && (
         <>
           <span className="text-zinc-600">•</span>
           <span className="font-medium text-monkey-accent">completed</span>
-        </>
-      )}
-      
-      {isQuoteLoading && (
-        <>
-          <span className="text-zinc-600">•</span>
-          <span className="font-medium text-monkey-accent flex items-center">
-            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            loading
-          </span>
         </>
       )}
     </div>

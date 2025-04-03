@@ -6,8 +6,7 @@ import {
   TypingStats, 
   calculateWPM, 
   calculateAccuracy, 
-  defaultQuotes,
-  CharacterState
+  defaultQuotes 
 } from '../utils/typingUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
@@ -17,14 +16,10 @@ import { supabase } from '../integrations/supabase/client';
 interface UseTypingTestProps {
   quotes?: string[];
   scriptId?: string | null;
+  onQuoteComplete?: () => void;
 }
 
-interface ScriptQuote {
-  id: string;
-  content: string;
-}
-
-const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
+const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
@@ -40,15 +35,12 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
+  const [completedQuotes, setCompletedQuotes] = useState<number>(0);
+  const [scriptWpm, setScriptWpm] = useState<number>(0);
+  const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
+  const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
+  const [shouldLoadNewQuote, setShouldLoadNewQuote] = useState<boolean>(false);
   
-  // Script handling state
-  const [scriptQuotes, setScriptQuotes] = useState<ScriptQuote[]>([]);
-  const [currentScriptQuoteIndex, setCurrentScriptQuoteIndex] = useState<number>(0);
-  const [isScriptLoaded, setIsScriptLoaded] = useState<boolean>(false);
-  const [isScriptComplete, setIsScriptComplete] = useState<boolean>(false);
-  const [isInitialized, setIsInitialized] = useState<boolean>(false);
-  const [isQuoteLoading, setIsQuoteLoading] = useState<boolean>(false);
-
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -56,8 +48,8 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
+  const processedQuotesRef = useRef<Set<string>>(new Set());
 
-  // 1. Define primitive functions that don't depend on other callbacks
   const focusInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.focus();
@@ -71,11 +63,13 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     timerRef.current = window.setInterval(() => {
       if (startTimeRef.current) {
         const elapsedTime = (Date.now() - startTimeRef.current) / 1000;
-        setStats(prev => ({
-          ...prev,
-          elapsedTime,
-          wpm: calculateWPM(prev.correctChars, elapsedTime)
-        }));
+        setStats(prev => {
+          return {
+            ...prev,
+            elapsedTime,
+            wpm: calculateWPM(prev.correctChars, elapsedTime)
+          };
+        });
       }
     }, 200);
   }, []);
@@ -87,41 +81,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     }
   }, []);
 
-  // 2. Process quote function
-  const processQuote = useCallback((quote: string) => {
-    console.log("Processing quote:", quote.substring(0, 20) + "...");
-    const rawWords = quote.split(' ');
-    const processedWords: Word[] = rawWords.map((word, wordIndex) => {
-      const characters: Character[] = [...word].map((char) => ({
-        char,
-        state: 'inactive' as CharacterState,
-      }));
-
-      // Add space character if it's not the last word
-      if (wordIndex < rawWords.length - 1) {
-        characters.push({ char: ' ', state: 'inactive' });
-      }
-
-      return { characters };
-    });
-
-    // Set the first character of the first word to 'current'
-    if (processedWords.length > 0 && processedWords[0].characters.length > 0) {
-      processedWords[0].characters[0].state = 'current';
-    }
-
-    setWords(processedWords);
-    setCurrentWordIndex(0);
-    setCurrentCharIndex(0);
-
-    // Calculate total characters including spaces between words
-    const totalChars = quote.length;
-    setStats(prev => ({ ...prev, totalChars }));
-  }, []);
-
-  // 3. Reset test function
-  const resetTest = useCallback((preserveQuote: boolean = false) => {
-    console.log("Resetting test, preserve quote:", preserveQuote);
+  const resetTest = useCallback(() => {
     stopTimer();
     setIsActive(false);
     setIsFinished(false);
@@ -134,285 +94,316 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
       accuracy: 100,
       correctChars: 0,
       incorrectChars: 0,
-      totalChars: preserveQuote ? stats.totalChars : currentQuote.length,
+      totalChars: currentQuote.length,
       elapsedTime: 0,
     });
+    
+    setWords(prevWords => {
+      return prevWords.map((word, wordIdx) => ({
+        characters: word.characters.map((char, charIdx) => ({
+          ...char,
+          state: wordIdx === 0 && charIdx === 0 ? 'current' : 'inactive'
+        }))
+      }));
+    });
+  }, [currentQuote, stopTimer]);
 
-    if (!preserveQuote) {
-      setWords([]);
-    } else {
-      setWords(prevWords => {
-        if (prevWords.length === 0) return [];
-        const resetWords = prevWords.map(word => ({
-          characters: word.characters.map(char => ({
-            ...char,
-            state: 'inactive' as CharacterState
-          }))
-        }));
-        if (resetWords.length > 0 && resetWords[0].characters.length > 0) {
-          resetWords[0].characters[0].state = 'current';
+  const processQuote = useCallback((quote: string) => {
+    const processedWords: Word[] = quote.split(' ').map(word => ({
+      characters: [...word].map((char, idx) => ({
+        char,
+        state: idx === 0 && currentWordIndex === 0 ? 'current' : 'inactive'
+      }))
+    }));
+    
+    setWords(processedWords);
+    setCurrentWordIndex(0);
+    setCurrentCharIndex(0);
+    
+    const totalChars = quote.length;
+    setStats(prev => ({ ...prev, totalChars }));
+  }, [currentWordIndex]);
+
+  const loadNewQuote = useCallback(async () => {
+    setCurrentQuoteId(null);
+    
+    if (scriptId) {
+      try {
+        const { data, error } = await supabase
+          .from('script_quotes')
+          .select('id, content')
+          .eq('script_id', scriptId);
+          
+        if (error || !data || data.length === 0) {
+          console.error('Error loading quotes or no quotes found:', error);
+          const randomIndex = Math.floor(Math.random() * quotes.length);
+          const quote = quotes[randomIndex];
+          setCurrentQuote(quote);
+          processQuote(quote);
+        } else {
+          const availableQuotes = data.filter(quote => !processedQuotesRef.current.has(quote.id));
+          
+          if (availableQuotes.length === 0) {
+            processedQuotesRef.current.clear();
+            setCompletedQuotes(0);
+            setScriptWpmValues([]);
+            setHasCompletedScript(false);
+            const randomIndex = Math.floor(Math.random() * data.length);
+            const randomQuote = data[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+          } else {
+            const randomIndex = Math.floor(Math.random() * availableQuotes.length);
+            const randomQuote = availableQuotes[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+            processedQuotesRef.current.add(randomQuote.id);
+          }
         }
-        return resetWords;
-      });
-    }
-    focusInput();
-  }, [stopTimer, focusInput, stats.totalChars, currentQuote.length]);
-
-  // 4. Update quote stats function
-  const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
-    try {
-      console.log(`Updating stats for quote ${quoteId}: ${wpm} WPM, ${accuracy}% accuracy`);
-      // Fixed RPC call to increment function
-      const { data: incrementResult, error: incrementError } = await supabase.rpc(
-        'increment',
-        { 
-          row_id: quoteId, 
-          table_name: 'script_quotes', 
-          column_name: 'typed_count' 
-        }
-      );
-
-      if (incrementError) {
-        console.error('Error incrementing typed count:', incrementError);
-      }
-
-      // Update other stats directly
-      const { error: updateError } = await supabase
-        .from('script_quotes')
-        .update({
-          avg_wpm: wpm,
-          avg_accuracy: accuracy,
-          best_wpm: wpm
-        })
-        .eq('id', quoteId);
-        
-      if (updateError) {
-        console.error('Error updating quote stats:', updateError);
-      }
-    } catch (error) {
-      console.error('Error updating quote stats:', error);
-    }
-  };
-
-  // 5. Load quote by index function
-  const loadQuoteByIndex = useCallback((index: number) => {
-    console.log(`Loading quote at index ${index}, script quotes length: ${scriptQuotes.length}`);
-    if (isQuoteLoading) {
-      console.log("Already loading a quote, skipping");
-      return;
-    }
-    
-    setIsQuoteLoading(true);
-    
-    try {
-      if (scriptQuotes.length > 0 && index >= 0 && index < scriptQuotes.length) {
-        const quoteData = scriptQuotes[index];
-        console.log(`Quote data found: ${quoteData.content.substring(0, 20)}...`);
-        setCurrentQuote(quoteData.content);
-        setCurrentQuoteId(quoteData.id);
-        processQuote(quoteData.content);
-        setCurrentScriptQuoteIndex(index);
-        resetTest(false);
-        resultRecordedRef.current = false;
-        setIsScriptComplete(false);
-      } else {
-        console.error(`Invalid index ${index} or script quotes not loaded (length: ${scriptQuotes.length})`);
-        toast({
-          title: "Error",
-          description: "Could not load quote. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Error in loadQuoteByIndex:", error);
-    } finally {
-      setIsQuoteLoading(false);
-    }
-  }, [scriptQuotes, processQuote, resetTest, toast, isQuoteLoading]);
-
-  // 6. Load a random new quote
-  const loadRandomQuote = useCallback(() => {
-    console.log("Loading random quote from quotes array:", quotes.length);
-    if (isQuoteLoading) {
-      console.log("Already loading a quote, skipping");
-      return;
-    }
-    
-    setIsQuoteLoading(true);
-    
-    try {
-      if (quotes.length > 0) {
+      } catch (error) {
+        console.error('Error loading quote from database:', error);
         const randomIndex = Math.floor(Math.random() * quotes.length);
         const quote = quotes[randomIndex];
-        console.log(`Selected random quote: ${quote.substring(0, 20)}...`);
         setCurrentQuote(quote);
-        setCurrentQuoteId(null);
         processQuote(quote);
-        resetTest(false);
-        resultRecordedRef.current = false;
-      } else {
-        console.error("No quotes available");
-        toast({
-          title: "Error",
-          description: "No quotes available. Please try again later.",
-          variant: "destructive"
-        });
       }
-    } catch (error) {
-      console.error("Error in loadRandomQuote:", error);
-    } finally {
-      setIsQuoteLoading(false);
+    } else {
+      const randomIndex = Math.floor(Math.random() * quotes.length);
+      const quote = quotes[randomIndex];
+      setCurrentQuote(quote);
+      processQuote(quote);
     }
-  }, [quotes, processQuote, resetTest, toast, isQuoteLoading]);
-
-  // 7. Load new quote - decision function
-  const loadNewQuote = useCallback(() => {
-    console.log("loadNewQuote called, scriptId:", scriptId, "isScriptLoaded:", isScriptLoaded);
     
-    if (isQuoteLoading) {
-      console.log("Already loading a quote, skipping");
+    resetTest();
+    focusInput();
+    resultRecordedRef.current = false;
+    setShouldLoadNewQuote(false);
+  }, [quotes, scriptId, processQuote, resetTest, focusInput]);
+
+  const findLastCorrectPosition = useCallback(() => {
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return { wordIndex: 0, charIndex: 0 };
+    
+    let hasErrors = false;
+    let lastCorrectCharIndex = 0;
+    
+    for (let i = 0; i < currentWord.characters.length; i++) {
+      if (i < currentCharIndex) {
+        if (currentWord.characters[i].state === 'correct') {
+          lastCorrectCharIndex = i + 1;
+        } else if (currentWord.characters[i].state === 'incorrect') {
+          hasErrors = true;
+        }
+      }
+    }
+    
+    return {
+      hasErrors,
+      wordIndex: currentWordIndex,
+      charIndex: lastCorrectCharIndex
+    };
+  }, [words, currentWordIndex, currentCharIndex]);
+
+  const smartBackspace = useCallback(() => {
+    if (currentWordIndex > 0 && currentCharIndex === 0) {
+      const prevWordIndex = currentWordIndex - 1;
+      const prevWordLength = words[prevWordIndex].characters.length;
+      
+      setCurrentWordIndex(prevWordIndex);
+      setCurrentCharIndex(prevWordLength);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        if (prevWordLength > 0) {
+          newWords[prevWordIndex].characters[prevWordLength - 1].state = 'current';
+        }
+        
+        return newWords;
+      });
+      
       return;
     }
     
-    // If in script mode and script is loaded, load a random script quote
-    if (scriptId && isScriptLoaded && scriptQuotes.length > 0) {
-      const randomIndex = Math.floor(Math.random() * scriptQuotes.length);
-      console.log(`Loading random script quote at index ${randomIndex}`);
-      loadQuoteByIndex(randomIndex);
-    } else {
-      // Not in script mode or script not loaded, load a random quote
-      loadRandomQuote();
-    }
-  }, [scriptId, isScriptLoaded, scriptQuotes, loadQuoteByIndex, loadRandomQuote, isQuoteLoading]);
-
-  // 8. Load next quote for script progression
-  const loadNextQuote = useCallback(() => {
-    console.log("loadNextQuote called, isScriptLoaded:", isScriptLoaded, "currentIndex:", currentScriptQuoteIndex, "total:", scriptQuotes.length);
+    const { hasErrors, charIndex } = findLastCorrectPosition();
     
-    if (isQuoteLoading) {
-      console.log("Already loading a quote, skipping");
-      return;
-    }
-    
-    if (isScriptLoaded && scriptQuotes.length > 0) {
-      if (currentScriptQuoteIndex < scriptQuotes.length - 1) {
-        // Move to next quote in script
-        console.log(`Moving to next quote at index ${currentScriptQuoteIndex + 1}`);
-        loadQuoteByIndex(currentScriptQuoteIndex + 1);
-      } else {
-        // End of script reached
-        console.log("Script finished!");
-        setIsScriptComplete(true);
-        setIsFinished(true);
-        setIsActive(false);
-        stopTimer();
-        toast({
-          title: "Script Complete!",
-          description: "You finished all quotes in this script.",
+    if (hasErrors && charIndex < currentCharIndex) {
+      setCurrentCharIndex(charIndex);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        for (let i = charIndex; i < newWords[currentWordIndex].characters.length; i++) {
+          if (i === charIndex) {
+            newWords[currentWordIndex].characters[i].state = 'current';
+          } else {
+            newWords[currentWordIndex].characters[i].state = 'inactive';
+          }
+        }
+        
+        return newWords;
+      });
+    } else if (currentCharIndex > 0) {
+      setCurrentCharIndex(prev => prev - 1);
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        if (currentCharIndex > 0) {
+          newWords[currentWordIndex].characters[currentCharIndex - 1].state = 'current';
+          
+          if (currentCharIndex < newWords[currentWordIndex].characters.length) {
+            newWords[currentWordIndex].characters[currentCharIndex].state = 'inactive';
+          }
+        }
+        return newWords;
+      });
+      
+      if (currentCharIndex > 0 && currentCharIndex <= words[currentWordIndex].characters.length) {
+        const charState = words[currentWordIndex].characters[currentCharIndex - 1].state;
+        
+        setStats(prev => {
+          const newStats = { ...prev };
+          
+          if (charState === 'correct') {
+            newStats.correctChars = Math.max(0, prev.correctChars - 1);
+          } else if (charState === 'incorrect') {
+            newStats.incorrectChars = Math.max(0, prev.incorrectChars - 1);
+          }
+          
+          newStats.accuracy = calculateAccuracy(
+            newStats.correctChars,
+            newStats.incorrectChars
+          );
+          
+          return newStats;
         });
       }
-    } else {
-      // Not in script mode or script not loaded
-      console.log("No script loaded or not in script mode, loading random quote");
-      loadRandomQuote();
     }
-  }, [
-    isScriptLoaded,
-    scriptQuotes,
-    currentScriptQuoteIndex,
-    loadQuoteByIndex,
-    stopTimer,
-    toast,
-    loadRandomQuote,
-    isQuoteLoading
-  ]);
+  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
-  // 9. Handle redo function
-  const handleRedo = useCallback(() => {
-    console.log("Redoing test with same quote");
-    resetTest(true); // Preserve quote content
-  }, [resetTest]);
-
-  // 10. Input handler for typing
-  const handleInput = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const typedValue = event.target.value;
-    const typedChar = typedValue.slice(-1);
-    event.target.value = ''; // Clear input after processing
-
-    if (isFinished || !words[currentWordIndex]) return;
-
-    if (!isActive) {
+  const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    
+    if (!isActive && !isFinished) {
       setIsActive(true);
       startTimer();
     }
-
+    
+    e.target.value = '';
+    
+    const typedChar = input.charAt(input.length - 1);
+    if (!typedChar) return;
+    
     const currentWord = words[currentWordIndex];
-    const currentCharacter = currentWord.characters[currentCharIndex];
-
-    if (!currentCharacter) {
-      console.error("Current character is undefined", { currentWordIndex, currentCharIndex });
+    if (!currentWord) return;
+    
+    if (typedChar === ' ') {
+      if (currentCharIndex === currentWord.characters.length) {
+        if (currentWordIndex < words.length - 1) {
+          setCurrentWordIndex(prev => prev + 1);
+          setCurrentCharIndex(0);
+          
+          setStats(prev => ({
+            ...prev,
+            correctChars: prev.correctChars + 1,
+            accuracy: calculateAccuracy(
+              prev.correctChars + 1, 
+              prev.incorrectChars
+            )
+          }));
+          
+          setWords(prevWords => {
+            const newWords = [...prevWords];
+            
+            if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+              newWords[currentWordIndex + 1].characters[0].state = 'current';
+            }
+            
+            return newWords;
+          });
+        }
+      } else {
+        setStats(prev => ({
+          ...prev,
+          incorrectChars: prev.incorrectChars + 1,
+          accuracy: calculateAccuracy(
+            prev.correctChars,
+            prev.incorrectChars + 1
+          )
+        }));
+      }
       return;
     }
-
-    let newCorrectChars = stats.correctChars;
-    let newIncorrectChars = stats.incorrectChars;
-    let newWords = [...words];
-    let nextCharIndex = currentCharIndex + 1;
-    let nextWordIndex = currentWordIndex;
-
-    if (typedChar === currentCharacter.char) {
-      newCorrectChars++;
-      newWords[currentWordIndex].characters[currentCharIndex].state = 'correct';
-    } else {
-      newIncorrectChars++;
-      newWords[currentWordIndex].characters[currentCharIndex].state = 'incorrect';
+    
+    if (currentCharIndex < currentWord.characters.length) {
+      const currentChar = currentWord.characters[currentCharIndex];
+      
+      const isCorrect = typedChar === currentChar.char;
+      
+      setStats(prev => ({
+        ...prev,
+        correctChars: prev.correctChars + (isCorrect ? 1 : 0),
+        incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+        accuracy: calculateAccuracy(
+          prev.correctChars + (isCorrect ? 1 : 0), 
+          prev.incorrectChars + (isCorrect ? 0 : 1)
+        )
+      }));
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+        
+        if (currentCharIndex < currentWord.characters.length - 1) {
+          newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
+        } else if (currentWordIndex === words.length - 1 && 
+                   currentCharIndex === currentWord.characters.length - 1) {
+          setIsFinished(true);
+          stopTimer();
+        }
+        
+        return newWords;
+      });
+      
+      setCurrentCharIndex(prev => prev + 1);
     }
+  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
 
-    // Move to the next character/word
-    if (nextCharIndex === currentWord.characters.length) {
-      // End of word
-      if (nextWordIndex === words.length - 1) {
-        // End of quote
-        setIsFinished(true);
-        setIsActive(false);
-        stopTimer();
-      } else {
-        // Move to next word
-        nextWordIndex++;
-        nextCharIndex = 0;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        loadNewQuote();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        smartBackspace();
       }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loadNewQuote, smartBackspace]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (quotes.length > 0 && currentQuote === '') {
+      loadNewQuote();
     }
+  }, [quotes, loadNewQuote, currentQuote]);
 
-    // Set next character state to 'current' if not finished
-    if (!isFinished && newWords[nextWordIndex] && newWords[nextWordIndex].characters[nextCharIndex]) {
-      newWords[nextWordIndex].characters[nextCharIndex].state = 'current';
-    }
-
-    setWords(newWords);
-    setCurrentCharIndex(nextCharIndex);
-    setCurrentWordIndex(nextWordIndex);
-
-    const elapsedTime = startTimeRef.current ? (Date.now() - startTimeRef.current) / 1000 : stats.elapsedTime;
-    setStats({
-      ...stats,
-      correctChars: newCorrectChars,
-      incorrectChars: newIncorrectChars,
-      wpm: calculateWPM(newCorrectChars, elapsedTime),
-      accuracy: calculateAccuracy(newCorrectChars, newIncorrectChars),
-      elapsedTime
-    });
-  }, [
-    isActive,
-    isFinished,
-    words,
-    currentWordIndex,
-    currentCharIndex,
-    stats,
-    startTimer,
-    stopTimer
-  ]);
-
-  // 11. Effect to handle finishing a test and recording history
   useEffect(() => {
     const recordHistory = async () => {
       if (isFinished && user && scriptId && !resultRecordedRef.current) {
@@ -423,8 +414,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             scriptId,
             wpm: stats.wpm,
             accuracy: stats.accuracy,
-            elapsedTime: stats.elapsedTime,
-            quoteId: currentQuoteId
+            elapsedTime: stats.elapsedTime
           });
           
           const roundedElapsedTime = Math.round(stats.elapsedTime);
@@ -447,6 +437,28 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
             if (currentQuoteId) {
               await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
             }
+
+            setScriptWpmValues(prev => [...prev, stats.wpm]);
+            
+            const newCompletedQuotes = completedQuotes + 1;
+            setCompletedQuotes(newCompletedQuotes);
+            
+            if (onQuoteComplete) {
+              onQuoteComplete();
+            }
+            
+            if (newCompletedQuotes >= quotes.length && quotes.length > 0) {
+              const avgWpm = scriptWpmValues.length > 0 
+                ? scriptWpmValues.reduce((sum, wpm) => sum + wpm, 0) / scriptWpmValues.length 
+                : stats.wpm;
+              setScriptWpm(Math.round(avgWpm));
+              setHasCompletedScript(true);
+            } else {
+              if (newCompletedQuotes < quotes.length) {
+                // Change: Instead of immediately loading a new quote, set a flag
+                setShouldLoadNewQuote(true);
+              }
+            }
           } else {
             console.error('Failed to record typing session');
             toast({
@@ -467,115 +479,66 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps 
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, toast, currentQuoteId]);
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
 
-  // 12. Effect to load script quotes
+  // Add a new useEffect that responds to the shouldLoadNewQuote flag
   useEffect(() => {
-    const fetchScriptQuotes = async () => {
-      if (!scriptId) return;
-      
-      setIsQuoteLoading(true);
-      console.log(`Fetching quotes for script ID: ${scriptId}`);
-      
-      try {
-        const { data, error } = await supabase
-          .from('script_quotes')
-          .select('id, content')
-          .eq('script_id', scriptId);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          console.log(`Loaded ${data.length} quotes for script.`);
-          setScriptQuotes(data);
-          setIsScriptLoaded(true);
-          return data;
-        } else {
-          console.warn(`No quotes found for script ID: ${scriptId}`);
-          setIsScriptLoaded(false);
-          return null;
-        }
-      } catch (error) {
-        console.error('Error loading script quotes:', error);
-        toast({ 
-          title: "Error", 
-          description: "Could not load script quotes.", 
-          variant: "destructive" 
-        });
-        setIsScriptLoaded(false);
-        return null;
-      } finally {
-        setIsQuoteLoading(false);
-      }
-    };
-
-    const initialize = async () => {
-      if (isInitialized) return;
-      
-      console.log("Initializing typing test");
-      
-      if (scriptId) {
-        const data = await fetchScriptQuotes();
-        if (data && data.length > 0) {
-          console.log("Script quotes loaded, loading first quote");
-          loadQuoteByIndex(0);
-        } else {
-          console.log("No script quotes found, loading random quote");
-          loadRandomQuote();
-        }
-      } else if (quotes.length > 0) {
-        console.log("No script ID provided, loading random quote from props");
-        loadRandomQuote();
-      }
-      
-      setIsInitialized(true);
-    };
-    
-    initialize();
-  }, [scriptId, quotes, toast, isInitialized, loadQuoteByIndex, loadRandomQuote]);
-
-  // 13. KeyDown Handler for Shift+Enter (to call loadNewQuote)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.shiftKey && e.key === 'Enter') {
-        e.preventDefault();
+    if (shouldLoadNewQuote) {
+      // Add a delay before loading the next quote
+      const timer = setTimeout(() => {
         loadNewQuote();
-      }
-    };
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldLoadNewQuote, loadNewQuote]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [loadNewQuote]);
+  const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
+    try {
+      const { data: incrementResult, error: incrementError } = await supabase.rpc(
+        'increment',
+        { 
+          row_id: quoteId, 
+          table_name: 'script_quotes', 
+          column_name: 'typed_count' 
+        }
+      );
 
-  // 14. Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      if (incrementError) {
+        console.error('Error incrementing typed count:', incrementError);
       }
-    };
-  }, []);
+
+      const { error: updateError } = await supabase
+        .from('script_quotes')
+        .update({
+          avg_wpm: wpm,
+          avg_accuracy: accuracy,
+          best_wpm: wpm
+        })
+        .eq('id', quoteId);
+        
+      if (updateError) {
+        console.error('Error updating quote stats:', updateError);
+      }
+    } catch (error) {
+      console.error('Error updating quote stats:', error);
+    }
+  };
 
   return {
     words,
     stats,
     isActive,
     isFinished,
-    inputRef,
-    handleInput,
-    loadNewQuote,
-    loadNextQuote,
-    handleRedo,
-    focusInput,
     currentWordIndex,
     currentCharIndex,
-    currentScriptQuoteIndex,
-    totalScriptQuotes: scriptQuotes.length,
-    isScriptLoaded,
-    isScriptComplete,
-    isQuoteLoading
+    inputRef,
+    handleInput,
+    resetTest,
+    loadNewQuote,
+    focusInput,
+    scriptWpm,
+    hasCompletedScript
   };
 };
 
