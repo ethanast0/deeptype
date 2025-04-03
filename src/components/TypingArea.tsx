@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -30,11 +29,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     isFinished,
     inputRef,
     handleInput,
-    resetTest,
-    loadNewQuote,
+    handleRedo,
+    loadNextQuote,
     focusInput,
     currentWordIndex,
-    currentCharIndex
+    currentCharIndex,
+    currentScriptQuoteIndex,
+    totalScriptQuotes,
+    isScriptLoaded,
+    loadNewQuote
   } = useTypingTest({
     quotes,
     scriptId
@@ -53,8 +56,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
         <div className="flex justify-between items-center">
-          <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" />
-          {user && <HistoricalStats className="self-end" />}
+          <Stats 
+            stats={stats} 
+            isActive={isActive} 
+            isFinished={isFinished} 
+            className="self-start" 
+            isScriptLoaded={isScriptLoaded}
+            currentScriptQuoteIndex={currentScriptQuoteIndex}
+            totalScriptQuotes={totalScriptQuotes}
+          />
+          {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
         </div>
       </div>
       
@@ -81,7 +92,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       <div className="flex gap-4 mt-8">
-        <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
+        <button onClick={handleRedo} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
       </div>
