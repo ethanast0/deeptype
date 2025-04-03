@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
@@ -7,6 +6,8 @@ import { Skeleton } from './ui/skeleton';
 
 interface HistoricalStatsProps {
   className?: string;
+  displayAccuracy?: boolean; // Toggle the display of average accuracy; default is false.
+  autoRefresh?: boolean;      // Toggle auto-refresh; default is false.
 }
 
 interface UserStats {
@@ -16,7 +17,11 @@ interface UserStats {
   totalScripts: number;
 }
 
-const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
+const HistoricalStats: React.FC<HistoricalStatsProps> = ({
+  className,
+  displayAccuracy = false,
+  autoRefresh = false,
+}) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
     averageWpm: 0,
@@ -27,32 +32,42 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchStats = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      console.log('Fetching historical stats for user:', user.id);
+      setIsLoading(true);
+      const userStats = await typingHistoryService.getUserStats(user.id);
+      console.log('Received historical stats:', userStats);
+      setStats(userStats);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching user stats:', err);
+      setError('Failed to load statistics');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        console.log('Fetching historical stats for user:', user.id);
-        setIsLoading(true);
-        const userStats = await typingHistoryService.getUserStats(user.id);
-        console.log('Received historical stats:', userStats);
-        setStats(userStats);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching user stats:', err);
-        setError('Failed to load statistics');
-      } finally {
-        setIsLoading(false);
+    fetchStats();
+
+    let intervalId: NodeJS.Timeout;
+    if (autoRefresh) {
+      intervalId = setInterval(fetchStats, 5000); // Auto-refresh every 5 seconds.
+    }
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
+  }, [user, autoRefresh]);
 
-    fetchStats();
-  }, [user]);
-
-  // Don't render anything if user is not authenticated
+  // Don't render anything if user is not authenticated.
   if (!user) return null;
 
   if (error) {
@@ -75,21 +90,22 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
   }
 
   return (
-    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded-md", 
-      className
-    )}>
+    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded-md", className)}>
       <span>
         <span className="font-medium text-monkey-text">{stats.averageWpm}</span>{" avg wpm"}
       </span>
 
+      {displayAccuracy && (
+        <>
+          <span className="text-zinc-600">•</span>
+          <span>
+            <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
+          </span>
+        </>
+      )}
+
       <span className="text-zinc-600">•</span>
       
-      <span>
-        <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
-      </span>
-
-      <span className="text-zinc-600">•</span>
-
       <span>
         <span className="font-medium text-monkey-text">{stats.totalSessions}</span>{" total"}
       </span>
@@ -103,4 +119,4 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
   );
 };
 
-export default HistoricalStats; 
+export default HistoricalStats;
