@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../integrations/supabase/client';
 import { cn } from '../lib/utils';
 import { Skeleton } from './ui/skeleton';
 
