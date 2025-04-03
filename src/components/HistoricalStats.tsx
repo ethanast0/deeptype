@@ -4,11 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
 import { cn } from '../lib/utils';
 import { Skeleton } from './ui/skeleton';
-import { supabase } from '../integrations/supabase/client';
 
 interface HistoricalStatsProps {
   className?: string;
-  displayAccuracy?: boolean;
 }
 
 interface UserStats {
@@ -18,7 +16,7 @@ interface UserStats {
   totalScripts: number;
 }
 
-const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAccuracy = true }) => {
+const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
     averageWpm: 0,
@@ -52,30 +50,6 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
     };
 
     fetchStats();
-
-    // Set up real-time subscription to typing_history table
-    if (user) {
-      const channel = supabase
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'typing_history',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            console.log('New typing history entry:', payload);
-            fetchStats(); // Refetch stats when new entry is added
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
   }, [user]);
 
   // Don't render anything if user is not authenticated
@@ -108,15 +82,11 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
         <span className="font-medium text-monkey-text">{stats.averageWpm}</span>{" avg wpm"}
       </span>
 
-      {displayAccuracy && (
-        <>
-          <span className="text-zinc-600">•</span>
-          
-          <span>
-            <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
-          </span>
-        </>
-      )}
+      <span className="text-zinc-600">•</span>
+      
+      <span>
+        <span className="font-medium text-monkey-text">{stats.averageAccuracy}%</span>{" avg acc"}
+      </span>
 
       <span className="text-zinc-600">•</span>
 
@@ -133,4 +103,4 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
   );
 };
 
-export default HistoricalStats;
+export default HistoricalStats; 

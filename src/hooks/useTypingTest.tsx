@@ -16,10 +16,9 @@ import { supabase } from '../integrations/supabase/client';
 interface UseTypingTestProps {
   quotes?: string[];
   scriptId?: string | null;
-  onQuoteComplete?: () => void;
 }
 
-const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: UseTypingTestProps = {}) => {
+const useTypingTest = ({ quotes = defaultQuotes, scriptId }: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
@@ -35,11 +34,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
-  const [completedQuotes, setCompletedQuotes] = useState<number>(0);
-  const [scriptWpm, setScriptWpm] = useState<number>(0);
-  const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
-  const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
-  const [shouldLoadNewQuote, setShouldLoadNewQuote] = useState<boolean>(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -48,13 +42,160 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
   const startTimeRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
-  const processedQuotesRef = useRef<Set<string>>(new Set());
 
-  const focusInput = useCallback(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
+  useEffect(() => {
+    if (quotes.length > 0) {
+      loadNewQuote();
     }
-  }, []);
+  }, [quotes]);
+
+  useEffect(() => {
+    const recordHistory = async () => {
+      if (isFinished && user && scriptId && !resultRecordedRef.current) {
+        resultRecordedRef.current = true;
+        try {
+          console.log('Recording typing session:', {
+            userId: user.id,
+            scriptId,
+            wpm: stats.wpm,
+            accuracy: stats.accuracy,
+            elapsedTime: stats.elapsedTime
+          });
+          
+          // Round elapsed time to an integer for database compatibility
+          const roundedElapsedTime = Math.round(stats.elapsedTime);
+          
+          const success = await typingHistoryService.recordSession(
+            user.id,
+            scriptId,
+            stats.wpm,
+            stats.accuracy,
+            roundedElapsedTime,
+            currentQuoteId || undefined
+          );
+          
+          if (success) {
+            toast({
+              title: "Progress saved",
+              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
+            });
+            
+            if (currentQuoteId) {
+              await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
+            }
+          } else {
+            console.error('Failed to record typing session');
+            toast({
+              title: "Error saving progress",
+              description: "Unable to save your typing results.",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('Error recording typing history:', error);
+          toast({
+            title: "Error saving progress",
+            description: "An error occurred while saving your typing results.",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    recordHistory();
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime]);
+
+  const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
+    try {
+      // Fixed RPC call to increment function
+      const { data: incrementResult, error: incrementError } = await supabase.rpc(
+        'increment',
+        { 
+          row_id: quoteId, 
+          table_name: 'script_quotes', 
+          column_name: 'typed_count' 
+        }
+      );
+
+      if (incrementError) {
+        console.error('Error incrementing typed count:', incrementError);
+      }
+
+      // Update other stats directly
+      const { error: updateError } = await supabase
+        .from('script_quotes')
+        .update({
+          avg_wpm: wpm,
+          avg_accuracy: accuracy,
+          best_wpm: wpm
+        })
+        .eq('id', quoteId);
+        
+      if (updateError) {
+        console.error('Error updating quote stats:', updateError);
+      }
+    } catch (error) {
+      console.error('Error updating quote stats:', error);
+    }
+  };
+
+  const processQuote = useCallback((quote: string) => {
+    const processedWords: Word[] = quote.split(' ').map(word => ({
+      characters: [...word].map((char, idx) => ({
+        char,
+        state: idx === 0 && currentWordIndex === 0 ? 'current' : 'inactive'
+      }))
+    }));
+    
+    setWords(processedWords);
+    setCurrentWordIndex(0);
+    setCurrentCharIndex(0);
+    
+    const totalChars = quote.length;
+    setStats(prev => ({ ...prev, totalChars }));
+  }, [currentWordIndex]);
+
+  const loadNewQuote = useCallback(async () => {
+    setCurrentQuoteId(null);
+    
+    if (scriptId) {
+      try {
+        const { data, error } = await supabase
+          .from('script_quotes')
+          .select('id, content')
+          .eq('script_id', scriptId);
+          
+        if (error || !data || data.length === 0) {
+          console.error('Error loading quotes or no quotes found:', error);
+          const randomIndex = Math.floor(Math.random() * quotes.length);
+          const quote = quotes[randomIndex];
+          setCurrentQuote(quote);
+          processQuote(quote);
+        } else {
+          const randomIndex = Math.floor(Math.random() * data.length);
+          const randomQuote = data[randomIndex];
+          setCurrentQuote(randomQuote.content);
+          setCurrentQuoteId(randomQuote.id);
+          processQuote(randomQuote.content);
+        }
+      } catch (error) {
+        console.error('Error loading quote from database:', error);
+        const randomIndex = Math.floor(Math.random() * quotes.length);
+        const quote = quotes[randomIndex];
+        setCurrentQuote(quote);
+        processQuote(quote);
+      }
+    } else {
+      const randomIndex = Math.floor(Math.random() * quotes.length);
+      const quote = quotes[randomIndex];
+      setCurrentQuote(quote);
+      processQuote(quote);
+    }
+    
+    resetTest();
+    focusInput();
+    resultRecordedRef.current = false;
+  }, [quotes, scriptId, processQuote]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
@@ -107,80 +248,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
       }));
     });
   }, [currentQuote, stopTimer]);
-
-  const processQuote = useCallback((quote: string) => {
-    const processedWords: Word[] = quote.split(' ').map(word => ({
-      characters: [...word].map((char, idx) => ({
-        char,
-        state: idx === 0 && currentWordIndex === 0 ? 'current' : 'inactive'
-      }))
-    }));
-    
-    setWords(processedWords);
-    setCurrentWordIndex(0);
-    setCurrentCharIndex(0);
-    
-    const totalChars = quote.length;
-    setStats(prev => ({ ...prev, totalChars }));
-  }, [currentWordIndex]);
-
-  const loadNewQuote = useCallback(async () => {
-    setCurrentQuoteId(null);
-    
-    if (scriptId) {
-      try {
-        const { data, error } = await supabase
-          .from('script_quotes')
-          .select('id, content')
-          .eq('script_id', scriptId);
-          
-        if (error || !data || data.length === 0) {
-          console.error('Error loading quotes or no quotes found:', error);
-          const randomIndex = Math.floor(Math.random() * quotes.length);
-          const quote = quotes[randomIndex];
-          setCurrentQuote(quote);
-          processQuote(quote);
-        } else {
-          const availableQuotes = data.filter(quote => !processedQuotesRef.current.has(quote.id));
-          
-          if (availableQuotes.length === 0) {
-            processedQuotesRef.current.clear();
-            setCompletedQuotes(0);
-            setScriptWpmValues([]);
-            setHasCompletedScript(false);
-            const randomIndex = Math.floor(Math.random() * data.length);
-            const randomQuote = data[randomIndex];
-            setCurrentQuote(randomQuote.content);
-            setCurrentQuoteId(randomQuote.id);
-            processQuote(randomQuote.content);
-          } else {
-            const randomIndex = Math.floor(Math.random() * availableQuotes.length);
-            const randomQuote = availableQuotes[randomIndex];
-            setCurrentQuote(randomQuote.content);
-            setCurrentQuoteId(randomQuote.id);
-            processQuote(randomQuote.content);
-            processedQuotesRef.current.add(randomQuote.id);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading quote from database:', error);
-        const randomIndex = Math.floor(Math.random() * quotes.length);
-        const quote = quotes[randomIndex];
-        setCurrentQuote(quote);
-        processQuote(quote);
-      }
-    } else {
-      const randomIndex = Math.floor(Math.random() * quotes.length);
-      const quote = quotes[randomIndex];
-      setCurrentQuote(quote);
-      processQuote(quote);
-    }
-    
-    resetTest();
-    focusInput();
-    resultRecordedRef.current = false;
-    setShouldLoadNewQuote(false);
-  }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
     const currentWord = words[currentWordIndex];
@@ -305,15 +372,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
           setCurrentWordIndex(prev => prev + 1);
           setCurrentCharIndex(0);
           
-          setStats(prev => ({
-            ...prev,
-            correctChars: prev.correctChars + 1,
-            accuracy: calculateAccuracy(
-              prev.correctChars + 1, 
-              prev.incorrectChars
-            )
-          }));
-          
           setWords(prevWords => {
             const newWords = [...prevWords];
             
@@ -324,15 +382,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
             return newWords;
           });
         }
-      } else {
-        setStats(prev => ({
-          ...prev,
-          incorrectChars: prev.incorrectChars + 1,
-          accuracy: calculateAccuracy(
-            prev.correctChars,
-            prev.incorrectChars + 1
-          )
-        }));
       }
       return;
     }
@@ -398,132 +447,11 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     };
   }, []);
 
-  useEffect(() => {
-    if (quotes.length > 0 && currentQuote === '') {
-      loadNewQuote();
+  const focusInput = useCallback(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
-  }, [quotes, loadNewQuote, currentQuote]);
-
-  useEffect(() => {
-    const recordHistory = async () => {
-      if (isFinished && user && scriptId && !resultRecordedRef.current) {
-        resultRecordedRef.current = true;
-        try {
-          console.log('Recording typing session:', {
-            userId: user.id,
-            scriptId,
-            wpm: stats.wpm,
-            accuracy: stats.accuracy,
-            elapsedTime: stats.elapsedTime
-          });
-          
-          const roundedElapsedTime = Math.round(stats.elapsedTime);
-          
-          const success = await typingHistoryService.recordSession(
-            user.id,
-            scriptId,
-            stats.wpm,
-            stats.accuracy,
-            roundedElapsedTime,
-            currentQuoteId || undefined
-          );
-          
-          if (success) {
-            toast({
-              title: "Progress saved",
-              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
-            });
-            
-            if (currentQuoteId) {
-              await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
-            }
-
-            setScriptWpmValues(prev => [...prev, stats.wpm]);
-            
-            const newCompletedQuotes = completedQuotes + 1;
-            setCompletedQuotes(newCompletedQuotes);
-            
-            if (onQuoteComplete) {
-              onQuoteComplete();
-            }
-            
-            if (newCompletedQuotes >= quotes.length && quotes.length > 0) {
-              const avgWpm = scriptWpmValues.length > 0 
-                ? scriptWpmValues.reduce((sum, wpm) => sum + wpm, 0) / scriptWpmValues.length 
-                : stats.wpm;
-              setScriptWpm(Math.round(avgWpm));
-              setHasCompletedScript(true);
-            } else {
-              if (newCompletedQuotes < quotes.length) {
-                // Change: Instead of immediately loading a new quote, set a flag
-                setShouldLoadNewQuote(true);
-              }
-            }
-          } else {
-            console.error('Failed to record typing session');
-            toast({
-              title: "Error saving progress",
-              description: "Unable to save your typing results.",
-              variant: "destructive"
-            });
-          }
-        } catch (error) {
-          console.error('Error recording typing history:', error);
-          toast({
-            title: "Error saving progress",
-            description: "An error occurred while saving your typing results.",
-            variant: "destructive"
-          });
-        }
-      }
-    };
-    
-    recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
-
-  // Add a new useEffect that responds to the shouldLoadNewQuote flag
-  useEffect(() => {
-    if (shouldLoadNewQuote) {
-      // Add a delay before loading the next quote
-      const timer = setTimeout(() => {
-        loadNewQuote();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [shouldLoadNewQuote, loadNewQuote]);
-
-  const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
-    try {
-      const { data: incrementResult, error: incrementError } = await supabase.rpc(
-        'increment',
-        { 
-          row_id: quoteId, 
-          table_name: 'script_quotes', 
-          column_name: 'typed_count' 
-        }
-      );
-
-      if (incrementError) {
-        console.error('Error incrementing typed count:', incrementError);
-      }
-
-      const { error: updateError } = await supabase
-        .from('script_quotes')
-        .update({
-          avg_wpm: wpm,
-          avg_accuracy: accuracy,
-          best_wpm: wpm
-        })
-        .eq('id', quoteId);
-        
-      if (updateError) {
-        console.error('Error updating quote stats:', updateError);
-      }
-    } catch (error) {
-      console.error('Error updating quote stats:', error);
-    }
-  };
+  }, []);
 
   return {
     words,
@@ -536,9 +464,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     handleInput,
     resetTest,
     loadNewQuote,
-    focusInput,
-    scriptWpm,
-    hasCompletedScript
+    focusInput
   };
 };
 
