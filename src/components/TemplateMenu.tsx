@@ -90,7 +90,7 @@ const TemplateMenu: React.FC<TemplateMenuProps> = ({
     }
   };
   return <div className={cn(
-    "w-full -mt-32 flex flex-col items-center justify-center transition-opacity duration-300",
+    "w-full -mt-16 flex flex-col items-center justify-center transition-opacity duration-300",
     isTyping ? "opacity-0 pointer-events-none" : "opacity-100"
   )}>
       {/* Menu selector - minimal toggle group */}
