@@ -64,7 +64,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
         <ChartContainer config={chartConfig} className="w-full h-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={fixedData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="transparent" />
               <XAxis 
                 dataKey="index" 
                 tick={{ fontSize: 10, fill: '#888' }}
@@ -80,14 +80,15 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               <Bar 
                 dataKey="wpm" 
                 name="WPM"
-                fill="#9b87f5" 
+                fill=""#27272a" 
+                barSize={5}
                 radius={[4, 4, 0, 0]}
                 // Empty bars for placeholders
                 isAnimationActive={true}
                 // Add labels under the bars
                 label={{ 
                   position: 'bottom', 
-                  fill: '#9b87f5', 
+                  fill: '#27272a', 
                   fontSize: 10,
                   // Only show labels for non-null values
                   formatter: (value: any) => value !== null ? value : '',
