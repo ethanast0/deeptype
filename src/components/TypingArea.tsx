@@ -103,7 +103,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       {sessionWpmData.length > 0 ? (
         <SessionWpmChart wpmData={sessionWpmData} />
       ) : (
-        <div className="w-full h-12 mb-4" /> {/* Spacer to maintain layout */}
+        <div className="w-full h-12 mb-4" /> /* Spacer to maintain layout */
       )}
       
       <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
