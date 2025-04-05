@@ -113,7 +113,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
-      <main className="flex-1 container max-w-6xl mx-auto px-2 py-8 flex flex-col justify-center">
+      <main className="flex-1 container max-w-4xl mx-auto px-2 py-5 flex flex-col justify-center">
         <TemplateMenu onSelectTemplate={handleTemplateSelected} isTyping={isTyping} />
         
         <TypingArea 
