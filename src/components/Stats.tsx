@@ -13,6 +13,9 @@ interface StatsProps {
   isActive: boolean;
   isFinished: boolean;
   className?: string;
+  quoteProgress?: QuoteProgress;
+  deathMode?: boolean;
+  deathModeFailures?: number;
 }
 
 const Stats: React.FC<StatsProps> = ({ 
@@ -20,6 +23,9 @@ const Stats: React.FC<StatsProps> = ({
   isActive, 
   isFinished,
   className,
+  quoteProgress,
+  deathMode = false,
+  deathModeFailures = 0
 }) => {
   return (
     <div className={cn("flex items-center space-x-2 text-base text-monkey-subtle py-2 px-3 rounded", 
@@ -43,6 +49,24 @@ const Stats: React.FC<StatsProps> = ({
       <span>
         <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
       </span>
+      
+      {quoteProgress && (
+        <>
+          <span className="text-zinc-600">•</span>
+          <span className="font-medium text-monkey-text">
+            {quoteProgress.current}/{quoteProgress.total}
+          </span>
+        </>
+      )}
+      
+      {deathMode && (
+        <>
+          <span className="text-zinc-600">•</span>
+          <span className="font-medium text-monkey-error">
+            Death Mode {deathModeFailures > 0 ? `(${deathModeFailures})` : ""}
+          </span>
+        </>
+      )}
       
       {isFinished && (
         <>

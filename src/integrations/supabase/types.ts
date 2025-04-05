@@ -102,6 +102,7 @@ export type Database = {
           is_featured: boolean | null
           name: string
           saves_count: number | null
+          total_characters: number | null
           typed_count: number | null
           unique_typers_count: number | null
           user_id: string | null
@@ -114,6 +115,7 @@ export type Database = {
           is_featured?: boolean | null
           name: string
           saves_count?: number | null
+          total_characters?: number | null
           typed_count?: number | null
           unique_typers_count?: number | null
           user_id?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           is_featured?: boolean | null
           name?: string
           saves_count?: number | null
+          total_characters?: number | null
           typed_count?: number | null
           unique_typers_count?: number | null
           user_id?: string | null

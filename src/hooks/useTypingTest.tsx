@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -17,9 +16,15 @@ interface UseTypingTestProps {
   quotes?: string[];
   scriptId?: string | null;
   onQuoteComplete?: () => void;
+  deathMode?: boolean;
 }
 
-const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: UseTypingTestProps = {}) => {
+const useTypingTest = ({ 
+  quotes = defaultQuotes, 
+  scriptId, 
+  onQuoteComplete,
+  deathMode = false
+}: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
@@ -40,7 +45,8 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
   const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
   const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
   const [shouldLoadNewQuote, setShouldLoadNewQuote] = useState<boolean>(false);
-  
+  const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
+
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -107,6 +113,20 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
       }));
     });
   }, [currentQuote, stopTimer]);
+
+  const deathModeReset = useCallback(() => {
+    if (deathMode) {
+      setDeathModeFailures(prev => prev + 1);
+      
+      toast({
+        title: "Death Mode Failure",
+        description: `Try again! Attempt #${deathModeFailures + 1}`,
+        variant: "destructive",
+      });
+      
+      resetTest();
+    }
+  }, [deathMode, deathModeFailures, resetTest, toast]);
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -333,6 +353,10 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
             prev.incorrectChars + 1
           )
         }));
+
+        if (deathMode) {
+          deathModeReset();
+        }
       }
       return;
     }
@@ -341,6 +365,11 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
       const currentChar = currentWord.characters[currentCharIndex];
       
       const isCorrect = typedChar === currentChar.char;
+      
+      if (deathMode && !isCorrect) {
+        deathModeReset();
+        return;
+      }
       
       setStats(prev => ({
         ...prev,
@@ -370,7 +399,7 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
       
       setCurrentCharIndex(prev => prev + 1);
     }
-  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words]);
+  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -455,7 +484,6 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
               setHasCompletedScript(true);
             } else {
               if (newCompletedQuotes < quotes.length) {
-                // Change: Instead of immediately loading a new quote, set a flag
                 setShouldLoadNewQuote(true);
               }
             }
@@ -481,10 +509,8 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     recordHistory();
   }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
 
-  // Add a new useEffect that responds to the shouldLoadNewQuote flag
   useEffect(() => {
     if (shouldLoadNewQuote) {
-      // Add a delay before loading the next quote
       const timer = setTimeout(() => {
         loadNewQuote();
       }, 1000);
@@ -538,7 +564,9 @@ const useTypingTest = ({ quotes = defaultQuotes, scriptId, onQuoteComplete }: Us
     loadNewQuote,
     focusInput,
     scriptWpm,
-    hasCompletedScript
+    hasCompletedScript,
+    deathMode,
+    deathModeFailures
   };
 };
 

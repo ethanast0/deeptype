@@ -11,6 +11,7 @@ interface TypingAreaProps {
   quotes: string[];
   className?: string;
   scriptId?: string | null;
+  deathMode?: boolean;
   onQuotesLoaded?: (quotes: string[]) => void;
   onTypingStateChange?: (isTyping: boolean) => void;
 }
@@ -19,6 +20,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
   scriptId,
+  deathMode = false,
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
@@ -38,10 +40,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentWordIndex,
     currentCharIndex,
     scriptWpm,
-    hasCompletedScript
+    hasCompletedScript,
+    deathModeFailures
   } = useTypingTest({
     quotes,
     scriptId,
+    deathMode,
     onQuoteComplete: () => {
       setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
     }
@@ -81,6 +85,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
               current: currentQuoteNumber,
               total: totalQuotes
             }}
+            deathMode={deathMode}
+            deathModeFailures={deathModeFailures}
           />
           {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
         </div>
@@ -111,6 +117,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <div className="flex gap-4 mt-8">
         <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+        {deathMode && <button className="button button-accent bg-red-900 hover:bg-red-800 text-gray-300 font-normal text-base">death mode</button>}
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
       </div>
 
