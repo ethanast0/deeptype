@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -16,7 +15,7 @@ import { supabase } from '../integrations/supabase/client';
 interface UseTypingTestProps {
   quotes?: string[];
   scriptId?: string | null;
-  onQuoteComplete?: () => void;
+  onQuoteComplete?: (stats?: TypingStats) => void;
   deathMode?: boolean;
 }
 
@@ -115,11 +114,13 @@ const useTypingTest = ({
     if (deathMode) {
       setDeathModeFailures(prev => prev + 1);
       
-      toast({
-        title: "Death Mode Failure",
-        description: `Try again! Attempt #${deathModeFailures + 1}`,
-        variant: "destructive",
-      });
+      if (deathMode) {
+        toast({
+          title: "Death Mode Failure",
+          description: `Try again! Attempt #${deathModeFailures + 1}`,
+          variant: "destructive",
+        });
+      }
       
       resetTest();
     }
@@ -452,11 +453,6 @@ const useTypingTest = ({
           );
           
           if (success) {
-            toast({
-              title: "Progress saved",
-              description: `Your typing result of ${Math.round(stats.wpm)} WPM has been recorded.`,
-            });
-            
             if (currentQuoteId) {
               await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
             }
@@ -465,29 +461,19 @@ const useTypingTest = ({
             setCompletedQuotes(newCompletedQuotes);
             
             if (onQuoteComplete) {
-              onQuoteComplete();
+              onQuoteComplete(stats);
             }
           } else {
             console.error('Failed to record typing session');
-            toast({
-              title: "Error saving progress",
-              description: "Unable to save your typing results.",
-              variant: "destructive"
-            });
           }
         } catch (error) {
           console.error('Error recording typing history:', error);
-          toast({
-            title: "Error saving progress",
-            description: "An error occurred while saving your typing results.",
-            variant: "destructive"
-          });
         }
       }
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, onQuoteComplete]);
+  }, [isFinished, user, scriptId, stats, toast, currentQuoteId, completedQuotes, onQuoteComplete]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {

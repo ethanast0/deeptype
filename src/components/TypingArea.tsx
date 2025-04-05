@@ -7,8 +7,8 @@ import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
-import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { SkullIcon } from 'lucide-react';
+import { SkullIcon, SmileIcon } from 'lucide-react';
+import SessionWpmChart from './SessionWpmChart';
 
 interface TypingAreaProps {
   quotes: string[];
@@ -29,6 +29,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   const [totalQuotes, setTotalQuotes] = useState(quotes.length);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
   const [deathMode, setDeathMode] = useState(false);
+  const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
   
   const {
     words,
@@ -47,8 +48,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     quotes,
     scriptId,
     deathMode,
-    onQuoteComplete: () => {
+    onQuoteComplete: (completedStats) => {
       setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
+      if (completedStats && completedStats.wpm > 0) {
+        setSessionWpmData(prev => [...prev, completedStats.wpm]);
+      }
     }
   });
 
@@ -74,8 +78,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   }, [quotes]);
   
-  const handleModeToggle = (value: string) => {
-    setDeathMode(value === "death");
+  const toggleDeathMode = () => {
+    setDeathMode(prev => !prev);
     resetTest();
   };
 
@@ -101,10 +105,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 {word.characters.map((char, charIndex) => <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
             "text-monkey-accent": char.state === 'correct',
             "text-monkey-error": char.state === 'incorrect',
-            "character-current": char.state === 'current'
+            "text-white": char.state === 'current' || char.state === 'inactive'
           })}>
-                    {/* Show caret before current character */}
-                    {wordIndex === currentWordIndex && charIndex === currentCharIndex && <span className="caret" />}
                     {char.char}
                   </span>)}
               </div>
@@ -117,30 +119,29 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       <div className="flex flex-col gap-4 mt-8">
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
           <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
           <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
           <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
-        </div>
-        
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm text-gray-400">Mode:</span>
-          <ToggleGroup type="single" defaultValue="normal" onValueChange={handleModeToggle} className="bg-slate-800 rounded-md">
-            <ToggleGroupItem value="normal" aria-label="Normal Mode" className="data-[state=on]:bg-slate-700 text-gray-300">
-              Normal
-            </ToggleGroupItem>
-            <ToggleGroupItem value="death" aria-label="Death Mode" className="data-[state=on]:bg-red-900 text-gray-300">
-              <SkullIcon className="w-4 h-4 mr-1" />
-              Death Mode
-            </ToggleGroupItem>
-          </ToggleGroup>
-          {deathMode && deathModeFailures > 0 && (
-            <span className="text-sm text-red-500 ml-2">
-              Failures: {deathModeFailures}
-            </span>
-          )}
+          
+          <Toggle 
+            pressed={deathMode} 
+            onPressedChange={toggleDeathMode} 
+            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
+            className="ml-auto bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
+          >
+            {deathMode ? (
+              <SkullIcon className="w-4 h-4" />
+            ) : (
+              <SmileIcon className="w-4 h-4" />
+            )}
+          </Toggle>
         </div>
       </div>
+
+      {sessionWpmData.length > 0 && (
+        <SessionWpmChart wpmData={sessionWpmData} className="mt-8" />
+      )}
     </div>;
 };
 

@@ -44,12 +44,12 @@ const Stats: React.FC<StatsProps> = ({
         <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
       </span>
       
-      {deathMode && (
+      {deathMode && deathModeFailures > 0 && (
         <>
           <span className="text-zinc-600">•</span>
           <span className="font-medium text-red-500 flex items-center">
             <SkullIcon className="w-3 h-3 mr-1" />
-            Death Mode {deathModeFailures > 0 ? `(${deathModeFailures})` : ""}
+            {deathModeFailures}
           </span>
         </>
       )}

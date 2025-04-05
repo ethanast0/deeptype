@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -50,25 +51,14 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
               quotes: quotesData
             };
             localStorage.setItem("temp_script", JSON.stringify(tempScript));
-            toast({
-              title: "Script loaded",
-              description: "Sign up or log in to save this script permanently."
-            });
           }
         } else {
-          toast({
-            title: "Invalid format",
-            description: "Please upload a JSON array of strings.",
-            variant: "destructive"
-          });
+          // Silent failure, no toast
+          console.error('Invalid format: Please upload a JSON array of strings.');
         }
       } catch (error) {
         console.error('Error parsing JSON file:', error);
-        toast({
-          title: "Error parsing file",
-          description: "Please ensure it is a valid JSON file.",
-          variant: "destructive"
-        });
+        // Silent failure, no toast
       }
     };
     reader.readAsText(file);
@@ -84,44 +74,26 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
 
   const handleSaveScript = async () => {
     if (!user) {
-      toast({
-        title: "Login required",
-        description: "Please log in to save scripts.",
-        variant: "destructive"
-      });
+      // Silent failure, no toast
       setIsDialogOpen(false);
       return;
     }
     if (!scriptName.trim()) {
-      toast({
-        title: "Script name required",
-        description: "Please provide a name for your script.",
-        variant: "destructive"
-      });
+      // Silent failure, no toast
       return;
     }
     try {
       const savedScript = await scriptService.saveScript(user.id, scriptName, quotes);
       if (savedScript) {
-        toast({
-          title: "Script saved",
-          description: "Your script has been saved successfully to Supabase."
-        });
+        // Silent success, no toast
         setIsDialogOpen(false);
       } else {
-        toast({
-          title: "Failed to save",
-          description: "You can have a maximum of 5 saved scripts.",
-          variant: "destructive"
-        });
+        // Silent failure, no toast
+        console.error('Failed to save script');
       }
     } catch (error) {
       console.error("Error saving script:", error);
-      toast({
-        title: "Error saving script",
-        description: "There was an error saving your script.",
-        variant: "destructive"
-      });
+      // Silent failure, no toast
     }
   };
 
