@@ -110,7 +110,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="w-full flex items-center gap-2 p-2">
+      <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
         <button onClick={resetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
           redo
         </button>
