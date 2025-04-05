@@ -13,7 +13,6 @@ interface StatsProps {
   isActive: boolean;
   isFinished: boolean;
   className?: string;
-  quoteProgress?: QuoteProgress;
 }
 
 const Stats: React.FC<StatsProps> = ({ 
@@ -21,10 +20,9 @@ const Stats: React.FC<StatsProps> = ({
   isActive, 
   isFinished,
   className,
-  quoteProgress 
 }) => {
   return (
-    <div className={cn("flex items-center space-x-2 text-base text-monkey-subtle py-2 px-3 rounded", 
+    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded", 
       className, 
       {
         "animate-slide-up": isActive || isFinished
@@ -45,15 +43,6 @@ const Stats: React.FC<StatsProps> = ({
       <span>
         <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
       </span>
-      
-      {quoteProgress && (
-        <>
-          <span className="text-zinc-600">•</span>
-          <span>
-            <span className="font-medium text-monkey-text">{quoteProgress.current}/{quoteProgress.total}</span>{" quotes"}
-          </span>
-        </>
-      )}
       
       {isFinished && (
         <>

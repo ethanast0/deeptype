@@ -101,7 +101,7 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
   }
 
   return (
-    <div className={cn("flex items-center space-x-2 text-xs text-monkey-subtle py-2 px-3 rounded-md", 
+    <div className={cn("flex items-center space-x-2 text-base text-monkey-subtle py-2 px-3 rounded-md", 
       className
     )}>
       <span>
@@ -117,18 +117,6 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
           </span>
         </>
       )}
-
-      <span className="text-zinc-600">•</span>
-
-      <span>
-        <span className="font-medium text-monkey-text">{stats.totalSessions}</span>{" total"}
-      </span>
-
-      <span className="text-zinc-600">•</span>
-
-      <span>
-        <span className="font-medium text-monkey-text">{stats.totalScripts}</span>{" scripts"}
-      </span>
     </div>
   );
 };
