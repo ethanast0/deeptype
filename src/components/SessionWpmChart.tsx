@@ -53,7 +53,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
       </div>
       
       <div className="h-24">
-        <ResponsiveContainer width="100%" height="100%">
+        <ChartContainer config={chartConfig} className="w-full h-full">
           <BarChart data={data}>
             <XAxis 
               dataKey="label" 
@@ -70,7 +70,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </div>
     </div>
   );

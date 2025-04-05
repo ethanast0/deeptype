@@ -43,7 +43,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput,
     currentWordIndex,
     currentCharIndex,
-    deathModeFailures
   } = useTypingTest({
     quotes,
     scriptId,
@@ -84,96 +83,96 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
 
   return (
-    <div className={cn("typing-area-container w-full", className)}>
-      <div className="w-full flex flex-col">
-        <div className="flex justify-between items-center">
-          <Stats 
-            stats={stats} 
-            isActive={isActive} 
-            isFinished={isFinished} 
-            className="self-start" 
-            deathMode={deathMode}
-            deathModeFailures={deathModeFailures}
-          />
-          {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
-        </div>
+    <div className={cn("typing-area-container w-full flex flex-col gap-4", className)}>
+      {/* Stats Panel */}
+      <div className="w-full flex justify-between items-center bg-background/30 rounded-lg p-2">
+        <Stats 
+          stats={stats} 
+          isActive={isActive} 
+          isFinished={isFinished} 
+          className="self-start" 
+          deathMode={deathMode}
+        />
+        {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
-      {/* Chart container - always maintains the same space whether populated or not */}
-      <div className="w-full h-40 my-4">
+      {/* Session Performance Chart - Fixed height container */}
+      <div className="w-full h-40">
         {sessionWpmData.length > 0 ? (
           <SessionWpmChart wpmData={sessionWpmData} />
         ) : (
-          <div className="w-full h-full" />
+          <div className="w-full h-full bg-background border border-slate-800 rounded-lg" />
         )}
       </div>
       
-      <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
-        {words.map((word, wordIndex) => (
-          <React.Fragment key={wordIndex}>
-            {/* Word with characters */}
-            <div className="flex">
-              {word.characters.map((char, charIndex) => (
-                <span 
-                  key={`${wordIndex}-${charIndex}`} 
-                  className={cn("character", {
-                    "text-monkey-accent": char.state === 'correct',
-                    "text-monkey-error": char.state === 'incorrect',
-                    "text-white": char.state === 'current' || char.state === 'inactive'
-                  })}
-                >
-                  {char.char}
-                </span>
-              ))}
-            </div>
-            {/* Add space between words (except for the last word) */}
-            {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-          </React.Fragment>
-        ))}
-        
-        {/* Hidden input to capture keystrokes */}
-        <input 
-          ref={inputRef} 
-          type="text" 
-          className="typing-input" 
-          onChange={handleInput} 
-          autoComplete="off" 
-          autoCapitalize="off" 
-          autoCorrect="off" 
-          spellCheck="false" 
-          aria-label="Typing input" 
-        />
+      {/* Typing Area */}
+      <div className="w-full bg-background/20 rounded-lg p-4">
+        <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
+          {words.map((word, wordIndex) => (
+            <React.Fragment key={wordIndex}>
+              {/* Word with characters */}
+              <div className="flex">
+                {word.characters.map((char, charIndex) => (
+                  <span 
+                    key={`${wordIndex}-${charIndex}`} 
+                    className={cn("character", {
+                      "text-monkey-accent": char.state === 'correct',
+                      "text-monkey-error": char.state === 'incorrect',
+                      "text-white": char.state === 'current' || char.state === 'inactive'
+                    })}
+                  >
+                    {char.char}
+                  </span>
+                ))}
+              </div>
+              {/* Add space between words (except for the last word) */}
+              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+            </React.Fragment>
+          ))}
+          
+          {/* Hidden input to capture keystrokes */}
+          <input 
+            ref={inputRef} 
+            type="text" 
+            className="typing-input" 
+            onChange={handleInput} 
+            autoComplete="off" 
+            autoCapitalize="off" 
+            autoCorrect="off" 
+            spellCheck="false" 
+            aria-label="Typing input" 
+          />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4 mt-8">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={resetTest} 
-            className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
-          >
-            redo
-          </button>
-          <button 
-            onClick={loadNewQuote} 
-            className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
-          >
-            new [shift + enter]
-          </button>
-          <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
-          
-          <Toggle 
-            pressed={deathMode} 
-            onPressedChange={toggleDeathMode} 
-            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
-            className="ml-auto bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
-          >
-            {deathMode ? (
-              <SkullIcon className="w-4 h-4" />
-            ) : (
-              <SmileIcon className="w-4 h-4" />
-            )}
-          </Toggle>
-        </div>
+      {/* Controls */}
+      <div className="flex items-center gap-4 mt-2">
+        <button 
+          onClick={resetTest} 
+          className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
+        >
+          redo
+        </button>
+        <button 
+          onClick={loadNewQuote} 
+          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
+        >
+          new [shift + enter]
+        </button>
+        <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+        
+        <Toggle 
+          pressed={deathMode} 
+          onPressedChange={toggleDeathMode} 
+          aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
+          className="ml-auto bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
+        >
+          {deathMode ? (
+            <SkullIcon className="w-4 h-4" />
+          ) : (
+            <SmileIcon className="w-4 h-4" />
+          )}
+        </Toggle>
       </div>
     </div>
   );
