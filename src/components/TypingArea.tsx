@@ -99,7 +99,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
       
       {/* Typing Area */}
-      <div className="w-full bg-background border p-4">
+      <div className="w-full p-4">
         <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
           {words.map((word, wordIndex) => (
             <React.Fragment key={wordIndex}>
