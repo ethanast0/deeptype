@@ -42,8 +42,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput,
     currentWordIndex,
     currentCharIndex,
-    scriptWpm,
-    hasCompletedScript,
     deathModeFailures
   } = useTypingTest({
     quotes,
@@ -143,25 +141,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           )}
         </div>
       </div>
-
-      {/* Script completion toast */}
-      {hasCompletedScript && scriptId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-slate-800 p-8 rounded-lg shadow-xl max-w-md text-center">
-            <h2 className="text-2xl font-bold text-monkey-accent mb-4">🎉 Script Completed! 🎉</h2>
-            <p className="text-gray-300 mb-6">You've completed all quotes in this script!</p>
-            <div className="text-xl font-bold mb-6">
-              Your average WPM: <span className="text-monkey-accent">{scriptWpm}</span>
-            </div>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-monkey-accent text-white rounded hover:bg-opacity-80"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>;
 };
 

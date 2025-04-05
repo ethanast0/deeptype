@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -41,10 +42,6 @@ const useTypingTest = ({
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [completedQuotes, setCompletedQuotes] = useState<number>(0);
-  const [scriptWpm, setScriptWpm] = useState<number>(0);
-  const [hasCompletedScript, setHasCompletedScript] = useState<boolean>(false);
-  const [scriptWpmValues, setScriptWpmValues] = useState<number[]>([]);
-  const [shouldLoadNewQuote, setShouldLoadNewQuote] = useState<boolean>(false);
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
 
   const { user } = useAuth();
@@ -166,8 +163,6 @@ const useTypingTest = ({
           if (availableQuotes.length === 0) {
             processedQuotesRef.current.clear();
             setCompletedQuotes(0);
-            setScriptWpmValues([]);
-            setHasCompletedScript(false);
             const randomIndex = Math.floor(Math.random() * data.length);
             const randomQuote = data[randomIndex];
             setCurrentQuote(randomQuote.content);
@@ -199,7 +194,6 @@ const useTypingTest = ({
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
-    setShouldLoadNewQuote(false);
   }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
@@ -466,26 +460,12 @@ const useTypingTest = ({
             if (currentQuoteId) {
               await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
             }
-
-            setScriptWpmValues(prev => [...prev, stats.wpm]);
             
             const newCompletedQuotes = completedQuotes + 1;
             setCompletedQuotes(newCompletedQuotes);
             
             if (onQuoteComplete) {
               onQuoteComplete();
-            }
-            
-            if (newCompletedQuotes >= quotes.length && quotes.length > 0) {
-              const avgWpm = scriptWpmValues.length > 0 
-                ? scriptWpmValues.reduce((sum, wpm) => sum + wpm, 0) / scriptWpmValues.length 
-                : stats.wpm;
-              setScriptWpm(Math.round(avgWpm));
-              setHasCompletedScript(true);
-            } else {
-              if (newCompletedQuotes < quotes.length) {
-                setShouldLoadNewQuote(true);
-              }
             }
           } else {
             console.error('Failed to record typing session');
@@ -507,17 +487,7 @@ const useTypingTest = ({
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, quotes.length, onQuoteComplete, scriptWpmValues]);
-
-  useEffect(() => {
-    if (shouldLoadNewQuote) {
-      const timer = setTimeout(() => {
-        loadNewQuote();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [shouldLoadNewQuote, loadNewQuote]);
+  }, [isFinished, user, scriptId, stats.wpm, stats.accuracy, toast, currentQuoteId, stats.elapsedTime, completedQuotes, onQuoteComplete]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
@@ -563,8 +533,6 @@ const useTypingTest = ({
     resetTest,
     loadNewQuote,
     focusInput,
-    scriptWpm,
-    hasCompletedScript,
     deathMode,
     deathModeFailures
   };
