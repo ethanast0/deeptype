@@ -2,18 +2,13 @@
 import React from 'react';
 import { TypingStats, formatTime } from '../utils/typingUtils';
 import { cn } from '../lib/utils';
-
-interface QuoteProgress {
-  current: number;
-  total: number;
-}
+import { SkullIcon } from 'lucide-react';
 
 interface StatsProps {
   stats: TypingStats;
   isActive: boolean;
   isFinished: boolean;
   className?: string;
-  quoteProgress?: QuoteProgress;
   deathMode?: boolean;
   deathModeFailures?: number;
 }
@@ -23,7 +18,6 @@ const Stats: React.FC<StatsProps> = ({
   isActive, 
   isFinished,
   className,
-  quoteProgress,
   deathMode = false,
   deathModeFailures = 0
 }) => {
@@ -50,19 +44,11 @@ const Stats: React.FC<StatsProps> = ({
         <span className="font-medium text-monkey-text">{formatTime(stats.elapsedTime)}</span>{" time"}
       </span>
       
-      {quoteProgress && (
-        <>
-          <span className="text-zinc-600">•</span>
-          <span className="font-medium text-monkey-text">
-            {quoteProgress.current}/{quoteProgress.total}
-          </span>
-        </>
-      )}
-      
       {deathMode && (
         <>
           <span className="text-zinc-600">•</span>
-          <span className="font-medium text-monkey-error">
+          <span className="font-medium text-red-500 flex items-center">
+            <SkullIcon className="w-3 h-3 mr-1" />
             Death Mode {deathModeFailures > 0 ? `(${deathModeFailures})` : ""}
           </span>
         </>

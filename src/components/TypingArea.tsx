@@ -6,12 +6,14 @@ import Stats from './Stats';
 import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
+import { Toggle } from './ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { SkullIcon } from 'lucide-react';
 
 interface TypingAreaProps {
   quotes: string[];
   className?: string;
   scriptId?: string | null;
-  deathMode?: boolean;
   onQuotesLoaded?: (quotes: string[]) => void;
   onTypingStateChange?: (isTyping: boolean) => void;
 }
@@ -20,13 +22,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
   scriptId,
-  deathMode = false,
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
   const { user } = useAuth();
   const [totalQuotes, setTotalQuotes] = useState(quotes.length);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
+  const [deathMode, setDeathMode] = useState(false);
+  
   const {
     words,
     stats,
@@ -72,6 +75,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setCurrentQuoteNumber(1);
     }
   }, [quotes]);
+  
+  const handleModeToggle = (value: string) => {
+    setDeathMode(value === "death");
+    resetTest();
+  };
 
   return <div className={cn("typing-area-container w-full", className)}>
       <div className="w-full flex flex-col -mt-4">
@@ -81,10 +89,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             isActive={isActive} 
             isFinished={isFinished} 
             className="self-start" 
-            quoteProgress={{
-              current: currentQuoteNumber,
-              total: totalQuotes
-            }}
             deathMode={deathMode}
             deathModeFailures={deathModeFailures}
           />
@@ -114,11 +118,30 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
       </div>
 
-      <div className="flex gap-4 mt-8">
-        <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
-        {deathMode && <button className="button button-accent bg-red-900 hover:bg-red-800 text-gray-300 font-normal text-base">death mode</button>}
-        <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+      <div className="flex flex-col gap-4 mt-8">
+        <div className="flex gap-4">
+          <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
+          <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+          <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+        </div>
+        
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-sm text-gray-400">Mode:</span>
+          <ToggleGroup type="single" defaultValue="normal" onValueChange={handleModeToggle} className="bg-slate-800 rounded-md">
+            <ToggleGroupItem value="normal" aria-label="Normal Mode" className="data-[state=on]:bg-slate-700 text-gray-300">
+              Normal
+            </ToggleGroupItem>
+            <ToggleGroupItem value="death" aria-label="Death Mode" className="data-[state=on]:bg-red-900 text-gray-300">
+              <SkullIcon className="w-4 h-4 mr-1" />
+              Death Mode
+            </ToggleGroupItem>
+          </ToggleGroup>
+          {deathMode && deathModeFailures > 0 && (
+            <span className="text-sm text-red-500 ml-2">
+              Failures: {deathModeFailures}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Script completion toast */}
