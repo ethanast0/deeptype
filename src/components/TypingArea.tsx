@@ -86,7 +86,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   return (
     <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
-      <div className="w-full flex justify-between items-center bg-background border border-slate-800 rounded-lg p-2">
+      <div className="w-full flex justify-between items-center p-2">
         <Stats 
           stats={stats} 
           isActive={isActive} 
@@ -139,16 +139,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="w-full flex items-center gap-4 p-2">
+      <div className="w-full flex items-center gap-2 p-2">
         <button 
           onClick={resetTest} 
-          className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm"
         >
           redo
         </button>
         <button 
           onClick={loadNewQuote} 
-          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm"
         >
           new [shift + enter]
         </button>
