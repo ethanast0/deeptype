@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
-import TemplateMenu from '../components/TemplateMenu';
 import { defaultQuotes } from '../utils/typingUtils';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,20 +101,11 @@ const Index = () => {
     setQuotes(newQuotes);
   };
 
-  const handleTemplateSelected = async (templateQuotes: string[], scriptId?: string) => {
-    setQuotes(templateQuotes);
-    if (scriptId) {
-      setActiveScriptId(scriptId);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
       <main className="flex-1 container max-w-4xl mx-auto px-2 py-5 flex flex-col justify-center">
-        <TemplateMenu onSelectTemplate={handleTemplateSelected} isTyping={isTyping} />
-        
         <TypingArea 
           quotes={quotes} 
           scriptId={activeScriptId} 
