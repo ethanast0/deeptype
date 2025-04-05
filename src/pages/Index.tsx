@@ -100,17 +100,18 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-slate-900">
       <Header />
       
-      <main className="flex-1 container max-w-4xl mx-auto px-4 py-5">
-        <TypingArea 
-          quotes={quotes} 
-          scriptId={activeScriptId} 
-          onQuotesLoaded={handleQuotesLoaded}
-          onTypingStateChange={setIsTyping}
-          className="mt-4"
-        />
+      <main className="flex-1 container max-w-4xl mx-auto px-4 py-5 overflow-auto">
+        <div className="typing-panels-container flex flex-col gap-2">
+          <TypingArea 
+            quotes={quotes} 
+            scriptId={activeScriptId} 
+            onQuotesLoaded={handleQuotesLoaded}
+            onTypingStateChange={setIsTyping}
+          />
+        </div>
       </main>
       
       <Footer />

@@ -43,6 +43,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput,
     currentWordIndex,
     currentCharIndex,
+    deathModeFailures
   } = useTypingTest({
     quotes,
     scriptId,
@@ -83,30 +84,22 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
 
   return (
-    <div className={cn("typing-area-container w-full flex flex-col gap-4", className)}>
+    <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
-      <div className="w-full flex justify-between items-center bg-background/30 rounded-lg p-2">
+      <div className="w-full flex justify-between items-center bg-background border border-slate-800 rounded-lg p-2">
         <Stats 
           stats={stats} 
           isActive={isActive} 
           isFinished={isFinished} 
           className="self-start" 
           deathMode={deathMode}
+          deathModeFailures={deathModeFailures}
         />
         {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
-      {/* Session Performance Chart - Fixed height container */}
-      <div className="w-full h-40">
-        {sessionWpmData.length > 0 ? (
-          <SessionWpmChart wpmData={sessionWpmData} />
-        ) : (
-          <div className="w-full h-full bg-background border border-slate-800 rounded-lg" />
-        )}
-      </div>
-      
       {/* Typing Area */}
-      <div className="w-full bg-background/20 rounded-lg p-4">
+      <div className="w-full bg-background border border-slate-800 rounded-lg p-4">
         <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
           {words.map((word, wordIndex) => (
             <React.Fragment key={wordIndex}>
@@ -146,7 +139,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-4 mt-2">
+      <div className="w-full flex items-center gap-4 bg-background border border-slate-800 rounded-lg p-2">
         <button 
           onClick={resetTest} 
           className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
@@ -174,6 +167,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           )}
         </Toggle>
       </div>
+      
+      {/* Session Performance Chart */}
+      <SessionWpmChart wpmData={sessionWpmData} />
     </div>
   );
 };
