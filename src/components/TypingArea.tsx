@@ -99,8 +99,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
       
       {/* Typing Area */}
-      <div className="w-full bg-background border border-slate-800 rounded-lg p-4">
-        <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
+      <div className="w-full bg-background border p-4">
+        <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
           {words.map((word, wordIndex) => (
             <React.Fragment key={wordIndex}>
               {/* Word with characters */}
@@ -139,7 +139,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
 
       {/* Controls */}
-      <div className="w-full flex items-center gap-4 bg-background border border-slate-800 rounded-lg p-2">
+      <div className="w-full flex items-center gap-4 p-2">
         <button 
           onClick={resetTest} 
           className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
