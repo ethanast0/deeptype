@@ -81,7 +81,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
-      <div className="w-full flex justify-between items-center p-2">
+      <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} />
         {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
