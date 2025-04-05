@@ -9,7 +9,6 @@ import {
   BarChart, 
   Bar, 
   XAxis, 
-  YAxis, 
   CartesianGrid, 
   ResponsiveContainer 
 } from 'recharts';
@@ -21,19 +20,17 @@ interface SessionWpmChartProps {
 }
 
 const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className }) => {
-  const data = wpmData.map((wpm, index) => ({
-    attempt: `Attempt ${index + 1}`,
+  const data = wpmData.map((wpm) => ({
     wpm: wpm,
+    label: `${wpm} WPM`
   }));
 
-  // Calculate average WPM
+  // Calculate statistics
   const averageWpm = wpmData.length > 0 
     ? Math.round(wpmData.reduce((sum, value) => sum + value, 0) / wpmData.length) 
     : 0;
-
-  // Find min and max for y-axis
-  const maxWpm = Math.max(...wpmData, 10);
-  const minWpm = Math.max(0, Math.min(...wpmData) - 5);
+  
+  const bestWpm = wpmData.length > 0 ? Math.max(...wpmData) : 0;
   
   const chartConfig = {
     wpm: {
@@ -43,25 +40,25 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
   };
 
   return (
-    <div className={cn("p-4 bg-slate-800 rounded-lg", className)}>
-      <div className="flex justify-between items-center mb-4">
+    <div className={cn("w-full p-4 bg-background border border-slate-800 rounded-lg mb-4", className)}>
+      <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium text-gray-200">Session Performance</h3>
-        <div className="text-sm text-gray-400">
-          Average WPM: <span className="text-monkey-accent font-bold">{averageWpm}</span>
+        <div className="flex gap-4 text-sm">
+          <div className="text-gray-400">
+            Average: <span className="text-monkey-accent font-bold">{averageWpm} WPM</span>
+          </div>
+          <div className="text-gray-400">
+            Best: <span className="text-green-500 font-bold">{bestWpm} WPM</span>
+          </div>
         </div>
       </div>
       
-      <div className="h-64">
+      <div className="h-32">
         <ChartContainer config={chartConfig}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <XAxis 
-              dataKey="attempt" 
-              tick={{ fontSize: 12, fill: '#888' }}
-              axisLine={{ stroke: '#444' }}
-            />
-            <YAxis 
-              domain={[minWpm, maxWpm]} 
+              dataKey="label" 
               tick={{ fontSize: 12, fill: '#888' }}
               axisLine={{ stroke: '#444' }}
             />

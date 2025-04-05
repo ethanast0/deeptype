@@ -6,14 +6,12 @@ import TypingArea from '../components/TypingArea';
 import { defaultQuotes } from '../utils/typingUtils';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../hooks/use-toast';
 
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   useEffect(() => {
     const setupDefaultScript = async () => {

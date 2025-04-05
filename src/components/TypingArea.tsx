@@ -83,8 +83,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
   };
 
-  return <div className={cn("typing-area-container w-full", className)}>
-      <div className="w-full flex flex-col -mt-4">
+  return (
+    <div className={cn("typing-area-container w-full", className)}>
+      <div className="w-full flex flex-col">
         <div className="flex justify-between items-center">
           <Stats 
             stats={stats} 
@@ -98,30 +99,64 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         </div>
       </div>
       
+      {/* Chart is always reserved in layout but only populated with data when available */}
+      {sessionWpmData.length > 0 ? (
+        <SessionWpmChart wpmData={sessionWpmData} />
+      ) : (
+        <div className="w-full h-12 mb-4" /> {/* Spacer to maintain layout */}
+      )}
+      
       <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
-        {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
-              {/* Word with characters */}
-              <div className="flex">
-                {word.characters.map((char, charIndex) => <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
-            "text-monkey-accent": char.state === 'correct',
-            "text-monkey-error": char.state === 'incorrect',
-            "text-white": char.state === 'current' || char.state === 'inactive'
-          })}>
-                    {char.char}
-                  </span>)}
-              </div>
-              {/* Add space between words (except for the last word) */}
-              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>)}
+        {words.map((word, wordIndex) => (
+          <React.Fragment key={wordIndex}>
+            {/* Word with characters */}
+            <div className="flex">
+              {word.characters.map((char, charIndex) => (
+                <span 
+                  key={`${wordIndex}-${charIndex}`} 
+                  className={cn("character", {
+                    "text-monkey-accent": char.state === 'correct',
+                    "text-monkey-error": char.state === 'incorrect',
+                    "text-white": char.state === 'current' || char.state === 'inactive'
+                  })}
+                >
+                  {char.char}
+                </span>
+              ))}
+            </div>
+            {/* Add space between words (except for the last word) */}
+            {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+          </React.Fragment>
+        ))}
         
         {/* Hidden input to capture keystrokes */}
-        <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
+        <input 
+          ref={inputRef} 
+          type="text" 
+          className="typing-input" 
+          onChange={handleInput} 
+          autoComplete="off" 
+          autoCapitalize="off" 
+          autoCorrect="off" 
+          spellCheck="false" 
+          aria-label="Typing input" 
+        />
       </div>
 
       <div className="flex flex-col gap-4 mt-8">
         <div className="flex items-center gap-4">
-          <button onClick={resetTest} className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base">redo</button>
-          <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base">new [shift + enter]</button>
+          <button 
+            onClick={resetTest} 
+            className="button button-accent bg-slate-850 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          >
+            redo
+          </button>
+          <button 
+            onClick={loadNewQuote} 
+            className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-base"
+          >
+            new [shift + enter]
+          </button>
           <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
           
           <Toggle 
@@ -138,11 +173,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           </Toggle>
         </div>
       </div>
-
-      {sessionWpmData.length > 0 && (
-        <SessionWpmChart wpmData={sessionWpmData} className="mt-8" />
-      )}
-    </div>;
+    </div>
+  );
 };
 
 export default TypingArea;

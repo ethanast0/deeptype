@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -9,7 +10,6 @@ import {
 } from '../utils/typingUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
-import { useToast } from '../hooks/use-toast';
 import { supabase } from '../integrations/supabase/client';
 
 interface UseTypingTestProps {
@@ -44,7 +44,6 @@ const useTypingTest = ({
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
 
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -113,18 +112,9 @@ const useTypingTest = ({
   const deathModeReset = useCallback(() => {
     if (deathMode) {
       setDeathModeFailures(prev => prev + 1);
-      
-      if (deathMode) {
-        toast({
-          title: "Death Mode Failure",
-          description: `Try again! Attempt #${deathModeFailures + 1}`,
-          variant: "destructive",
-        });
-      }
-      
       resetTest();
     }
-  }, [deathMode, deathModeFailures, resetTest, toast]);
+  }, [deathMode, resetTest]);
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -473,7 +463,7 @@ const useTypingTest = ({
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, toast, currentQuoteId, completedQuotes, onQuoteComplete]);
+  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
