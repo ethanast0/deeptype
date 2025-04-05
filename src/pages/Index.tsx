@@ -103,13 +103,15 @@ const Index = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       
-      <main className="flex-1 container max-w-4xl mx-auto px-2 py-5 flex flex-col justify-center">
-        <TypingArea 
-          quotes={quotes} 
-          scriptId={activeScriptId} 
-          onQuotesLoaded={handleQuotesLoaded}
-          onTypingStateChange={setIsTyping}
-        />
+      <main className="flex-1 container max-w-4xl mx-auto px-4 py-5 flex flex-col justify-center">
+        <div className="w-full flex flex-col space-y-4">
+          <TypingArea 
+            quotes={quotes} 
+            scriptId={activeScriptId} 
+            onQuotesLoaded={handleQuotesLoaded}
+            onTypingStateChange={setIsTyping}
+          />
+        </div>
       </main>
       
       <Footer />

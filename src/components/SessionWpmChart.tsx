@@ -9,7 +9,6 @@ import {
   BarChart, 
   Bar, 
   XAxis, 
-  CartesianGrid, 
   ResponsiveContainer 
 } from 'recharts';
 import { cn } from '@/lib/utils';
@@ -40,7 +39,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
   };
 
   return (
-    <div className={cn("w-full p-4 bg-background border border-slate-800 rounded-lg mb-4", className)}>
+    <div className={cn("w-full h-full p-4 bg-background border border-slate-800 rounded-lg", className)}>
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-lg font-medium text-gray-200">Session Performance</h3>
         <div className="flex gap-4 text-sm">
@@ -53,10 +52,9 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
         </div>
       </div>
       
-      <div className="h-32">
-        <ChartContainer config={chartConfig}>
+      <div className="h-24">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <XAxis 
               dataKey="label" 
               tick={{ fontSize: 12, fill: '#888' }}
@@ -72,7 +70,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
-        </ChartContainer>
+        </ResponsiveContainer>
       </div>
     </div>
   );

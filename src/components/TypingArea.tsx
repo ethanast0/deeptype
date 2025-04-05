@@ -99,12 +99,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         </div>
       </div>
       
-      {/* Chart is always reserved in layout but only populated with data when available */}
-      {sessionWpmData.length > 0 ? (
-        <SessionWpmChart wpmData={sessionWpmData} />
-      ) : (
-        <div className="w-full h-12 mb-4" /> /* Spacer to maintain layout */
-      )}
+      {/* Chart container - always maintains the same space whether populated or not */}
+      <div className="w-full h-40 my-4">
+        {sessionWpmData.length > 0 ? (
+          <SessionWpmChart wpmData={sessionWpmData} />
+        ) : (
+          <div className="w-full h-full" />
+        )}
+      </div>
       
       <div className="typing-area flex flex-wrap text-3xl" onClick={focusInput}>
         {words.map((word, wordIndex) => (
