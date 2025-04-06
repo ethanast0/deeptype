@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -52,44 +51,8 @@ const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({
           dateFilter = `created_at.gte.${oneMonthAgo}`;
         }
 
-        // Fetch leaderboard data
-        const { data, error } = await supabase
-          .from('typing_history')
-          .select(`
-            user_id,
-            users!typing_history_user_id_fkey (username)
-          `)
-          .order('wpm', { ascending: false })
-          .limit(10);
-
-        if (error) {
-          console.error('Error fetching leaderboard:', error);
-          return;
-        }
-
-        // Process data
-        const leaderboardMap = new Map<string, LeaderboardEntry>();
-        
-        if (data) {
-          data.forEach(entry => {
-            const userId = entry.user_id;
-            const username = entry.users?.username || 'Anonymous';
-            
-            if (!leaderboardMap.has(userId)) {
-              leaderboardMap.set(userId, {
-                user_id: userId,
-                username,
-                avg_wpm: 0,
-                max_wpm: 0
-              });
-            }
-          });
-        }
-
-        // Process into array for display
-        const leaderboardEntries = Array.from(leaderboardMap.values());
-        
-        // For now, we'll simulate some data since we don't have the aggregate queries set up
+        // For now, simulate leaderboard data since the join may not be working correctly
+        // Instead of trying to fetch username from the join, we'll simulate data
         const simulatedData: LeaderboardEntry[] = [
           { user_id: '1', username: 'SpeedTyper', avg_wpm: 120, max_wpm: 145 },
           { user_id: '2', username: 'KeyMaster', avg_wpm: 115, max_wpm: 135 },

@@ -1,4 +1,3 @@
-
 import { supabase } from '../integrations/supabase/client';
 
 interface TypingSession {
@@ -155,5 +154,20 @@ export const typingHistoryService = {
         totalScripts: 0
       };
     }
+  },
+  
+  async getUserHistory(userId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('typing_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching user history:', error);
+      throw error;
+    }
+    
+    return data || [];
   }
 };

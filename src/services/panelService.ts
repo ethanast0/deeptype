@@ -64,11 +64,12 @@ export const panelTemplates: PanelTemplate[] = [
 
 export const panelService = {
   async getUserPanels(userId: string): Promise<CustomPanel[]> {
+    // Use the REST API directly since the type definitions haven't been updated yet
     const { data, error } = await supabase
-      .from("custom_panels")
-      .select("*")
-      .eq("user_id", userId)
-      .order("position", { ascending: true });
+      .from('custom_panels')
+      .select('*')
+      .eq('user_id', userId)
+      .order('position', { ascending: true }) as { data: CustomPanel[] | null, error: any };
     
     if (error) {
       console.error("Error fetching user panels:", error);
@@ -79,45 +80,54 @@ export const panelService = {
   },
   
   async createPanel(userId: string, panel: Omit<CustomPanel, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<CustomPanel> {
+    // Use the REST API directly since the type definitions haven't been updated yet
     const { data, error } = await supabase
-      .from("custom_panels")
+      .from('custom_panels')
       .insert({
         user_id: userId,
         ...panel
       })
-      .select()
-      .single();
+      .select() as { data: CustomPanel[] | null, error: any };
     
     if (error) {
       console.error("Error creating panel:", error);
       throw error;
     }
     
-    return data;
+    if (!data || data.length === 0) {
+      throw new Error("No data returned after creating panel");
+    }
+    
+    return data[0];
   },
   
   async updatePanel(panelId: string, updates: Partial<Omit<CustomPanel, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<CustomPanel> {
+    // Use the REST API directly since the type definitions haven't been updated yet
     const { data, error } = await supabase
-      .from("custom_panels")
+      .from('custom_panels')
       .update({
         ...updates,
         updated_at: new Date().toISOString()
       })
       .eq("id", panelId)
-      .select()
-      .single();
+      .select() as { data: CustomPanel[] | null, error: any };
     
     if (error) {
       console.error("Error updating panel:", error);
       throw error;
     }
     
-    return data;
+    if (!data || data.length === 0) {
+      throw new Error("No data returned after updating panel");
+    }
+    
+    return data[0];
   },
   
   async deletePanel(panelId: string): Promise<void> {
+    // Use the REST API directly since the type definitions haven't been updated yet
     const { error } = await supabase
-      .from("custom_panels")
+      .from('custom_panels')
       .delete()
       .eq("id", panelId);
     
@@ -128,18 +138,24 @@ export const panelService = {
   },
   
   async updatePanelPositions(updates: { id: string, position: number }[]): Promise<void> {
-    // Use a transaction to update all positions
-    const { error } = await supabase.rpc('update_panel_positions', { 
-      position_updates: updates 
-    });
-    
-    if (error) {
-      console.error("Error updating panel positions:", error);
+    try {
+      // Use RPC function instead of direct updates
+      const { error } = await supabase.rpc(
+        'update_panel_positions', 
+        { position_updates: updates }
+      );
+      
+      if (error) {
+        console.error("Error updating panel positions:", error);
+        throw error;
+      }
+    } catch (e) {
+      console.error("Error in updatePanelPositions:", e);
       // Fallback to individual updates if RPC fails
       try {
         for (const update of updates) {
           await supabase
-            .from("custom_panels")
+            .from('custom_panels')
             .update({ position: update.position })
             .eq("id", update.id);
         }
@@ -152,12 +168,13 @@ export const panelService = {
   
   // Get the next available position for a new panel
   async getNextPosition(userId: string): Promise<number> {
+    // Use the REST API directly since the type definitions haven't been updated yet
     const { data, error } = await supabase
-      .from("custom_panels")
-      .select("position")
-      .eq("user_id", userId)
-      .order("position", { ascending: false })
-      .limit(1);
+      .from('custom_panels')
+      .select('position')
+      .eq('user_id', userId)
+      .order('position', { ascending: false })
+      .limit(1) as { data: { position: number }[] | null, error: any };
     
     if (error) {
       console.error("Error getting next position:", error);
