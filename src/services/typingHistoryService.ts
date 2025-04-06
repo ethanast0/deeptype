@@ -3,232 +3,209 @@ import { supabase } from '../integrations/supabase/client';
 
 interface TypingSession {
   id: string;
-  userId: string;
-  scriptId: string;
+  user_id: string;
+  created_at: string;
   wpm: number;
   accuracy: number;
+  script_id: string | null;
+  quote_id: string | null;
   elapsed_time: number;
-  created_at: string;
-  quote_id?: string;
+  moving_average_wpm?: number | null;
+  moving_average_accuracy?: number | null;
+}
+
+interface UserStats {
+  averageWpm: number;
+  averageAccuracy: number;
+  totalSessions: number;
+  totalScripts: number;
 }
 
 export const typingHistoryService = {
-  // Record a new typing session in Supabase
-  recordSession: async (userId: string, scriptId: string, wpm: number, accuracy: number, elapsedTime: number = 0, quoteId?: string): Promise<boolean> => {
+  recordSession: async (
+    userId: string,
+    scriptId: string,
+    wpm: number,
+    accuracy: number,
+    elapsedTime: number = 0,
+    quoteId?: string
+  ): Promise<boolean> => {
     try {
-      if (!userId || !scriptId) {
-        console.error('Missing required parameters:', { userId, scriptId });
-        return false;
-      }
-      
-      console.log('Recording typing session with params:', { userId, scriptId, wpm, accuracy, elapsedTime, quoteId });
-      
-      // Ensure elapsedTime is an integer as expected by the database
-      const roundedElapsedTime = Math.round(elapsedTime);
-      
-      const record: any = {
+      const { error } = await supabase.from('typing_history').insert({
         user_id: userId,
         script_id: scriptId,
-        wpm: Math.round(wpm),
-        accuracy: Math.round(accuracy * 100) / 100,
-        elapsed_time: roundedElapsedTime
-      };
-      
-      // Add quote_id if provided
-      if (quoteId) {
-        record.quote_id = quoteId;
-      }
-      
-      const { error: insertError } = await supabase
-        .from('typing_history')
-        .insert(record);
-      
-      if (insertError) {
-        console.error('Error updating typing stats:', insertError);
+        quote_id: quoteId,
+        wpm,
+        accuracy,
+        elapsed_time: elapsedTime
+      });
+
+      if (error) {
+        console.error('Error recording typing session:', error);
         return false;
       }
-      
-      console.log('Your typing stats have been updated');
+
       return true;
     } catch (error) {
-      console.error('Unexpected error updating typing stats:', error);
+      console.error('Unexpected error recording session:', error);
       return false;
     }
   },
-  
-  // Get all typing sessions for a user from Supabase
+
   getUserSessions: async (userId: string): Promise<TypingSession[]> => {
     try {
-      console.log('Fetching user sessions for user ID:', userId);
       const { data, error } = await supabase
         .from('typing_history')
         .select('*')
-        .eq('user_id', userId);
-      
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
       if (error) {
-        console.error('Error fetching typing history:', error);
+        console.error('Error fetching user sessions:', error);
         return [];
       }
-      
-      console.log(`Retrieved ${data.length} typing sessions`);
-      return data.map(session => ({
-        id: session.id,
-        userId: session.user_id,
-        scriptId: session.script_id,
-        wpm: session.wpm,
-        accuracy: session.accuracy,
-        elapsed_time: session.elapsed_time,
-        created_at: session.created_at,
-        quote_id: session.quote_id
-      }));
+
+      return data || [];
     } catch (error) {
-      console.error('Error fetching typing history:', error);
+      console.error('Unexpected error fetching user sessions:', error);
       return [];
     }
   },
-  
-  // Get sessions for a specific script from Supabase
+
   getScriptSessions: async (userId: string, scriptId: string): Promise<TypingSession[]> => {
     try {
       const { data, error } = await supabase
         .from('typing_history')
         .select('*')
         .eq('user_id', userId)
-        .eq('script_id', scriptId);
-      
+        .eq('script_id', scriptId)
+        .order('created_at', { ascending: false });
+
       if (error) {
-        console.error('Error fetching script history:', error);
+        console.error('Error fetching script sessions:', error);
         return [];
       }
-      
-      return data.map(session => ({
-        id: session.id,
-        userId: session.user_id,
-        scriptId: session.script_id,
-        wpm: session.wpm,
-        accuracy: session.accuracy,
-        elapsed_time: session.elapsed_time,
-        created_at: session.created_at,
-        quote_id: session.quote_id
-      }));
+
+      return data || [];
     } catch (error) {
-      console.error('Error fetching script history:', error);
+      console.error('Unexpected error fetching script sessions:', error);
       return [];
     }
   },
-  
-  // Get user stats from Supabase
-  getUserStats: async (userId: string) => {
+
+  getUserStats: async (userId: string): Promise<UserStats> => {
     try {
-      console.log('Calculating user stats for user ID:', userId);
-      const sessions = await typingHistoryService.getUserSessions(userId);
+      const { data, error } = await supabase
+        .from('typing_history')
+        .select('wpm, accuracy')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching user stats:', error);
+        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
+      }
+
+      if (!data || data.length === 0) {
+        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
+      }
+
+      const totalSessions = data.length;
       
-      if (sessions.length === 0) {
-        console.log('No typing sessions found for user');
-        return {
-          averageWpm: 0,
-          averageAccuracy: 0,
-          totalSessions: 0,
-          totalScripts: 0
-        };
+      // Calculate average WPM
+      const totalWpm = data.reduce((sum, session) => sum + session.wpm, 0);
+      const averageWpm = Math.round(totalWpm / totalSessions);
+      
+      // Calculate average accuracy
+      const totalAccuracy = data.reduce((sum, session) => sum + session.accuracy, 0);
+      const averageAccuracy = Math.round(totalAccuracy / totalSessions);
+      
+      // Get unique scripts count
+      const { data: scriptData, error: scriptError } = await supabase
+        .from('typing_history')
+        .select('script_id')
+        .eq('user_id', userId)
+        .not('script_id', 'is', null);
+        
+      if (scriptError) {
+        console.error('Error fetching script stats:', scriptError);
+        return { averageWpm: averageWpm, averageAccuracy: averageAccuracy, totalSessions: totalSessions, totalScripts: 0 };
       }
       
-      const totalWpm = sessions.reduce((sum, session) => sum + session.wpm, 0);
-      const totalAccuracy = sessions.reduce((sum, session) => sum + session.accuracy, 0);
-      const uniqueScripts = new Set(sessions.map(session => session.scriptId));
-      
-      const stats = {
-        averageWpm: Math.round(totalWpm / sessions.length),
-        averageAccuracy: parseFloat((totalAccuracy / sessions.length).toFixed(2)),
-        totalSessions: sessions.length,
-        totalScripts: uniqueScripts.size
-      };
-      
-      console.log('Calculated user stats:', stats);
-      return stats;
-    } catch (error) {
-      console.error('Error calculating user stats:', error);
+      const uniqueScripts = new Set(scriptData.map(item => item.script_id));
+      const totalScripts = uniqueScripts.size;
+
       return {
-        averageWpm: 0,
-        averageAccuracy: 0,
-        totalSessions: 0,
-        totalScripts: 0
+        averageWpm,
+        averageAccuracy,
+        totalSessions,
+        totalScripts
       };
+    } catch (error) {
+      console.error('Unexpected error fetching user stats:', error);
+      return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
     }
   },
-  
-  async getUserHistory(userId: string): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('typing_history')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching user history:', error);
-      throw error;
-    }
-    
-    return data || [];
-  },
-  
-  // Get user history with moving average for WPM
-  async getUserHistoryWithMovingAverageWpm(userId: string, windowSize: number = 5): Promise<any[]> {
-    const rawHistory = await this.getUserHistory(userId);
 
-    if (!rawHistory || rawHistory.length === 0) {
+  // Generic function to get user history
+  getUserHistory: async (userId: string): Promise<TypingSession[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('typing_history')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching user history:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Unexpected error fetching user history:', error);
+      return [];
+    }
+  },
+
+  // Helper function to calculate moving average for any property
+  calculateMovingAverage: (data: any[], property: string, windowSize: number = 5): any[] => {
+    if (!data || data.length === 0) {
       return [];
     }
 
-    // Sort the history by created_at in ascending order for correct moving average calculation
-    const sortedHistory = [...rawHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    // Sort by created_at
+    const sortedData = [...data].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
 
-    const historyWithMovingAverage = sortedHistory.map((item, index, array) => {
+    return sortedData.map((item, index, array) => {
+      const result = { ...item };
+      
       if (index < windowSize - 1) {
-        // Not enough data points to calculate a full window average
-        return { ...item, moving_average_wpm: null };
+        // Not enough data points for a full window
+        result[`moving_average_${property}`] = null;
+      } else {
+        // Calculate moving average
+        let sum = 0;
+        for (let i = index - windowSize + 1; i <= index; i++) {
+          sum += array[i][property];
+        }
+        result[`moving_average_${property}`] = sum / windowSize;
       }
-
-      // Calculate the simple moving average for the current window
-      let sum = 0;
-      for (let i = index - windowSize + 1; i <= index; i++) {
-        sum += array[i].wpm;
-      }
-      const movingAverageWpm = sum / windowSize;
-
-      return { ...item, moving_average_wpm: movingAverageWpm };
+      
+      return result;
     });
-
-    return historyWithMovingAverage;
   },
-  
-  // Get user history with moving average for accuracy
-  async getUserHistoryWithMovingAverageAccuracy(userId: string, windowSize: number = 5): Promise<any[]> {
-    const rawHistory = await this.getUserHistory(userId);
 
-    if (!rawHistory || rawHistory.length === 0) {
-      return [];
-    }
+  // Get user history with moving average WPM
+  getUserHistoryWithMovingAverageWpm: async (userId: string, windowSize: number = 5): Promise<TypingSession[]> => {
+    const history = await typingHistoryService.getUserHistory(userId);
+    return typingHistoryService.calculateMovingAverage(history, 'wpm', windowSize);
+  },
 
-    // Sort the history by created_at in ascending order for correct moving average calculation
-    const sortedHistory = [...rawHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-    const historyWithMovingAverage = sortedHistory.map((item, index, array) => {
-      if (index < windowSize - 1) {
-        // Not enough data points to calculate a full window average
-        return { ...item, moving_average_accuracy: null };
-      }
-
-      // Calculate the simple moving average for the current window
-      let sum = 0;
-      for (let i = index - windowSize + 1; i <= index; i++) {
-        sum += array[i].accuracy;
-      }
-      const movingAverageAccuracy = sum / windowSize;
-
-      return { ...item, moving_average_accuracy: movingAverageAccuracy };
-    });
-
-    return historyWithMovingAverage;
+  // Get user history with moving average accuracy
+  getUserHistoryWithMovingAverageAccuracy: async (userId: string, windowSize: number = 5): Promise<TypingSession[]> => {
+    const history = await typingHistoryService.getUserHistory(userId);
+    return typingHistoryService.calculateMovingAverage(history, 'accuracy', windowSize);
   }
 };

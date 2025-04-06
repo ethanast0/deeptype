@@ -12,12 +12,10 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { AccuracyChartConfig, getPanelConfig } from '../../config/panelConfig';
 
 interface AccuracyChartPanelProps {
-  config?: {
-    timeRange?: 'day' | 'week' | 'month' | 'all';
-    windowSize?: number;
-  };
+  config?: Partial<AccuracyChartConfig>;
 }
 
 interface AccuracyDataPoint {
@@ -26,13 +24,14 @@ interface AccuracyDataPoint {
   movingAverage?: number | null;
 }
 
-const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ 
-  config = { timeRange: 'week', windowSize: 5 } 
-}) => {
+const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userConfig }) => {
   const { user } = useAuth();
   const [accuracyData, setAccuracyData] = useState<AccuracyDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const windowSize = config.windowSize || 5;
+  
+  // Get merged configuration
+  const config = getPanelConfig<AccuracyChartConfig>('accuracy-chart', userConfig);
+  const { windowSize, timeRange, showRawData } = config;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,17 +48,17 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
         let filteredHistory = history;
         const now = new Date();
         
-        if (config.timeRange === 'day') {
+        if (timeRange === 'day') {
           const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneDayAgo
           );
-        } else if (config.timeRange === 'week') {
+        } else if (timeRange === 'week') {
           const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneWeekAgo
           );
-        } else if (config.timeRange === 'month') {
+        } else if (timeRange === 'month') {
           const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneMonthAgo
@@ -82,7 +81,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
     };
 
     fetchData();
-  }, [user, config.timeRange, windowSize]);
+  }, [user, timeRange, windowSize]);
 
   if (isLoading) {
     return <div className="h-40 flex items-center justify-center">Loading data...</div>;
@@ -115,17 +114,17 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
             labelStyle={{ color: '#d1d0c5' }}
             formatter={(value) => [`${value}%`, 'Accuracy']}
           />
-          {/*
-          <Line 
-            type="monotone" 
-            dataKey="accuracy" 
-            stroke="#27272a" 
-            strokeWidth={1}
-            dot={{ r: 1, fill: '#27272a' }}
-            activeDot={{ r: 3 }}
-            name="Accuracy"
-          />
-          */}
+          {showRawData && (
+            <Line 
+              type="monotone" 
+              dataKey="accuracy" 
+              stroke="#27272a" 
+              strokeWidth={1}
+              dot={{ r: 1, fill: '#27272a' }}
+              activeDot={{ r: 3 }}
+              name="Accuracy"
+            />
+          )}
           <Line 
             type="monotone" 
             dataKey="movingAverage" 

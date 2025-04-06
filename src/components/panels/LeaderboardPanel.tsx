@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { LeaderboardConfig, getPanelConfig } from '../../config/panelConfig';
 
 interface LeaderboardPanelProps {
-  config?: {
-    category?: 'all' | 'beginners' | 'intermediate' | 'advanced';
-    timeRange?: 'day' | 'week' | 'month' | 'all';
-  };
+  config?: Partial<LeaderboardConfig>;
 }
 
 interface LeaderboardEntry {
@@ -16,12 +14,14 @@ interface LeaderboardEntry {
   max_wpm: number;
 }
 
-const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({ 
-  config = { category: 'all', timeRange: 'week' } 
-}) => {
+const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({ config: userConfig }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Get merged configuration
+  const config = getPanelConfig<LeaderboardConfig>('leaderboard', userConfig);
+  const { timeRange, category } = config;
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -40,13 +40,13 @@ const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({
         let dateFilter = '';
         const now = new Date();
         
-        if (config.timeRange === 'day') {
+        if (timeRange === 'day') {
           const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
           dateFilter = `created_at.gte.${oneDayAgo}`;
-        } else if (config.timeRange === 'week') {
+        } else if (timeRange === 'week') {
           const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
           dateFilter = `created_at.gte.${oneWeekAgo}`;
-        } else if (config.timeRange === 'month') {
+        } else if (timeRange === 'month') {
           const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
           dateFilter = `created_at.gte.${oneMonthAgo}`;
         }
@@ -80,7 +80,7 @@ const LeaderboardPanel: React.FC<LeaderboardPanelProps> = ({
     };
 
     fetchLeaderboard();
-  }, [config.category, config.timeRange, currentUser]);
+  }, [category, timeRange, currentUser]);
 
   if (isLoading) {
     return <div className="h-40 flex items-center justify-center">Loading leaderboard...</div>;

@@ -1,5 +1,46 @@
-
 import { supabase } from '../integrations/supabase/client';
+import { BaseConfig } from '../config/panelConfig';
+
+// Panel templates for the Add Panel dialog
+export const panelTemplates = [
+  {
+    id: 'wpm-history',
+    title: 'WPM History',
+    description: 'Shows your typing speed history over time',
+    panel_type: 'wpm-history',
+    defaultConfig: {
+      timeRange: 'week',
+      windowSize: 5
+    }
+  },
+  {
+    id: 'accuracy-chart',
+    title: 'Accuracy Chart',
+    description: 'Shows your typing accuracy over time',
+    panel_type: 'accuracy-chart',
+    defaultConfig: {
+      timeRange: 'week',
+      windowSize: 5
+    }
+  },
+  {
+    id: 'leaderboard',
+    title: 'Leaderboard',
+    description: 'Shows top typists in different categories',
+    panel_type: 'leaderboard',
+    defaultConfig: {
+      timeRange: 'week',
+      category: 'all'
+    }
+  },
+  {
+    id: 'session-stats',
+    title: 'Session Stats',
+    description: 'Shows statistics for your current typing session',
+    panel_type: 'session-stats',
+    defaultConfig: {}
+  }
+];
 
 export interface CustomPanel {
   id: string;
@@ -12,58 +53,12 @@ export interface CustomPanel {
   updated_at: string;
 }
 
-interface PanelCreateParams {
+export interface PanelData {
   panel_type: string;
   title: string | null;
-  config: any | null;
-  position: number;
+  config?: any;
+  position?: number;
 }
-
-// Panel template definitions
-export const panelTemplates = [
-  {
-    id: 'wpm-history',
-    type: 'historical-wpm',
-    title: 'WPM Over Time',
-    description: 'Track your typing speed progress over time',
-    icon: 'line-chart',
-    defaultConfig: {
-      timeRange: 'week',
-      windowSize: 5
-    }
-  },
-  {
-    id: 'accuracy-chart',
-    type: 'accuracy-chart',
-    title: 'Accuracy Trend',
-    description: 'Monitor your typing accuracy over time',
-    icon: 'percent',
-    defaultConfig: {
-      timeRange: 'week',
-      windowSize: 5
-    }
-  },
-  {
-    id: 'leaderboard',
-    type: 'leaderboard',
-    title: 'Leaderboard',
-    description: 'See how you rank against other typists',
-    icon: 'trophy',
-    defaultConfig: {
-      limit: 5
-    }
-  },
-  {
-    id: 'session-stats',
-    type: 'session-stats',
-    title: 'Recent Sessions',
-    description: 'View stats from your recent typing sessions',
-    icon: 'activity',
-    defaultConfig: {
-      limit: 5
-    }
-  }
-];
 
 export const panelService = {
   // Gets all panels for a specific user
@@ -119,28 +114,21 @@ export const panelService = {
   // Gets the next available position for a new panel
   getNextPosition: async (userId: string): Promise<number> => {
     try {
-      // First, check if there are any existing panels
       const { data, error } = await supabase
         .from('custom_panels')
         .select('position')
         .eq('user_id', userId)
         .order('position', { ascending: false })
         .limit(1);
-      
+
       if (error) {
         console.error('Error getting next position:', error);
         return 0;
       }
-      
-      // If there are no panels, start at position 0
-      if (!data || data.length === 0) {
-        return 0;
-      }
-      
-      // Otherwise, use the highest position + 1
-      return data[0].position + 1;
-    } catch (err) {
-      console.error('Error in getNextPosition:', err);
+
+      return data && data.length > 0 ? data[0].position + 1 : 0;
+    } catch (error) {
+      console.error('Unexpected error getting next position:', error);
       return 0;
     }
   },

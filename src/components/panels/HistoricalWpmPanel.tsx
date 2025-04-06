@@ -12,12 +12,10 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import { WpmHistoryConfig, getPanelConfig } from '../../config/panelConfig';
 
 interface HistoricalWpmPanelProps {
-  config?: {
-    timeRange?: 'day' | 'week' | 'month' | 'all';
-    windowSize?: number;
-  };
+  config?: Partial<WpmHistoryConfig>;
 }
 
 interface WpmDataPoint {
@@ -26,13 +24,14 @@ interface WpmDataPoint {
   movingAverage?: number | null;
 }
 
-const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ 
-  config = { timeRange: 'week', windowSize: 5 } 
-}) => {
+const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ config: userConfig }) => {
   const { user } = useAuth();
   const [wpmData, setWpmData] = useState<WpmDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const windowSize = config.windowSize || 5;
+  
+  // Get merged configuration
+  const config = getPanelConfig<WpmHistoryConfig>('wpm-history', userConfig);
+  const { windowSize, timeRange, showRawData } = config;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,17 +48,17 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
         let filteredHistory = history;
         const now = new Date();
         
-        if (config.timeRange === 'day') {
+        if (timeRange === 'day') {
           const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneDayAgo
           );
-        } else if (config.timeRange === 'week') {
+        } else if (timeRange === 'week') {
           const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneWeekAgo
           );
-        } else if (config.timeRange === 'month') {
+        } else if (timeRange === 'month') {
           const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           filteredHistory = history.filter(entry => 
             new Date(entry.created_at) >= oneMonthAgo
@@ -82,7 +81,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
     };
 
     fetchData();
-  }, [user, config.timeRange, windowSize]);
+  }, [user, timeRange, windowSize]);
 
   if (isLoading) {
     return <div className="h-40 flex items-center justify-center">Loading data...</div>;
@@ -114,15 +113,17 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
             itemStyle={{ color: '#d1d0c5' }}
             labelStyle={{ color: '#d1d0c5' }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="wpm" 
-            stroke="#27272a" 
-            strokeWidth={1}
-            dot={{ r: 3, fill: '#27272a' }}
-            activeDot={{ r: 2 }}
-            name="WPM"
-          />
+          {showRawData && (
+            <Line 
+              type="monotone" 
+              dataKey="wpm" 
+              stroke="#27272a" 
+              strokeWidth={1}
+              dot={{ r: 3, fill: '#27272a' }}
+              activeDot={{ r: 2 }}
+              name="WPM"
+            />
+          )}
           <Line 
             type="monotone" 
             dataKey="movingAverage" 
