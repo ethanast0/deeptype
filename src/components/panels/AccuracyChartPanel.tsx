@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { typingHistoryService } from '../../services/typingHistoryService';
@@ -116,7 +115,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
           />
           {showRawData && (
             <Line 
-              type="monotone"
+              type="basis"
               dataKey="accuracy" 
               stroke="#27272a" 
               strokeWidth={1}
@@ -126,7 +125,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
             />
           )}
           <Line 
-            type="monotone"
+            type="basis"
             dataKey="movingAverage" 
             stroke="#f2d766"
             strokeWidth={3}
