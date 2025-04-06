@@ -33,7 +33,7 @@ const RaceAnimation: React.FC<RaceAnimationProps> = ({
         style={{ left: `${progress}%` }}
       >
         <CarIcon 
-          className="w-6 h-6 text-monkey-accent -translate-x-1/2" 
+          className="w-6 h-6 text-monkey-accent translate-x-1/2" 
           // No transformation applied to the car
         />
       </div>
