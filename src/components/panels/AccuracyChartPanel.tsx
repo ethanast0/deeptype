@@ -10,7 +10,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend
+  Legend,
+  CurveType
 } from 'recharts';
 import { AccuracyChartConfig, getPanelConfig } from '../../config/panelConfig';
 
@@ -116,24 +117,25 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
           />
           {showRawData && (
             <Line 
-              type="natural" 
+              type={CurveType.natural} 
               dataKey="accuracy" 
               stroke="#27272a" 
               strokeWidth={1}
               dot={{ r: 1, fill: '#27272a' }}
               activeDot={{ r: 3 }}
-              name="Accuracy"
+              name="acc"
             />
           )}
           <Line 
-            type="natural" 
+            type={CurveType.natural} 
             dataKey="movingAverage" 
             stroke="#f2d766"
             strokeWidth={3}
             dot={false}
             activeDot={false}
-            name="Trend"
+            name="acc trend
             connectNulls={true}
+            tension={0.5}
           />
           <Legend 
             iconType="circle" 
