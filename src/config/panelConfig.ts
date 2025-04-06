@@ -30,13 +30,13 @@ export interface SessionStatsConfig extends BaseConfig {
 // Default configurations for each panel type
 export const defaultConfigs = {
   'wpm-history': {
-    windowSize: 5,
+    windowSize: 15,
     timeRange: 'week',
-    showRawData: true,
+    showRawData: false,
   } as WpmHistoryConfig,
   
   'accuracy-chart': {
-    windowSize: 5,
+    windowSize: 15,
     timeRange: 'week',
     showRawData: false,
   } as AccuracyChartConfig,
