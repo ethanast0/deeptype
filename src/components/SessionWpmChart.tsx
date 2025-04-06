@@ -67,7 +67,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               <XAxis 
                 dataKey="index" 
                 tick={{ fontSize: 10, fill: '#888' }}
-                axisLine={{ stroke: '#444' }}
+                axisLine={null}
                 tickFormatter={(value) => (value % 5 === 0) ? value.toString() : ''}
                 tickLine={false} // This line removes the tick marks
               />
