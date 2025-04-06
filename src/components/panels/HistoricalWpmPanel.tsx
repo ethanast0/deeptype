@@ -107,6 +107,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
             tick={{ fill: '#646669', fontSize: 10 }}
             tickLine={{ stroke: '#646669' }}
             axisLine={{ stroke: '#646669' }}
+            domain={[80, 'dataMax']}
           />
           <Tooltip 
             contentStyle={{ backgroundColor: '#323437', border: 'none', borderRadius: '4px' }}
