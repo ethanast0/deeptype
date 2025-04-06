@@ -94,7 +94,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   return <div className={`panel-manager space-y-4 ${className}`}>
       <div className="flex justify-between items-center -mt-12">
         
-        <Button onClick={() => setIsAddPanelOpen(true)} variant="ghost" className="w-full flex items-center gap-2 text-zinc-400 font-normal text-base rounded-none bg-zinc-950 hover:bg-zinc-800">
+        <Button onClick={() => setIsAddPanelOpen(true)} variant="ghost" className="w-full flex items-center gap-2 font-normal rounded-sm text-base bg-zinc-950 hover:bg-zinc-800 rounded-sm text-zinc-400">
           <PlusCircle className="h-4 w-4" />
           Add Panel
         </Button>
