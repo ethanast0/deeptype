@@ -118,10 +118,10 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
           <Line 
             type="monotone" 
             dataKey="accuracy" 
-            stroke="#e2b714" 
-            strokeWidth={2}
-            dot={{ r: 3, fill: '#e2b714' }}
-            activeDot={{ r: 5 }}
+            stroke="#27272a" 
+            strokeWidth={1}
+            dot={{ r: 1, fill: '#27272a' }}
+            activeDot={{ r: 3 }}
             name="Accuracy"
           />
           <Line 
