@@ -38,7 +38,7 @@ const AddPanelDialog: React.FC<AddPanelDialogProps> = ({
     
     const template = panelTemplates.find(t => t.id === templateId);
     if (template) {
-      onAddPanel(template.type, template.title, template.defaultConfig || {});
+      onAddPanel(template.panel_type, template.title, template.defaultConfig || {});
       onOpenChange(false);
       setSelectedTemplate(null);
     }

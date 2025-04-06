@@ -1,5 +1,14 @@
+
 import { supabase } from '../integrations/supabase/client';
 import { BaseConfig } from '../config/panelConfig';
+
+// Define the interface for panel creation parameters
+export interface PanelCreateParams {
+  panel_type: string;
+  title: string | null;
+  config?: any;
+  position?: number;
+}
 
 // Panel templates for the Add Panel dialog
 export const panelTemplates = [
@@ -8,6 +17,7 @@ export const panelTemplates = [
     title: 'WPM History',
     description: 'Shows your typing speed history over time',
     panel_type: 'wpm-history',
+    icon: 'line-chart',
     defaultConfig: {
       timeRange: 'week',
       windowSize: 5
@@ -18,6 +28,7 @@ export const panelTemplates = [
     title: 'Accuracy Chart',
     description: 'Shows your typing accuracy over time',
     panel_type: 'accuracy-chart',
+    icon: 'percent',
     defaultConfig: {
       timeRange: 'week',
       windowSize: 5
@@ -28,6 +39,7 @@ export const panelTemplates = [
     title: 'Leaderboard',
     description: 'Shows top typists in different categories',
     panel_type: 'leaderboard',
+    icon: 'trophy',
     defaultConfig: {
       timeRange: 'week',
       category: 'all'
@@ -38,6 +50,7 @@ export const panelTemplates = [
     title: 'Session Stats',
     description: 'Shows statistics for your current typing session',
     panel_type: 'session-stats',
+    icon: 'activity',
     defaultConfig: {}
   }
 ];
