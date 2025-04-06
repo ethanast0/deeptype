@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   ChartContainer, 
@@ -78,7 +77,7 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               <Bar 
                 dataKey="wpm" 
                 name="WPM"
-                fill="#27272a"
+                fill="#35B853"
                 radius={[4, 4, 0, 0]}
                 // Empty bars for placeholders
                 isAnimationActive={true}
