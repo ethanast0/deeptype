@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomPanel, panelService } from '../services/panelService';
@@ -7,18 +6,21 @@ import AddPanelDialog from './AddPanelDialog';
 import { Button } from './ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useToast } from './ui/use-toast';
-
 interface PanelManagerProps {
   className?: string;
 }
-
-const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
-  const { user } = useAuth();
+const PanelManager: React.FC<PanelManagerProps> = ({
+  className
+}) => {
+  const {
+    user
+  } = useAuth();
   const [panels, setPanels] = useState<CustomPanel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   useEffect(() => {
     const fetchUserPanels = async () => {
       if (!user) {
@@ -26,7 +28,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
         setIsLoading(false);
         return;
       }
-
       try {
         setIsLoading(true);
         const userPanels = await panelService.getUserPanels(user.id);
@@ -42,13 +43,10 @@ const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
         setIsLoading(false);
       }
     };
-
     fetchUserPanels();
   }, [user, toast]);
-
   const handleAddPanel = async (panelType: string, title: string, config: any) => {
     if (!user) return;
-
     try {
       const nextPosition = await panelService.getNextPosition(user.id);
       const newPanel = await panelService.createPanel(user.id, {
@@ -57,7 +55,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
         config,
         position: nextPosition
       });
-
       setPanels(prev => [...prev, newPanel]);
       toast({
         title: 'Panel added',
@@ -72,7 +69,6 @@ const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
       });
     }
   };
-
   const handleDeletePanel = async (panelId: string) => {
     try {
       await panelService.deletePanel(panelId);
@@ -95,54 +91,25 @@ const PanelManager: React.FC<PanelManagerProps> = ({ className }) => {
   if (!user) {
     return null;
   }
-
-  return (
-    <div className={`panel-manager space-y-4 ${className}`}>
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-medium text-gray-300">Your Statistics</h2>
-        <Button 
-          onClick={() => setIsAddPanelOpen(true)} 
-          variant="ghost" 
-          className="text-gray-400 hover:text-white flex items-center gap-2"
-        >
+  return <div className={`panel-manager space-y-4 ${className}`}>
+      <div className="flex justify-between items-center -mt-12">
+        <h2 className="font-medium text-base text-zinc-400 text-left mx-[5px]">custom stats</h2>
+        <Button onClick={() => setIsAddPanelOpen(true)} variant="ghost" className="text-gray-400 hover:text-white flex items-center gap-2">
           <PlusCircle className="h-4 w-4" />
           Add Panel
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-gray-400">Loading your panels...</div>
-      ) : panels.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">
+      {isLoading ? <div className="text-center py-8 text-gray-400">Loading your panels...</div> : panels.length === 0 ? <div className="text-center py-8 text-gray-400">
           <p>You don't have any custom panels yet.</p>
-          <Button 
-            onClick={() => setIsAddPanelOpen(true)} 
-            variant="outline" 
-            className="mt-4"
-          >
+          <Button onClick={() => setIsAddPanelOpen(true)} variant="outline" className="mt-4">
             Add your first panel
           </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {panels.map(panel => (
-            <PanelRenderer 
-              key={panel.id} 
-              panel={panel} 
-              onDelete={handleDeletePanel}
-              className="w-full"
-            />
-          ))}
-        </div>
-      )}
+        </div> : <div className="grid grid-cols-1 gap-4">
+          {panels.map(panel => <PanelRenderer key={panel.id} panel={panel} onDelete={handleDeletePanel} className="w-full" />)}
+        </div>}
 
-      <AddPanelDialog
-        open={isAddPanelOpen}
-        onOpenChange={setIsAddPanelOpen}
-        onAddPanel={handleAddPanel}
-      />
-    </div>
-  );
+      <AddPanelDialog open={isAddPanelOpen} onOpenChange={setIsAddPanelOpen} onAddPanel={handleAddPanel} />
+    </div>;
 };
-
 export default PanelManager;
