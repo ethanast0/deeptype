@@ -66,10 +66,10 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="transparent" />
               <XAxis 
                 dataKey="index" 
-                tick={{ fontSize: 10, fill: '#888' }}
+                tick={null}
                 axisLine={null}
-                tickFormatter={(value) => (value % 5 === 0) ? value.toString() : ''}
-                tickLine={false} // This line removes the tick marks
+                tickFormatter={(value) => (value % 15 === 0) ? value.toString() : ''}
+                tickLine={false}
               />
               <ChartTooltip
                 content={<ChartTooltipContent />}
