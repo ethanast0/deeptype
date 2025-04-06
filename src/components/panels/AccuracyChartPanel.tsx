@@ -115,6 +115,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
             labelStyle={{ color: '#d1d0c5' }}
             formatter={(value) => [`${value}%`, 'Accuracy']}
           />
+          {/*
           <Line 
             type="monotone" 
             dataKey="accuracy" 
@@ -124,6 +125,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
             activeDot={{ r: 3 }}
             name="Accuracy"
           />
+          */}
           <Line 
             type="monotone" 
             dataKey="movingAverage" 
