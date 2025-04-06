@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { TypingStats, formatTime } from '../utils/typingUtils';
 import { cn } from '../lib/utils';
-import { SkullIcon } from 'lucide-react';
+import { SkullIcon, RepeatIcon } from 'lucide-react';
 
 interface StatsProps {
   stats: TypingStats;
@@ -11,6 +10,7 @@ interface StatsProps {
   className?: string;
   deathMode?: boolean;
   deathModeFailures?: number;
+  repeatMode?: boolean;
 }
 
 const Stats: React.FC<StatsProps> = ({ 
@@ -19,7 +19,8 @@ const Stats: React.FC<StatsProps> = ({
   isFinished,
   className,
   deathMode = false,
-  deathModeFailures = 0
+  deathModeFailures = 0,
+  repeatMode = false
 }) => {
   return (
     <div className={cn("flex items-center space-x-2 text-base text-monkey-subtle py-2 px-3 rounded", 
@@ -50,6 +51,16 @@ const Stats: React.FC<StatsProps> = ({
           <span className="font-medium text-red-500 flex items-center">
             <SkullIcon className="w-3 h-3 mr-1" />
             {deathModeFailures}
+          </span>
+        </>
+      )}
+
+      {repeatMode && (
+        <>
+          <span className="text-zinc-600">•</span>
+          <span className="font-medium text-green-500 flex items-center">
+            <RepeatIcon className="w-3 h-3 mr-1" />
+            {"repeat"}
           </span>
         </>
       )}

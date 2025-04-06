@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -17,13 +16,15 @@ interface UseTypingTestProps {
   scriptId?: string | null;
   onQuoteComplete?: (stats?: TypingStats) => void;
   deathMode?: boolean;
+  repeatMode?: boolean;
 }
 
 const useTypingTest = ({ 
   quotes = defaultQuotes, 
   scriptId, 
   onQuoteComplete,
-  deathMode = false
+  deathMode = false,
+  repeatMode = false
 }: UseTypingTestProps = {}) => {
   const [currentQuote, setCurrentQuote] = useState<string>('');
   const [words, setWords] = useState<Word[]>([]);
@@ -453,6 +454,13 @@ const useTypingTest = ({
             if (onQuoteComplete) {
               onQuoteComplete(stats);
             }
+
+            if (repeatMode) {
+              setTimeout(() => {
+                resetTest();
+                focusInput();
+              }, 500);
+            }
           } else {
             console.error('Failed to record typing session');
           }
@@ -463,7 +471,7 @@ const useTypingTest = ({
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete]);
+  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {

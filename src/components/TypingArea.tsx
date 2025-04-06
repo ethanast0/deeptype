@@ -6,7 +6,7 @@ import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
-import { SkullIcon, SmileIcon } from 'lucide-react';
+import { SkullIcon, SmileIcon, RepeatIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 interface TypingAreaProps {
   quotes: string[];
@@ -28,6 +28,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   const [totalQuotes, setTotalQuotes] = useState(quotes.length);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
   const [deathMode, setDeathMode] = useState(false);
+  const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
   const {
     words,
@@ -46,6 +47,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     quotes,
     scriptId,
     deathMode,
+    repeatMode,
     onQuoteComplete: completedStats => {
       setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
       if (completedStats && completedStats.wpm > 0) {
@@ -77,12 +79,24 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   }, [quotes]);
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
+    // Turn off repeat mode if death mode is turning on
+    if (!deathMode) {
+      setRepeatMode(false);
+    }
     resetTest();
+  };
+
+  const toggleRepeatMode = () => {
+    setRepeatMode(prev => !prev);
+    // Turn off death mode if repeat mode is turning on
+    if (!repeatMode) {
+      setDeathMode(false);
+    }
   };
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
-        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} />
+        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
         {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
@@ -119,9 +133,25 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         </button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
         
-        <Toggle pressed={deathMode} onPressedChange={toggleDeathMode} aria-label={deathMode ? "Death Mode" : "Normal Mode"} className="ml-auto bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900">
-          {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
-        </Toggle>
+        <div className="ml-auto flex items-center gap-2">
+          <Toggle 
+            pressed={repeatMode} 
+            onPressedChange={toggleRepeatMode} 
+            aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
+            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
+          >
+            <RepeatIcon className="w-4 h-4" />
+          </Toggle>
+          
+          <Toggle 
+            pressed={deathMode} 
+            onPressedChange={toggleDeathMode} 
+            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
+            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
+          >
+            {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
+          </Toggle>
+        </div>
       </div>
       
       {/* Session Performance Chart */}
