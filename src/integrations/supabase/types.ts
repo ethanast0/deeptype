@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      custom_panels: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          panel_type: string
+          position: number
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          panel_type: string
+          position: number
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          panel_type?: string
+          position?: number
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_scripts: {
         Row: {
           created_at: string | null
