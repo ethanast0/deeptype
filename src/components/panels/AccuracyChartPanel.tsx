@@ -133,7 +133,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
             strokeWidth={3}
             dot={false}
             activeDot={false}
-            name="acc trend
+            name="acc trend"
             connectNulls={true}
             tension={0.5}
           />
