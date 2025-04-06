@@ -23,7 +23,7 @@ const Stats: React.FC<StatsProps> = ({
   repeatMode = false
 }) => {
   return (
-    <div className={cn("flex items-center space-x-2 text-base text-monkey-subtle py-2 px-3 rounded", 
+    <div className={cn("flex items-center space-x-2 text-lg text-monkey-subtle py-2 px-3 rounded", 
       className, 
       {
         "animate-slide-up": isActive || isFinished
