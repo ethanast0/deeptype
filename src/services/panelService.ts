@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 
 export interface CustomPanel {
@@ -17,6 +18,52 @@ interface PanelCreateParams {
   config: any | null;
   position: number;
 }
+
+// Panel template definitions
+export const panelTemplates = [
+  {
+    id: 'wpm-history',
+    type: 'historical-wpm',
+    title: 'WPM Over Time',
+    description: 'Track your typing speed progress over time',
+    icon: 'line-chart',
+    defaultConfig: {
+      timeRange: 'week',
+      windowSize: 5
+    }
+  },
+  {
+    id: 'accuracy-chart',
+    type: 'accuracy-chart',
+    title: 'Accuracy Trend',
+    description: 'Monitor your typing accuracy over time',
+    icon: 'percent',
+    defaultConfig: {
+      timeRange: 'week',
+      windowSize: 5
+    }
+  },
+  {
+    id: 'leaderboard',
+    type: 'leaderboard',
+    title: 'Leaderboard',
+    description: 'See how you rank against other typists',
+    icon: 'trophy',
+    defaultConfig: {
+      limit: 5
+    }
+  },
+  {
+    id: 'session-stats',
+    type: 'session-stats',
+    title: 'Recent Sessions',
+    description: 'View stats from your recent typing sessions',
+    icon: 'activity',
+    defaultConfig: {
+      limit: 5
+    }
+  }
+];
 
 export const panelService = {
   // Gets all panels for a specific user
