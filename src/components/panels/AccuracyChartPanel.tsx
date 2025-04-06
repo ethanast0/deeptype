@@ -116,7 +116,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
           />
           {showRawData && (
             <Line 
-              type="natural"
+              type="monotone"
               dataKey="accuracy" 
               stroke="#27272a" 
               strokeWidth={1}
@@ -126,7 +126,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
             />
           )}
           <Line 
-            type="natural"
+            type="monotone"
             dataKey="movingAverage" 
             stroke="#f2d766"
             strokeWidth={3}
