@@ -70,26 +70,23 @@ const SessionWpmChart: React.FC<SessionWpmChartProps> = ({ wpmData, className })
                 tick={{ fontSize: 10, fill: '#888' }}
                 axisLine={{ stroke: '#444' }}
                 tickFormatter={(value) => (value % 5 === 0) ? value.toString() : ''}
+                tickLine={false} // This line removes the tick marks
               />
               <ChartTooltip
                 content={<ChartTooltipContent />}
               />
-              <ReferenceLine y={averageWpm} stroke="#35B853" strokeDasharray="3 3" 
-                label={{ value: 'Avg', position: 'right', fill: '#35B853', fontSize: 10 }} 
-              />
               <Bar 
                 dataKey="wpm" 
                 name="WPM"
-                fill="#27272a" 
-                barSize={5}
+                fill="#27272a"
                 radius={[4, 4, 0, 0]}
                 // Empty bars for placeholders
                 isAnimationActive={true}
                 // Add labels under the bars
                 label={{ 
-                  position: 'bottom', 
+                  position: 'top', 
                   fill: '#27272a', 
-                  fontSize: 10,
+                  fontSize: 12,
                   // Only show labels for non-null values
                   formatter: (value: any) => value !== null ? value : '',
                   offset: 5
