@@ -116,9 +116,9 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
           <Line 
             type="monotone" 
             dataKey="wpm" 
-            stroke="#646669" 
-            strokeWidth={2}
-            dot={{ r: 3, fill: '#646669' }}
+            stroke="#27272a" 
+            strokeWidth={1}
+            dot={{ r: 3, fill: '#27272a' }}
             activeDot={{ r: 5 }}
             name="WPM"
           />
