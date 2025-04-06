@@ -30,7 +30,7 @@ const RaceAnimation: React.FC<RaceAnimationProps> = ({
       {/* Car icon */}
       <div 
         className="absolute top-1/2 -translate-y-1/2 transition-all duration-100 ease-linear"
-        style={{ left: `${Math.min(progress, 98)}%` }}
+        style={{ left: `${Math.min(progress, 97)}%` }}
       >
         <CarIcon 
           className="w-6 h-6 text-monkey-accent translate-x-1/2" 
