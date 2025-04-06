@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 
 interface TypingSession {
@@ -169,5 +170,65 @@ export const typingHistoryService = {
     }
     
     return data || [];
+  },
+  
+  // Get user history with moving average for WPM
+  async getUserHistoryWithMovingAverageWpm(userId: string, windowSize: number = 5): Promise<any[]> {
+    const rawHistory = await this.getUserHistory(userId);
+
+    if (!rawHistory || rawHistory.length === 0) {
+      return [];
+    }
+
+    // Sort the history by created_at in ascending order for correct moving average calculation
+    const sortedHistory = [...rawHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const historyWithMovingAverage = sortedHistory.map((item, index, array) => {
+      if (index < windowSize - 1) {
+        // Not enough data points to calculate a full window average
+        return { ...item, moving_average_wpm: null };
+      }
+
+      // Calculate the simple moving average for the current window
+      let sum = 0;
+      for (let i = index - windowSize + 1; i <= index; i++) {
+        sum += array[i].wpm;
+      }
+      const movingAverageWpm = sum / windowSize;
+
+      return { ...item, moving_average_wpm: movingAverageWpm };
+    });
+
+    return historyWithMovingAverage;
+  },
+  
+  // Get user history with moving average for accuracy
+  async getUserHistoryWithMovingAverageAccuracy(userId: string, windowSize: number = 5): Promise<any[]> {
+    const rawHistory = await this.getUserHistory(userId);
+
+    if (!rawHistory || rawHistory.length === 0) {
+      return [];
+    }
+
+    // Sort the history by created_at in ascending order for correct moving average calculation
+    const sortedHistory = [...rawHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const historyWithMovingAverage = sortedHistory.map((item, index, array) => {
+      if (index < windowSize - 1) {
+        // Not enough data points to calculate a full window average
+        return { ...item, moving_average_accuracy: null };
+      }
+
+      // Calculate the simple moving average for the current window
+      let sum = 0;
+      for (let i = index - windowSize + 1; i <= index; i++) {
+        sum += array[i].accuracy;
+      }
+      const movingAverageAccuracy = sum / windowSize;
+
+      return { ...item, moving_average_accuracy: movingAverageAccuracy };
+    });
+
+    return historyWithMovingAverage;
   }
 };

@@ -9,26 +9,30 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 interface AccuracyChartPanelProps {
   config?: {
     timeRange?: 'day' | 'week' | 'month' | 'all';
+    windowSize?: number;
   };
 }
 
 interface AccuracyDataPoint {
   date: string;
   accuracy: number;
+  movingAverage?: number | null;
 }
 
 const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ 
-  config = { timeRange: 'week' } 
+  config = { timeRange: 'week', windowSize: 5 } 
 }) => {
   const { user } = useAuth();
   const [accuracyData, setAccuracyData] = useState<AccuracyDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const windowSize = config.windowSize || 5;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +43,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
 
       try {
         setIsLoading(true);
-        const history = await typingHistoryService.getUserHistory(user.id);
+        const history = await typingHistoryService.getUserHistoryWithMovingAverageAccuracy(user.id, windowSize);
         
         // Process data based on timeRange
         let filteredHistory = history;
@@ -65,7 +69,8 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
         // Format data for chart
         const formattedData = filteredHistory.map(entry => ({
           date: new Date(entry.created_at).toLocaleDateString(),
-          accuracy: entry.accuracy
+          accuracy: entry.accuracy,
+          movingAverage: entry.moving_average_accuracy
         }));
         
         setAccuracyData(formattedData);
@@ -77,7 +82,7 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
     };
 
     fetchData();
-  }, [user, config.timeRange]);
+  }, [user, config.timeRange, windowSize]);
 
   if (isLoading) {
     return <div className="h-40 flex items-center justify-center">Loading data...</div>;
@@ -117,6 +122,22 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({
             strokeWidth={2}
             dot={{ r: 3, fill: '#e2b714' }}
             activeDot={{ r: 5 }}
+            name="Accuracy"
+          />
+          <Line 
+            type="monotone" 
+            dataKey="movingAverage" 
+            stroke="#f2d766"
+            strokeWidth={3}
+            dot={false}
+            activeDot={false}
+            name="Trend"
+            connectNulls={true}
+          />
+          <Legend 
+            iconType="circle" 
+            iconSize={8} 
+            wrapperStyle={{ fontSize: 10 }}
           />
         </LineChart>
       </ResponsiveContainer>

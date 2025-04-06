@@ -9,26 +9,30 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 interface HistoricalWpmPanelProps {
   config?: {
     timeRange?: 'day' | 'week' | 'month' | 'all';
+    windowSize?: number;
   };
 }
 
 interface WpmDataPoint {
   date: string;
   wpm: number;
+  movingAverage?: number | null;
 }
 
 const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ 
-  config = { timeRange: 'week' } 
+  config = { timeRange: 'week', windowSize: 5 } 
 }) => {
   const { user } = useAuth();
   const [wpmData, setWpmData] = useState<WpmDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const windowSize = config.windowSize || 5;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,7 +43,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
 
       try {
         setIsLoading(true);
-        const history = await typingHistoryService.getUserHistory(user.id);
+        const history = await typingHistoryService.getUserHistoryWithMovingAverageWpm(user.id, windowSize);
         
         // Process data based on timeRange
         let filteredHistory = history;
@@ -65,7 +69,8 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
         // Format data for chart
         const formattedData = filteredHistory.map(entry => ({
           date: new Date(entry.created_at).toLocaleDateString(),
-          wpm: entry.wpm
+          wpm: entry.wpm,
+          movingAverage: entry.moving_average_wpm
         }));
         
         setWpmData(formattedData);
@@ -77,7 +82,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
     };
 
     fetchData();
-  }, [user, config.timeRange]);
+  }, [user, config.timeRange, windowSize]);
 
   if (isLoading) {
     return <div className="h-40 flex items-center justify-center">Loading data...</div>;
@@ -115,6 +120,22 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
             strokeWidth={2}
             dot={{ r: 3, fill: '#35B853' }}
             activeDot={{ r: 5 }}
+            name="WPM"
+          />
+          <Line 
+            type="monotone" 
+            dataKey="movingAverage" 
+            stroke="#9AE19F"
+            strokeWidth={3}
+            dot={false}
+            activeDot={false}
+            name="Trend"
+            connectNulls={true}
+          />
+          <Legend 
+            iconType="circle" 
+            iconSize={8} 
+            wrapperStyle={{ fontSize: 10 }}
           />
         </LineChart>
       </ResponsiveContainer>
