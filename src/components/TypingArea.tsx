@@ -8,6 +8,8 @@ import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
 import { SkullIcon, SmileIcon, RepeatIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
+import RaceAnimation from './RaceAnimation';
+
 interface TypingAreaProps {
   quotes: string[];
   className?: string;
@@ -153,6 +155,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           </Toggle>
         </div>
       </div>
+
+      {/* Race Animation */}
+      <RaceAnimation 
+        totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
+        currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
+        className="my-4"
+      />
       
       {/* Session Performance Chart */}
       <SessionWpmChart wpmData={sessionWpmData} />
