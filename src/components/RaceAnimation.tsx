@@ -34,7 +34,7 @@ const RaceAnimation: React.FC<RaceAnimationProps> = ({
       >
         <CarIcon 
           className="w-6 h-6 text-monkey-accent -translate-x-1/2" 
-          style={{ transform: 'scaleX(-1)' }} // Flip the car horizontally
+          // No transformation applied to the car
         />
       </div>
     </div>
