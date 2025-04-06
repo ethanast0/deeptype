@@ -119,7 +119,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({
             stroke="#27272a" 
             strokeWidth={1}
             dot={{ r: 3, fill: '#27272a' }}
-            activeDot={{ r: 5 }}
+            activeDot={{ r: 2 }}
             name="WPM"
           />
           <Line 
