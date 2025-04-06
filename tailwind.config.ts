@@ -1,14 +1,13 @@
 
-import type { Config } from "tailwindcss"
-import { fontFamily } from "tailwindcss/defaultTheme"
+import type { Config } from "tailwindcss";
 
 const config = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {
@@ -54,29 +53,20 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Monkey type colors
         monkey: {
-          DEFAULT: "#323437",
-          "accent": "#f3a712",
-          "text": "#d1d0c5",
-          "subtle": "#646669",
-          "error": "#ca4754",
-          "errorExtra": "#7e2a33",
-          "colorful": "#e2b714",
-        }
-      },
-      gridTemplateColumns: {
-        '25': 'repeat(25, minmax(0, 1fr))',
+          bg: "#323437",
+          text: "#d1d0c5",
+          subtle: "#646669",
+          accent: "#35B853",  // Changed to green for correct characters
+          error: "#ca4754",
+          caret: "#e2b714",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
-      },
-      fontFamily: {
-        sans: ["var(--font-sans)", ...fontFamily.sans],
-        lexend: ["Lexend Deca", "sans-serif"],
-        roboto: ["Roboto", "sans-serif"],
-        mono: ["Source Code Pro", ...fontFamily.mono],
       },
       keyframes: {
         "accordion-down": {
@@ -87,24 +77,29 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "slide-up": {
-          from: { transform: "translateY(20px)", opacity: "0" },
-          to: { transform: "translateY(0)", opacity: "1" },
+        "caret-blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
         },
-        "slide-down": {
-          from: { transform: "translateY(-20px)", opacity: "0" },
-          to: { transform: "translateY(0)", opacity: "1" },
+        "slide-up": {
+          "0%": { transform: "translateY(10px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "fade-in": {
+          "from": { opacity: "0" },
+          "to": { opacity: "1" }
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "slide-up": "slide-up 0.2s ease-out",
-        "slide-down": "slide-down 0.2s ease-out",
+        "caret-blink": "caret-blink 1s infinite",
+        "slide-up": "slide-up 0.3s ease-out",
+        "fade-in": "fade-in 0.3s ease-out",
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+} satisfies Config;
 
-export default config
+export default config;
