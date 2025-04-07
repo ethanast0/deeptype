@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -45,6 +46,27 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Theme-specific accent colors - Light mode */
+    --zinc-accent: 240 5% 64%;
+    --zinc-muted: 240 4% 85%;
+    --zinc-subtle: 240 5% 90%;
+
+    --slate-accent: 215 20% 60%;
+    --slate-muted: 215 16% 85%;
+    --slate-subtle: 215 16% 90%;
+
+    --gray-accent: 220 9% 60%;
+    --gray-muted: 220 10% 85%;
+    --gray-subtle: 220 13% 90%;
+
+    --green-accent: 142 70% 45%;
+    --green-muted: 138 50% 85%;
+    --green-subtle: 138 50% 90%;
+
+    --red-accent: 0 72% 50%;
+    --red-muted: 0 60% 85%;
+    --red-subtle: 0 60% 90%;
   }
 
   /* Color mode variations - Light */
@@ -168,6 +190,27 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Theme-specific accent colors - Dark mode */
+    --zinc-accent: 240 5% 70%;
+    --zinc-muted: 240 3.7% 25%;
+    --zinc-subtle: 240 3.7% 15%;
+
+    --slate-accent: 215 20% 70%;
+    --slate-muted: 215 16% 25%;
+    --slate-subtle: 215 16% 15%;
+
+    --gray-accent: 220 9% 70%;
+    --gray-muted: 220 10% 25%;
+    --gray-subtle: 220 13% 15%;
+
+    --green-accent: 142 70% 55%;
+    --green-muted: 138 50% 25%;
+    --green-subtle: 138 50% 15%;
+
+    --red-accent: 0 72% 60%;
+    --red-muted: 0 60% 25%;
+    --red-subtle: 0 60% 15%;
   }
 
   /* Dark mode color variations */
@@ -328,5 +371,22 @@
 
   .mono-text {
     @apply font-mono;
+  }
+
+  /* Theme color utilities */
+  .bg-theme-accent {
+    @apply bg-zinc-accent data-[color-mode=slate]:bg-slate-accent data-[color-mode=gray]:bg-gray-accent data-[color-mode=green]:bg-green-accent data-[color-mode=red]:bg-red-accent;
+  }
+
+  .bg-theme-muted {
+    @apply bg-zinc-muted data-[color-mode=slate]:bg-slate-muted data-[color-mode=gray]:bg-gray-muted data-[color-mode=green]:bg-green-muted data-[color-mode=red]:bg-red-muted;
+  }
+
+  .bg-theme-subtle {
+    @apply bg-zinc-subtle data-[color-mode=slate]:bg-slate-subtle data-[color-mode=gray]:bg-gray-subtle data-[color-mode=green]:bg-green-subtle data-[color-mode=red]:bg-red-subtle;
+  }
+
+  .text-theme-accent {
+    @apply text-zinc-accent data-[color-mode=slate]:text-slate-accent data-[color-mode=gray]:text-gray-accent data-[color-mode=green]:text-green-accent data-[color-mode=red]:text-red-accent;
   }
 }

@@ -62,6 +62,32 @@ const config = {
           error: "#ca4754",
           caret: "#e2b714",
         },
+        // Theme-specific accent colors
+        zinc: {
+          accent: "hsl(var(--zinc-accent))",
+          muted: "hsl(var(--zinc-muted))",
+          subtle: "hsl(var(--zinc-subtle))",
+        },
+        slate: {
+          accent: "hsl(var(--slate-accent))",
+          muted: "hsl(var(--slate-muted))",
+          subtle: "hsl(var(--slate-subtle))",
+        },
+        gray: {
+          accent: "hsl(var(--gray-accent))",
+          muted: "hsl(var(--gray-muted))",
+          subtle: "hsl(var(--gray-subtle))",
+        },
+        green: {
+          accent: "hsl(var(--green-accent))",
+          muted: "hsl(var(--green-muted))",
+          subtle: "hsl(var(--green-subtle))",
+        },
+        red: {
+          accent: "hsl(var(--red-accent))",
+          muted: "hsl(var(--red-muted))",
+          subtle: "hsl(var(--red-subtle))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
