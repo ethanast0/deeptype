@@ -115,7 +115,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ config: userCon
           />
           {showRawData && (
             <Line 
-              type="monotone"
+              type="basis"
               dataKey="wpm" 
               stroke="#27272a" 
               strokeWidth={1}
@@ -125,7 +125,7 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ config: userCon
             />
           )}
           <Line 
-            type="monotone"
+            type="basis"
             dataKey="movingAverage" 
             stroke="#9AE19F"
             strokeWidth={3}
