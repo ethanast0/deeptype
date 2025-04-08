@@ -51,14 +51,28 @@ const useTypingTest = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
   const processedQuotesRef = useRef<Set<string>>(new Set());
+  const focusTimeoutRef = useRef<number | null>(null);
 
-  const focusInput = useCallback(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-      if (currentCharIndex > 0) {
-        inputRef.current.selectionStart = currentCharIndex;
-        inputRef.current.selectionEnd = currentCharIndex;
+  const focusInput = useCallback((delay = 0) => {
+    if (focusTimeoutRef.current !== null) {
+      window.clearTimeout(focusTimeoutRef.current);
+      focusTimeoutRef.current = null;
+    }
+    
+    const focusFunction = () => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        if (currentCharIndex > 0) {
+          inputRef.current.selectionStart = currentCharIndex;
+          inputRef.current.selectionEnd = currentCharIndex;
+        }
       }
+    };
+    
+    if (delay > 0) {
+      focusTimeoutRef.current = window.setTimeout(focusFunction, delay);
+    } else {
+      focusFunction();
     }
   }, [currentCharIndex]);
 
@@ -120,7 +134,7 @@ const useTypingTest = ({
     if (deathMode) {
       setDeathModeFailures(prev => prev + 1);
       resetTest();
-      focusInput();
+      focusInput(100);
     }
   }, [deathMode, resetTest, focusInput]);
 
@@ -294,6 +308,10 @@ const useTypingTest = ({
         });
       }
     }
+    
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,7 +416,7 @@ const useTypingTest = ({
         smartBackspace();
       } else if (e.key === ' ' && e.shiftKey) {
         e.preventDefault();
-        focusInput();
+        focusInput(100);
       }
     };
     
@@ -413,6 +431,9 @@ const useTypingTest = ({
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (focusTimeoutRef.current !== null) {
+        clearTimeout(focusTimeoutRef.current);
       }
     };
   }, []);

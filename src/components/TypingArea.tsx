@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
@@ -83,9 +84,56 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   });
 
+  // Focus management: refocus the input after any UI interaction
+  const refocusAfterInteraction = useCallback((delay = 150) => {
+    focusInput(delay);
+  }, [focusInput]);
+
+  // Global click handler to refocus typing area
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // Check if the click target is an input, textarea, or has a specific attribute to ignore focus
+      const target = e.target as HTMLElement;
+      const shouldIgnoreFocus = 
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.getAttribute('data-ignore-focus') === 'true' ||
+        // Don't steal focus if user is interacting with a menu or dialog
+        target.closest('[role="dialog"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[role="listbox"]');
+      
+      if (!shouldIgnoreFocus) {
+        // Use a short delay to allow other click handlers to complete first
+        refocusAfterInteraction(200);
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [refocusAfterInteraction]);
+
   // Auto-focus on mount and when resetting
   useEffect(() => {
-    focusInput();
+    focusInput(50);
+  }, [focusInput]);
+
+  // Refocus when user switches tabs or windows and returns
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        focusInput(100);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [focusInput]);
 
   // Update typing state when active state changes
@@ -105,9 +153,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   }, [quotes]);
 
-  // Add click handler to focus typing area when clicking anywhere in the typing area
+  // Enhanced handling of typing area clicks for better focus management
   const handleTypingAreaClick = () => {
-    focusInput();
+    focusInput(10); // Very short delay to ensure the focus happens after the click event fully resolves
   };
 
   const toggleDeathMode = () => {
@@ -117,7 +165,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setRepeatMode(false);
     }
     resetTest();
-    focusInput(); // Ensure focus after toggling
+    refocusAfterInteraction(); // Refocus after toggle
   };
 
   const toggleRepeatMode = () => {
@@ -126,8 +174,35 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     if (!repeatMode) {
       setDeathMode(false);
     }
-    focusInput(); // Ensure focus after toggling
+    refocusAfterInteraction(); // Refocus after toggle
   };
+
+  const handleLoadNewQuote = () => {
+    loadNewQuote();
+    refocusAfterInteraction();
+  };
+
+  const handleResetTest = () => {
+    resetTest();
+    refocusAfterInteraction();
+  };
+
+  // Add key event listener for the whole component
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Special case for focus shortcut
+      if (e.key === ' ' && e.shiftKey) {
+        e.preventDefault();
+        focusInput();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [focusInput]);
 
   return (
     <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
@@ -192,18 +267,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 flex-wrap p-2 px-0 py-0 my-[8px] mx-0">
-        <FocusButton onClick={focusInput} shortcut={shortcuts.focus} />
+        <FocusButton onClick={() => focusInput()} shortcut={shortcuts.focus} />
         
-        <button onClick={resetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+        <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
           redo
         </button>
         
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+        <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
           new
           <ShortcutIndicator shortcut={shortcuts.newQuote} />
         </button>
         
-        <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+        <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
+          onQuotesLoaded(newQuotes);
+          refocusAfterInteraction(300); // Longer delay after file upload
+        }} />
         
         <div className="ml-auto flex items-center gap-2">
           <Toggle 
