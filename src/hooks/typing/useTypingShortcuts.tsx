@@ -7,6 +7,8 @@ interface UseTypingShortcutsProps {
   focusInput: (delay?: number) => void;
   handleResetTest: () => void;
   toggleZenMode?: () => void;
+  isActive: boolean;
+  isFinished: boolean;
 }
 
 const useTypingShortcuts = ({
@@ -14,16 +16,30 @@ const useTypingShortcuts = ({
   smartBackspace,
   focusInput,
   handleResetTest,
-  toggleZenMode
+  toggleZenMode,
+  isActive,
+  isFinished
 }: UseTypingShortcutsProps) => {
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't process shortcuts when in an input field except for our special typing input
+      const target = e.target as HTMLElement;
+      if (
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') && 
+        !target.classList.contains('typing-input')
+      ) {
+        return;
+      }
+
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
-        loadNewQuote();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
+        handleResetTest(); // First reset the test
+        setTimeout(() => loadNewQuote(), 50); // Then load a new quote
+      } else if (e.key === 'Backspace' && !isFinished) {
+        if (!isActive) {
+          e.preventDefault();
+        }
         smartBackspace();
       } else if (e.key === ' ' && e.shiftKey) {
         e.preventDefault();
@@ -44,7 +60,7 @@ const useTypingShortcuts = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace, focusInput, handleResetTest, toggleZenMode]);
+  }, [loadNewQuote, smartBackspace, focusInput, handleResetTest, toggleZenMode, isActive, isFinished]);
 
   return {};
 };

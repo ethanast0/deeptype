@@ -52,14 +52,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [totalQuotes, setTotalQuotes] = useState(quotes.length);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
   const [deathMode, setDeathMode] = useState(false);
   const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
+  
   const {
     words,
     stats,
@@ -82,6 +81,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     deathMode,
     repeatMode,
     onQuoteComplete: completedStats => {
+      console.log("Quote completed, stats:", completedStats);
       setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
       if (completedStats && completedStats.wpm > 0) {
         setSessionWpmData(prev => [...prev, completedStats.wpm]);
@@ -143,8 +143,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   // Update typing state when active state changes
   useEffect(() => {
+    console.log("Typing state changed:", isActive, isFinished);
     onTypingStateChange(isActive);
-  }, [isActive, onTypingStateChange]);
+  }, [isActive, onTypingStateChange, isFinished]);
 
   // Update total quotes when quotes array changes
   useEffect(() => {
@@ -183,8 +184,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
 
   const handleLoadNewQuote = () => {
-    loadNewQuote();
-    refocusAfterInteraction();
+    resetTest(); // First reset the test
+    setTimeout(() => {
+      loadNewQuote(); // Then load a new quote
+      refocusAfterInteraction(50);
+    }, 50);
   };
 
   const handleResetTest = () => {
@@ -208,12 +212,39 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [focusInput]);
+  
+  // Listen for zen mode changes
+  useEffect(() => {
+    const handleZenModeChange = (e: CustomEvent) => {
+      // This component needs to respect zen mode changes from the hook
+      const newZenMode = e.detail.zenMode;
+      if (zenMode !== newZenMode) {
+        // We don't call toggleZenMode() here to avoid an infinite loop
+        // Just update visuals as needed
+        console.log("Zen mode changed via event:", newZenMode);
+      }
+    };
+
+    window.addEventListener('zenModeChange' as any, handleZenModeChange);
+    
+    return () => {
+      window.removeEventListener('zenModeChange' as any, handleZenModeChange);
+    };
+  }, [zenMode]);
 
   return (
     <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
-        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
+        <Stats 
+          stats={stats} 
+          isActive={isActive} 
+          isFinished={isFinished} 
+          className="self-start" 
+          deathMode={deathMode} 
+          deathModeFailures={deathModeFailures} 
+          repeatMode={repeatMode} 
+        />
         {user && !zenMode && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
@@ -271,16 +302,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 flex-wrap p-2 px-0 py-0 my-[8px] mx-0">
-        <FocusButton onClick={toggleZenMode} isZenMode={zenMode} shortcut={shortcuts.focus} />
+        <FocusButton onClick={toggleZenMode} isZenMode={zenMode} shortcut={shortcuts.zenMode} />
         
         {!zenMode && (
           <>
             <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-              redo (Shift + Delete)
+              redo ({shortcuts.reset})
             </button>
             
             <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-              new (shift + enter)
+              new ({shortcuts.newQuote})
             </button>
             
             <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
@@ -331,4 +362,5 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     </div>
   );
 };
+
 export default TypingArea;

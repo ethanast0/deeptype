@@ -152,7 +152,13 @@ const useTypingInput = ({
 
     if (!input) return;
 
-    if (!isActive && !isFinished) {
+    // Prevent processing input if the test is finished
+    if (isFinished) {
+      e.currentTarget.value = '';
+      return;
+    }
+
+    if (!isActive) {
         setIsActive(true);
         startTimer();
     }
@@ -161,8 +167,9 @@ const useTypingInput = ({
 
     const typedChar = input.charAt(input.length - 1);
     
+    // Handle space character (word completion)
     if (typedChar === ' ') {
-        // Fix for deathMode issue with spaces
+        // Check if we're at the end of a word (correct position to enter a space)
         if (currentCharIndex === words[currentWordIndex]?.characters.length) {
             if (currentWordIndex < words.length - 1) {
                 setCurrentWordIndex(prev => prev + 1);
@@ -180,6 +187,7 @@ const useTypingInput = ({
                 setWords(prevWords => {
                     const newWords = [...prevWords];
                     
+                    // Mark the first character of the next word as current
                     if (newWords[currentWordIndex + 1]?.characters.length > 0) {
                         newWords[currentWordIndex + 1].characters[0].state = 'current';
                     }
@@ -187,12 +195,14 @@ const useTypingInput = ({
                     return newWords;
                 });
             } else {
-                // Check if this is the last word and we're at the end of it
-                // This means the user has completed the test
+                // This is the last word and we're at the end of it
+                // Mark the test as finished
                 setIsFinished(true);
+                setIsActive(false); // Explicitly set active to false
                 stopTimer();
             }
         } else {
+            // Space entered at wrong position
             setStats(prev => ({
                 ...prev,
                 incorrectChars: prev.incorrectChars + 1,
@@ -207,51 +217,57 @@ const useTypingInput = ({
             }
         }
         return;
-    } else {
-        const currentWord = words[currentWordIndex];
-        if (!currentWord) return;
+    } 
+    
+    // Handle normal character input
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return;
 
-        const isCorrect = typedChar === currentWord.characters[currentCharIndex]?.char;
+    const expectedChar = currentWord.characters[currentCharIndex]?.char;
+    const isCorrect = typedChar === expectedChar;
 
-        if (deathMode && !isCorrect) {
-            deathModeReset();
-            return;
+    if (deathMode && !isCorrect) {
+        deathModeReset();
+        return;
+    }
+    
+    setStats(prev => ({
+        ...prev,
+        correctChars: prev.correctChars + (isCorrect ? 1 : 0),
+        incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+        accuracy: calculateAccuracy(
+            prev.correctChars + (isCorrect ? 1 : 0), 
+            prev.incorrectChars + (isCorrect ? 0 : 1)
+        )
+    }));
+    
+    setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        // Mark the current character as correct or incorrect
+        newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+        
+        if (currentCharIndex < currentWord.characters.length - 1) {
+            // Move to next character in current word
+            newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
+            setCurrentCharIndex(prev => prev + 1);
+        } else if (currentWordIndex < words.length - 1) {
+            // Move to first character of next word
+            setCurrentWordIndex(prev => prev + 1);
+            setCurrentCharIndex(0);
+            
+            if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+                newWords[currentWordIndex + 1].characters[0].state = 'current';
+            }
+        } else {
+            // Last character of last word was typed
+            setIsFinished(true);
+            setIsActive(false); // Explicitly set active to false
+            stopTimer();
         }
         
-        setStats(prev => ({
-            ...prev,
-            correctChars: prev.correctChars + (isCorrect ? 1 : 0),
-            incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
-            accuracy: calculateAccuracy(
-                prev.correctChars + (isCorrect ? 1 : 0), 
-                prev.incorrectChars + (isCorrect ? 0 : 1)
-            )
-        }));
-        
-        setWords(prevWords => {
-            const newWords = [...prevWords];
-            
-            newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
-            
-            if (currentCharIndex < currentWord.characters.length - 1) {
-                newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
-                setCurrentCharIndex(prev => prev + 1);
-            } else if (currentWordIndex < words.length - 1) {
-                setCurrentWordIndex(prev => prev + 1);
-                setCurrentCharIndex(0);
-                
-                if (newWords[currentWordIndex + 1]?.characters.length > 0) {
-                    newWords[currentWordIndex + 1].characters[0].state = 'current';
-                }
-            } else {
-                // Last character of last word was typed
-                setIsFinished(true);
-                stopTimer();
-            }
-            
-            return newWords;
-        });
-    }
+        return newWords;
+    });
   }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset, setCurrentCharIndex, setCurrentWordIndex, setIsActive, setIsFinished, setStats, setWords]);
 
   return {

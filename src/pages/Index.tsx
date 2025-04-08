@@ -104,6 +104,7 @@ const Index = () => {
   useEffect(() => {
     const handleZenModeChange = (e: CustomEvent) => {
       setZenMode(e.detail.zenMode);
+      console.log("Index: Zen mode changed to", e.detail.zenMode);
     };
 
     window.addEventListener('zenModeChange' as any, handleZenModeChange);
@@ -113,14 +114,17 @@ const Index = () => {
     };
   }, []);
 
-  // Update zenMode state based on typing hook
+  // Update zenMode state based on body class
   useEffect(() => {
     // Create a mutation observer to detect zen mode class on the body
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === 'class') {
           const isZenMode = document.body.classList.contains('zen-mode');
-          setZenMode(isZenMode);
+          if (zenMode !== isZenMode) {
+            setZenMode(isZenMode);
+            console.log("Index: Zen mode set to", isZenMode, "based on body class");
+          }
         }
       });
     });
@@ -130,7 +134,7 @@ const Index = () => {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [zenMode]);
 
   return (
     <div className={`min-h-screen flex flex-col bg-zinc-900 ${zenMode ? 'zen-mode' : ''}`}>

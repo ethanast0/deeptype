@@ -9,6 +9,7 @@ import useTypingQuotes from './useTypingQuotes';
 import useTypingStats from './useTypingStats';
 import useTypingShortcuts from './useTypingShortcuts';
 import { updateQuoteStats } from './updateQuoteStats';
+import { supabase } from '../../integrations/supabase/client'; // Add missing import
 
 interface UseTypingTestProps {
   quotes?: string[];
@@ -67,6 +68,7 @@ const useTypingTest = ({
   });
 
   const resetTest = useCallback(() => {
+    console.log("Resetting test");
     stopTimer();
     setIsActive(false);
     setIsFinished(false);
@@ -129,7 +131,10 @@ const useTypingTest = ({
     loadNewQuote,
     smartBackspace,
     focusInput,
-    handleResetTest: resetTest
+    handleResetTest: resetTest,
+    toggleZenMode: () => setZenMode(prev => !prev),
+    isActive,
+    isFinished
   });
 
   // Initial quote loading
@@ -206,9 +211,41 @@ const useTypingTest = ({
   // Toggle zen mode
   const toggleZenMode = useCallback(() => {
     setZenMode(prev => !prev);
+    
+    // Dispatch custom event for components to respond to zen mode changes
+    const zenModeEvent = new CustomEvent('zenModeChange', { detail: { zenMode: !zenMode } });
+    window.dispatchEvent(zenModeEvent);
+    
+    // Update body class for global styling
+    if (!zenMode) {
+      document.body.classList.add('zen-mode');
+    } else {
+      document.body.classList.remove('zen-mode');
+    }
+    
     // Focus after toggling to ensure typing can continue
     setTimeout(() => focusInput(), 50);
-  }, [focusInput]);
+  }, [zenMode, focusInput]);
+
+  // Update body class when zenMode changes
+  useEffect(() => {
+    if (zenMode) {
+      document.body.classList.add('zen-mode');
+    } else {
+      document.body.classList.remove('zen-mode');
+    }
+    
+    return () => {
+      document.body.classList.remove('zen-mode');
+    };
+  }, [zenMode]);
+
+  // Handle deathMode and repeatMode changes
+  useEffect(() => {
+    if ((deathMode || repeatMode) && isFinished) {
+      resetTest();
+    }
+  }, [deathMode, repeatMode, isFinished, resetTest]);
 
   return {
     words,
@@ -229,7 +266,9 @@ const useTypingTest = ({
     shortcuts: {
         focus: 'Shift + Space',
         newQuote: 'Shift + Enter',
-        backspace: 'Backspace'
+        backspace: 'Backspace',
+        reset: 'Shift + Delete',
+        zenMode: 'Ctrl + Z'
     }
   };
 };
