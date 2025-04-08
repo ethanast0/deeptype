@@ -97,12 +97,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
   return (
     <div className={`panel-manager space-y-4 ${className}`}>
       <div className="flex justify-between items-center -mt-12">
-        <Button
-          onClick={() => setIsAddPanelOpen(true)}
-          variant="ghost"
-          className="w-full flex items-center gap-2 font-normal rounded-sm text-base bg-zinc-950 hover:bg-zinc-800 rounded-sm text-zinc-400"
-          data-ignore-focus="true" // Add this attribute to prevent automatic refocus
-        >
+        <Button onClick={() => setIsAddPanelOpen(true)} variant="ghost" className="w-full flex items-center gap-2 font-normal rounded-sm text-base bg-zinc-950 hover:bg-zinc-800 rounded-sm text-zinc-400">
           <PlusCircle className="h-4 w-4" />
           Add Panel
         </Button>
@@ -113,12 +108,7 @@ const PanelManager: React.FC<PanelManagerProps> = ({
       ) : panels.length === 0 ? (
         <div className="text-center py-8 text-gray-400">
           <p>You don't have any custom panels yet.</p>
-          <Button
-            onClick={() => setIsAddPanelOpen(true)}
-            variant="outline"
-            className="mt-4"
-            data-ignore-focus="true" // Add this attribute to prevent automatic refocus
-          >
+          <Button onClick={() => setIsAddPanelOpen(true)} variant="outline" className="mt-4">
             Add your first panel
           </Button>
         </div>
