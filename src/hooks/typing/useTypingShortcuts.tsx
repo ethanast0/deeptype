@@ -32,6 +32,16 @@ const useTypingShortcuts = ({
         return;
       }
 
+      // Ensure we ignore the space key and backspace when active in the typing input
+      // to prevent unwanted side effects in death mode
+      if ((e.key === ' ' || e.key === 'Backspace') && 
+          target.classList.contains('typing-input') && 
+          isActive && 
+          !isFinished) {
+        // Let the typing input handle these keys normally
+        return;
+      }
+
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         handleResetTest(); // First reset the test
