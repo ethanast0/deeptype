@@ -1,3 +1,4 @@
+
 import { supabase } from '../integrations/supabase/client';
 
 interface TypingSession {
@@ -18,7 +19,6 @@ interface UserStats {
   averageAccuracy: number;
   totalSessions: number;
   totalScripts: number;
-  emaWpm: number;
 }
 
 export const typingHistoryService = {
@@ -102,23 +102,15 @@ export const typingHistoryService = {
 
       if (error) {
         console.error('Error fetching user stats:', error);
-        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0, emaWpm: 0 };
+        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
       }
 
       if (!data || data.length === 0) {
-        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0, emaWpm: 0 };
+        return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
       }
 
       const totalSessions = data.length;
       
-      // Calculate EMA for WPM
-      const alpha = 2 / (totalSessions + 1); // Smoothing factor
-      let emaWpm = data[0].wpm; // Start with the first WPM value
-
-      for (let i = 1; i < data.length; i++) {
-        emaWpm = alpha * data[i].wpm + (1 - alpha) * emaWpm;
-      }
-
       // Calculate average WPM
       const totalWpm = data.reduce((sum, session) => sum + session.wpm, 0);
       const averageWpm = Math.round(totalWpm / totalSessions);
@@ -136,7 +128,7 @@ export const typingHistoryService = {
         
       if (scriptError) {
         console.error('Error fetching script stats:', scriptError);
-        return { averageWpm, averageAccuracy, totalSessions, totalScripts: 0, emaWpm: Math.round(emaWpm) };
+        return { averageWpm: averageWpm, averageAccuracy: averageAccuracy, totalSessions: totalSessions, totalScripts: 0 };
       }
       
       const uniqueScripts = new Set(scriptData.map(item => item.script_id));
@@ -146,12 +138,11 @@ export const typingHistoryService = {
         averageWpm,
         averageAccuracy,
         totalSessions,
-        totalScripts,
-        emaWpm: Math.round(emaWpm)
+        totalScripts
       };
     } catch (error) {
       console.error('Unexpected error fetching user stats:', error);
-      return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0, emaWpm: 0 };
+      return { averageWpm: 0, averageAccuracy: 0, totalSessions: 0, totalScripts: 0 };
     }
   },
 

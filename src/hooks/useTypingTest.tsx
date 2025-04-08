@@ -289,95 +289,101 @@ const useTypingTest = ({
     }
   }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
-  const handleInput = useCallback((e: React.InputEvent<HTMLInputElement>) => {
-    const input = e.currentTarget.value;
-
-    if (!input) return;
-
+  const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    
     if (!isActive && !isFinished) {
-        setIsActive(true);
-        startTimer();
+      setIsActive(true);
+      startTimer();
     }
-
-    e.currentTarget.value = '';
-
+    
+    e.target.value = '';
+    
     const typedChar = input.charAt(input.length - 1);
+    if (!typedChar) return;
+    
+    const currentWord = words[currentWordIndex];
+    if (!currentWord) return;
     
     if (typedChar === ' ') {
-        if (currentCharIndex === words[currentWordIndex].characters.length) {
-            if (currentWordIndex < words.length - 1) {
-                setCurrentWordIndex(prev => prev + 1);
-                setCurrentCharIndex(0);
-                
-                setStats(prev => ({
-                    ...prev,
-                    correctChars: prev.correctChars + 1,
-                    accuracy: calculateAccuracy(
-                        prev.correctChars + 1, 
-                        prev.incorrectChars
-                    )
-                }));
-                
-                setWords(prevWords => {
-                    const newWords = [...prevWords];
-                    
-                    if (newWords[currentWordIndex + 1]?.characters.length > 0) {
-                        newWords[currentWordIndex + 1].characters[0].state = 'current';
-                    }
-                    
-                    return newWords;
-                });
-            }
-        } else {
-            setStats(prev => ({
-                ...prev,
-                incorrectChars: prev.incorrectChars + 1,
-                accuracy: calculateAccuracy(
-                    prev.correctChars,
-                    prev.incorrectChars + 1
-                )
-            }));
-
-            if (deathMode) {
-                deathModeReset();
-            }
-        }
-        return;
-    } else {
-        const currentWord = words[currentWordIndex];
-        if (!currentWord) return;
-
-        const isCorrect = typedChar === currentWord.characters[currentCharIndex].char;
-
-        if (deathMode && !isCorrect) {
-            deathModeReset();
-            return;
-        }
-        
-        setStats(prev => ({
+      if (currentCharIndex === currentWord.characters.length) {
+        if (currentWordIndex < words.length - 1) {
+          setCurrentWordIndex(prev => prev + 1);
+          setCurrentCharIndex(0);
+          
+          setStats(prev => ({
             ...prev,
-            correctChars: prev.correctChars + (isCorrect ? 1 : 0),
-            incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+            correctChars: prev.correctChars + 1,
             accuracy: calculateAccuracy(
-                prev.correctChars + (isCorrect ? 1 : 0), 
-                prev.incorrectChars + (isCorrect ? 0 : 1)
+              prev.correctChars + 1, 
+              prev.incorrectChars
             )
-        }));
-        
-        setWords(prevWords => {
+          }));
+          
+          setWords(prevWords => {
             const newWords = [...prevWords];
             
-            newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
-            
-            if (currentCharIndex < currentWord.characters.length - 1) {
-                setCurrentCharIndex(prev => prev + 1);
-            } else {
-                setCurrentWordIndex(prev => prev + 1);
-                setCurrentCharIndex(0);
+            if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+              newWords[currentWordIndex + 1].characters[0].state = 'current';
             }
             
             return newWords;
-        });
+          });
+        }
+      } else {
+        setStats(prev => ({
+          ...prev,
+          incorrectChars: prev.incorrectChars + 1,
+          accuracy: calculateAccuracy(
+            prev.correctChars,
+            prev.incorrectChars + 1
+          )
+        }));
+
+        if (deathMode) {
+          deathModeReset();
+        }
+      }
+      return;
+    }
+    
+    if (currentCharIndex < currentWord.characters.length) {
+      const currentChar = currentWord.characters[currentCharIndex];
+      
+      const isCorrect = typedChar === currentChar.char;
+      
+      if (deathMode && !isCorrect) {
+        deathModeReset();
+        return;
+      }
+      
+      setStats(prev => ({
+        ...prev,
+        correctChars: prev.correctChars + (isCorrect ? 1 : 0),
+        incorrectChars: prev.incorrectChars + (isCorrect ? 0 : 1),
+        accuracy: calculateAccuracy(
+          prev.correctChars + (isCorrect ? 1 : 0), 
+          prev.incorrectChars + (isCorrect ? 0 : 1)
+        )
+      }));
+      
+      setWords(prevWords => {
+        const newWords = [...prevWords];
+        
+        newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
+        
+        if (currentCharIndex < currentWord.characters.length - 1) {
+          newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
+        } else if (currentWordIndex === words.length - 1 && 
+                   currentCharIndex === currentWord.characters.length - 1) {
+          setIsFinished(true);
+          stopTimer();
+        }
+        
+        return newWords;
+      });
+      
+      setCurrentCharIndex(prev => prev + 1);
     }
   }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset]);
 
@@ -497,10 +503,6 @@ const useTypingTest = ({
     } catch (error) {
       console.error('Error updating quote stats:', error);
     }
-  };
-
-  const isMobileDevice = () => {
-    return /Mobi|Android/i.test(navigator.userAgent);
   };
 
   return {
