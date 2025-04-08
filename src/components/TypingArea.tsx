@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/typing';
@@ -223,7 +222,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             <div className="absolute inset-0 flex items-center justify-center opacity-30 hover:opacity-50 transition-opacity">
               <div className="bg-slate-900/70 rounded px-3 py-1 flex items-center">
                 <KeyboardIcon className="w-4 h-4 mr-2" />
-                <span>Click here to focus or press {shortcuts.focus}</span>
               </div>
             </div>
           )}
@@ -270,12 +268,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <FocusButton onClick={() => focusInput()} shortcut={shortcuts.focus} />
         
         <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-          redo
+          redo (Shift + Delete)
         </button>
         
         <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-          new
-          <ShortcutIndicator shortcut={shortcuts.newQuote} />
+          new (shift + enter)
         </button>
         
         <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
@@ -302,11 +299,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
           </Toggle>
         </div>
-      </div>
-
-      {/* Keyboard Shortcuts Helper */}
-      <div className="text-xs text-slate-500 mb-2">
-        <p>Keyboard shortcuts: {shortcuts.focus} (focus typing area), {shortcuts.newQuote} (new quote), {shortcuts.backspace} (backspace)</p>
       </div>
 
       {/* Race Animation */}
