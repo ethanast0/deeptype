@@ -12,7 +12,6 @@ const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [zenMode, setZenMode] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -100,45 +99,9 @@ const Index = () => {
     setQuotes(newQuotes);
   };
 
-  // Listen for zen mode changes through a custom event
-  useEffect(() => {
-    const handleZenModeChange = (e: CustomEvent) => {
-      setZenMode(e.detail.zenMode);
-      console.log("Index: Zen mode changed to", e.detail.zenMode);
-    };
-
-    window.addEventListener('zenModeChange' as any, handleZenModeChange);
-    
-    return () => {
-      window.removeEventListener('zenModeChange' as any, handleZenModeChange);
-    };
-  }, []);
-
-  // Update zenMode state based on body class
-  useEffect(() => {
-    // Create a mutation observer to detect zen mode class on the body
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'class') {
-          const isZenMode = document.body.classList.contains('zen-mode');
-          if (zenMode !== isZenMode) {
-            setZenMode(isZenMode);
-            console.log("Index: Zen mode set to", isZenMode, "based on body class");
-          }
-        }
-      });
-    });
-
-    observer.observe(document.body, { attributes: true });
-    
-    return () => {
-      observer.disconnect();
-    };
-  }, [zenMode]);
-
   return (
-    <div className={`min-h-screen flex flex-col bg-zinc-900 ${zenMode ? 'zen-mode' : ''}`}>
-      {!zenMode && <Header />}
+    <div className="min-h-screen flex flex-col bg-zinc-900">
+      <Header />
       
       <main className="flex-1 container max-w-4xl mx-auto px-4 py-5 overflow-auto">
         <div className="typing-panels-container flex flex-col gap-6">
@@ -149,12 +112,12 @@ const Index = () => {
             onTypingStateChange={setIsTyping} 
           />
           
-          {/* Add the PanelManager component only when not in zen mode */}
-          {!zenMode && <PanelManager />}
+          {/* Add the PanelManager component */}
+          <PanelManager />
         </div>
       </main>
       
-      {!zenMode && <Footer />}
+      <Footer />
     </div>
   );
 };

@@ -9,7 +9,6 @@ import useTypingQuotes from './useTypingQuotes';
 import useTypingStats from './useTypingStats';
 import useTypingShortcuts from './useTypingShortcuts';
 import { updateQuoteStats } from './updateQuoteStats';
-import { supabase } from '../../integrations/supabase/client'; // Add missing import
 
 interface UseTypingTestProps {
   quotes?: string[];
@@ -35,7 +34,6 @@ const useTypingTest = ({
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [completedQuotes, setCompletedQuotes] = useState<number>(0);
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
-  const [zenMode, setZenMode] = useState<boolean>(false);
 
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -68,7 +66,6 @@ const useTypingTest = ({
   });
 
   const resetTest = useCallback(() => {
-    console.log("Resetting test");
     stopTimer();
     setIsActive(false);
     setIsFinished(false);
@@ -116,7 +113,6 @@ const useTypingTest = ({
     isActive,
     setIsActive,
     isFinished,
-    setIsFinished,
     startTimer,
     stopTimer,
     stats,
@@ -130,11 +126,7 @@ const useTypingTest = ({
   useTypingShortcuts({
     loadNewQuote,
     smartBackspace,
-    focusInput,
-    handleResetTest: resetTest,
-    toggleZenMode: () => setZenMode(prev => !prev),
-    isActive,
-    isFinished
+    focusInput
   });
 
   // Initial quote loading
@@ -208,45 +200,6 @@ const useTypingTest = ({
     recordHistory();
   }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput]);
 
-  // Toggle zen mode
-  const toggleZenMode = useCallback(() => {
-    setZenMode(prev => !prev);
-    
-    // Dispatch custom event for components to respond to zen mode changes
-    const zenModeEvent = new CustomEvent('zenModeChange', { detail: { zenMode: !zenMode } });
-    window.dispatchEvent(zenModeEvent);
-    
-    // Update body class for global styling
-    if (!zenMode) {
-      document.body.classList.add('zen-mode');
-    } else {
-      document.body.classList.remove('zen-mode');
-    }
-    
-    // Focus after toggling to ensure typing can continue
-    setTimeout(() => focusInput(), 50);
-  }, [zenMode, focusInput]);
-
-  // Update body class when zenMode changes
-  useEffect(() => {
-    if (zenMode) {
-      document.body.classList.add('zen-mode');
-    } else {
-      document.body.classList.remove('zen-mode');
-    }
-    
-    return () => {
-      document.body.classList.remove('zen-mode');
-    };
-  }, [zenMode]);
-
-  // Handle deathMode and repeatMode changes
-  useEffect(() => {
-    if ((deathMode || repeatMode) && isFinished) {
-      resetTest();
-    }
-  }, [deathMode, repeatMode, isFinished, resetTest]);
-
   return {
     words,
     stats,
@@ -261,14 +214,10 @@ const useTypingTest = ({
     focusInput,
     deathMode,
     deathModeFailures,
-    zenMode,
-    toggleZenMode,
     shortcuts: {
         focus: 'Shift + Space',
         newQuote: 'Shift + Enter',
-        backspace: 'Backspace',
-        reset: 'Shift + Delete',
-        zenMode: 'Ctrl + Z'
+        backspace: 'Backspace'
     }
   };
 };

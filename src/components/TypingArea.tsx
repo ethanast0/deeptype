@@ -7,7 +7,7 @@ import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
-import { SkullIcon, SmileIcon, RepeatIcon, KeyboardIcon, MaximizeIcon, MinimizeIcon } from 'lucide-react';
+import { SkullIcon, SmileIcon, RepeatIcon, KeyboardIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
 
@@ -20,18 +20,15 @@ interface TypingAreaProps {
 }
 
 // Focus Button Component
-const FocusButton: React.FC<{ onClick: () => void; isZenMode: boolean; shortcut: string }> = ({ onClick, isZenMode, shortcut }) => {
+const FocusButton: React.FC<{ onClick: () => void; shortcut: string }> = ({ onClick, shortcut }) => {
   return (
     <button 
       onClick={onClick}
       className="flex items-center gap-1 button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm"
-      title={`${isZenMode ? 'Exit' : 'Enter'} zen mode (${shortcut})`}
+      title={`Focus typing area (${shortcut})`}
     >
-      {isZenMode ? (
-        <><MinimizeIcon className="w-3 h-3" /><span>exit zen</span></>
-      ) : (
-        <><MaximizeIcon className="w-3 h-3" /><span>zen mode</span></>
-      )}
+      <KeyboardIcon className="w-3 h-3" />
+      <span>focus</span>
     </button>
   );
 };
@@ -52,13 +49,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [totalQuotes, setTotalQuotes] = useState(quotes.length);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
   const [deathMode, setDeathMode] = useState(false);
   const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
-  
   const {
     words,
     stats,
@@ -72,8 +70,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentWordIndex,
     currentCharIndex,
     deathModeFailures,
-    zenMode,
-    toggleZenMode,
     shortcuts
   } = useTypingTest({
     quotes,
@@ -81,7 +77,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     deathMode,
     repeatMode,
     onQuoteComplete: completedStats => {
-      console.log("Quote completed, stats:", completedStats);
       setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
       if (completedStats && completedStats.wpm > 0) {
         setSessionWpmData(prev => [...prev, completedStats.wpm]);
@@ -143,9 +138,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   // Update typing state when active state changes
   useEffect(() => {
-    console.log("Typing state changed:", isActive, isFinished);
     onTypingStateChange(isActive);
-  }, [isActive, onTypingStateChange, isFinished]);
+  }, [isActive, onTypingStateChange]);
 
   // Update total quotes when quotes array changes
   useEffect(() => {
@@ -184,11 +178,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
 
   const handleLoadNewQuote = () => {
-    resetTest(); // First reset the test
-    setTimeout(() => {
-      loadNewQuote(); // Then load a new quote
-      refocusAfterInteraction(50);
-    }, 50);
+    loadNewQuote();
+    refocusAfterInteraction();
   };
 
   const handleResetTest = () => {
@@ -212,40 +203,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [focusInput]);
-  
-  // Listen for zen mode changes
-  useEffect(() => {
-    const handleZenModeChange = (e: CustomEvent) => {
-      // This component needs to respect zen mode changes from the hook
-      const newZenMode = e.detail.zenMode;
-      if (zenMode !== newZenMode) {
-        // We don't call toggleZenMode() here to avoid an infinite loop
-        // Just update visuals as needed
-        console.log("Zen mode changed via event:", newZenMode);
-      }
-    };
-
-    window.addEventListener('zenModeChange' as any, handleZenModeChange);
-    
-    return () => {
-      window.removeEventListener('zenModeChange' as any, handleZenModeChange);
-    };
-  }, [zenMode]);
 
   return (
     <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
-        <Stats 
-          stats={stats} 
-          isActive={isActive} 
-          isFinished={isFinished} 
-          className="self-start" 
-          deathMode={deathMode} 
-          deathModeFailures={deathModeFailures} 
-          repeatMode={repeatMode} 
-        />
-        {user && !zenMode && <HistoricalStats className="self-end" displayAccuracy={false} />}
+        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
+        {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
       {/* Typing Area */}
@@ -259,17 +223,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             <div className="absolute inset-0 flex items-center justify-center opacity-30 hover:opacity-50 transition-opacity">
               <div className="bg-slate-900/70 rounded px-3 py-1 flex items-center">
                 <KeyboardIcon className="w-4 h-4 mr-2" />
+                <span>Click here to focus or press {shortcuts.focus}</span>
               </div>
             </div>
           )}
           
-          {words.map((word, wordIdx) => (
-            <React.Fragment key={wordIdx}>
+          {words.map((word, wordIndex) => (
+            <React.Fragment key={wordIndex}>
               {/* Word with characters */}
               <div className="flex">
-                {word.characters.map((char, charIdx) => (
+                {word.characters.map((char, charIndex) => (
                   <span 
-                    key={`${wordIdx}-${charIdx}`} 
+                    key={`${wordIndex}-${charIndex}`} 
                     className={cn("character", {
                       "text-monkey-accent": char.state === 'correct',
                       "text-monkey-error": char.state === 'incorrect',
@@ -281,7 +246,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 ))}
               </div>
               {/* Add space between words (except for the last word) */}
-              {wordIdx < words.length - 1 && <span>&nbsp;</span>}
+              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
             </React.Fragment>
           ))}
           
@@ -302,65 +267,58 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 flex-wrap p-2 px-0 py-0 my-[8px] mx-0">
-        <FocusButton onClick={toggleZenMode} isZenMode={zenMode} shortcut={shortcuts.zenMode} />
+        <FocusButton onClick={() => focusInput()} shortcut={shortcuts.focus} />
         
-        {!zenMode && (
-          <>
-            <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-              redo ({shortcuts.reset})
-            </button>
-            
-            <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-              new ({shortcuts.newQuote})
-            </button>
-            
-            <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
-              onQuotesLoaded(newQuotes);
-              refocusAfterInteraction(300); // Longer delay after file upload
-            }} />
-          </>
-        )}
+        <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+          redo
+        </button>
         
-        <div className={cn("flex items-center gap-2", zenMode ? "ml-auto" : "ml-auto")}>
-          {!zenMode && (
-            <>
-              <Toggle 
-                pressed={repeatMode} 
-                onPressedChange={toggleRepeatMode} 
-                aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
-                className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
-              >
-                <RepeatIcon className="w-4 h-4" />
-              </Toggle>
-              
-              <Toggle 
-                pressed={deathMode} 
-                onPressedChange={toggleDeathMode} 
-                aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
-                className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
-              >
-                {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
-              </Toggle>
-            </>
-          )}
+        <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+          new
+          <ShortcutIndicator shortcut={shortcuts.newQuote} />
+        </button>
+        
+        <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
+          onQuotesLoaded(newQuotes);
+          refocusAfterInteraction(300); // Longer delay after file upload
+        }} />
+        
+        <div className="ml-auto flex items-center gap-2">
+          <Toggle 
+            pressed={repeatMode} 
+            onPressedChange={toggleRepeatMode} 
+            aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
+            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
+          >
+            <RepeatIcon className="w-4 h-4" />
+          </Toggle>
+          
+          <Toggle 
+            pressed={deathMode} 
+            onPressedChange={toggleDeathMode} 
+            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
+            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
+          >
+            {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
+          </Toggle>
         </div>
       </div>
 
+      {/* Keyboard Shortcuts Helper */}
+      <div className="text-xs text-slate-500 mb-2">
+        <p>Keyboard shortcuts: {shortcuts.focus} (focus typing area), {shortcuts.newQuote} (new quote), {shortcuts.backspace} (backspace)</p>
+      </div>
+
       {/* Race Animation */}
-      {!zenMode && (
-        <RaceAnimation 
-          totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
-          currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
-          className="my-4"
-        />
-      )}
+      <RaceAnimation 
+        totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
+        currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
+        className="my-4"
+      />
       
       {/* Session Performance Chart */}
-      {!zenMode && (
-        <SessionWpmChart wpmData={sessionWpmData} />
-      )}
+      <SessionWpmChart wpmData={sessionWpmData} />
     </div>
   );
 };
-
 export default TypingArea;

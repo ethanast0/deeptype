@@ -34,29 +34,12 @@ const useTypingQuotes = ({
 }: UseTypingQuotesProps) => {
   
   const processQuote = useCallback((quote: string) => {
-    // Make sure we have a valid quote string
-    if (!quote || typeof quote !== 'string') {
-      console.error("Invalid quote provided to processQuote:", quote);
-      quote = "Error loading quote.";
-    }
-    
-    // Process the quote into words and characters
     const processedWords: Word[] = quote.split(' ').map(word => ({
       characters: [...word].map((char, idx) => ({
         char,
         state: idx === 0 && currentWordIndex === 0 ? 'current' : 'inactive'
       }))
     }));
-    
-    // Make sure we have at least one word
-    if (processedWords.length === 0) {
-      processedWords.push({
-        characters: "error".split('').map((char, idx) => ({
-          char,
-          state: idx === 0 ? 'current' : 'inactive'
-        }))
-      });
-    }
     
     setWords(processedWords);
     setCurrentWordIndex(0);
