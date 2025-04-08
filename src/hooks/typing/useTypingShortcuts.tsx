@@ -1,16 +1,17 @@
-
 import { useEffect } from 'react';
 
 interface UseTypingShortcutsProps {
   loadNewQuote: () => void;
   smartBackspace: () => void;
   focusInput: (delay?: number) => void;
+  handleResetTest: () => void;
 }
 
 const useTypingShortcuts = ({
   loadNewQuote,
   smartBackspace,
-  focusInput
+  focusInput,
+  handleResetTest
 }: UseTypingShortcutsProps) => {
   
   useEffect(() => {
@@ -24,6 +25,9 @@ const useTypingShortcuts = ({
       } else if (e.key === ' ' && e.shiftKey) {
         e.preventDefault();
         focusInput(100);
+      } else if (e.key === 'Delete' && e.shiftKey) {
+        e.preventDefault();
+        handleResetTest();
       }
     };
     
@@ -32,7 +36,7 @@ const useTypingShortcuts = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace, focusInput]);
+  }, [loadNewQuote, smartBackspace, focusInput, handleResetTest]);
 
   return {};
 };

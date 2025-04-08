@@ -126,7 +126,8 @@ const useTypingTest = ({
   useTypingShortcuts({
     loadNewQuote,
     smartBackspace,
-    focusInput
+    focusInput,
+    handleResetTest: resetTest
   });
 
   // Initial quote loading
