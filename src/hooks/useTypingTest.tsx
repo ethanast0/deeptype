@@ -55,8 +55,12 @@ const useTypingTest = ({
   const focusInput = useCallback(() => {
     if (inputRef.current) {
       inputRef.current.focus();
+      if (currentCharIndex > 0) {
+        inputRef.current.selectionStart = currentCharIndex;
+        inputRef.current.selectionEnd = currentCharIndex;
+      }
     }
-  }, []);
+  }, [currentCharIndex]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
@@ -108,14 +112,17 @@ const useTypingTest = ({
         }))
       }));
     });
-  }, [currentQuote, stopTimer]);
+    
+    focusInput();
+  }, [currentQuote, stopTimer, focusInput]);
 
   const deathModeReset = useCallback(() => {
     if (deathMode) {
       setDeathModeFailures(prev => prev + 1);
       resetTest();
+      focusInput();
     }
-  }, [deathMode, resetTest]);
+  }, [deathMode, resetTest, focusInput]);
 
   const processQuote = useCallback((quote: string) => {
     const processedWords: Word[] = quote.split(' ').map(word => ({
@@ -289,7 +296,7 @@ const useTypingTest = ({
     }
   }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
-  const handleInput = useCallback((e: React.InputEvent<HTMLInputElement>) => {
+  const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget.value;
 
     if (!input) return;
@@ -389,6 +396,9 @@ const useTypingTest = ({
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         smartBackspace();
+      } else if (e.key === ' ' && e.shiftKey) {
+        e.preventDefault();
+        focusInput();
       }
     };
     
@@ -397,7 +407,7 @@ const useTypingTest = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace]);
+  }, [loadNewQuote, smartBackspace, focusInput]);
 
   useEffect(() => {
     return () => {
@@ -516,7 +526,12 @@ const useTypingTest = ({
     loadNewQuote,
     focusInput,
     deathMode,
-    deathModeFailures
+    deathModeFailures,
+    shortcuts: {
+        focus: 'Shift + Space',
+        newQuote: 'Shift + Enter',
+        backspace: 'Backspace'
+    }
   };
 };
 
