@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/typing';
@@ -6,7 +7,7 @@ import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
-import { SkullIcon, SmileIcon, RepeatIcon, KeyboardIcon } from 'lucide-react';
+import { SkullIcon, SmileIcon, RepeatIcon, KeyboardIcon, MaximizeIcon, MinimizeIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
 
@@ -19,15 +20,18 @@ interface TypingAreaProps {
 }
 
 // Focus Button Component
-const FocusButton: React.FC<{ onClick: () => void; shortcut: string }> = ({ onClick, shortcut }) => {
+const FocusButton: React.FC<{ onClick: () => void; isZenMode: boolean; shortcut: string }> = ({ onClick, isZenMode, shortcut }) => {
   return (
     <button 
       onClick={onClick}
       className="flex items-center gap-1 button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm"
-      title={`Focus typing area (${shortcut})`}
+      title={`${isZenMode ? 'Exit' : 'Enter'} zen mode (${shortcut})`}
     >
-      <KeyboardIcon className="w-3 h-3" />
-      <span>focus</span>
+      {isZenMode ? (
+        <><MinimizeIcon className="w-3 h-3" /><span>exit zen</span></>
+      ) : (
+        <><MaximizeIcon className="w-3 h-3" /><span>zen mode</span></>
+      )}
     </button>
   );
 };
@@ -69,6 +73,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentWordIndex,
     currentCharIndex,
     deathModeFailures,
+    zenMode,
+    toggleZenMode,
     shortcuts
   } = useTypingTest({
     quotes,
@@ -208,7 +214,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
-        {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
+        {user && !zenMode && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
       {/* Typing Area */}
@@ -226,13 +232,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             </div>
           )}
           
-          {words.map((word, wordIndex) => (
-            <React.Fragment key={wordIndex}>
+          {words.map((word, wordIdx) => (
+            <React.Fragment key={wordIdx}>
               {/* Word with characters */}
               <div className="flex">
-                {word.characters.map((char, charIndex) => (
+                {word.characters.map((char, charIdx) => (
                   <span 
-                    key={`${wordIndex}-${charIndex}`} 
+                    key={`${wordIdx}-${charIdx}`} 
                     className={cn("character", {
                       "text-monkey-accent": char.state === 'correct',
                       "text-monkey-error": char.state === 'incorrect',
@@ -244,7 +250,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 ))}
               </div>
               {/* Add space between words (except for the last word) */}
-              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+              {wordIdx < words.length - 1 && <span>&nbsp;</span>}
             </React.Fragment>
           ))}
           
@@ -265,51 +271,63 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 flex-wrap p-2 px-0 py-0 my-[8px] mx-0">
-        <FocusButton onClick={() => focusInput()} shortcut={shortcuts.focus} />
+        <FocusButton onClick={toggleZenMode} isZenMode={zenMode} shortcut={shortcuts.focus} />
         
-        <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-          redo (Shift + Delete)
-        </button>
+        {!zenMode && (
+          <>
+            <button onClick={handleResetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+              redo (Shift + Delete)
+            </button>
+            
+            <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+              new (shift + enter)
+            </button>
+            
+            <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
+              onQuotesLoaded(newQuotes);
+              refocusAfterInteraction(300); // Longer delay after file upload
+            }} />
+          </>
+        )}
         
-        <button onClick={handleLoadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-          new (shift + enter)
-        </button>
-        
-        <QuoteUploaderButton onQuotesLoaded={(newQuotes) => {
-          onQuotesLoaded(newQuotes);
-          refocusAfterInteraction(300); // Longer delay after file upload
-        }} />
-        
-        <div className="ml-auto flex items-center gap-2">
-          <Toggle 
-            pressed={repeatMode} 
-            onPressedChange={toggleRepeatMode} 
-            aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
-            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
-          >
-            <RepeatIcon className="w-4 h-4" />
-          </Toggle>
-          
-          <Toggle 
-            pressed={deathMode} 
-            onPressedChange={toggleDeathMode} 
-            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
-            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
-          >
-            {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
-          </Toggle>
+        <div className={cn("flex items-center gap-2", zenMode ? "ml-auto" : "ml-auto")}>
+          {!zenMode && (
+            <>
+              <Toggle 
+                pressed={repeatMode} 
+                onPressedChange={toggleRepeatMode} 
+                aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
+                className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
+              >
+                <RepeatIcon className="w-4 h-4" />
+              </Toggle>
+              
+              <Toggle 
+                pressed={deathMode} 
+                onPressedChange={toggleDeathMode} 
+                aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
+                className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
+              >
+                {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
+              </Toggle>
+            </>
+          )}
         </div>
       </div>
 
       {/* Race Animation */}
-      <RaceAnimation 
-        totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
-        currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
-        className="my-4"
-      />
+      {!zenMode && (
+        <RaceAnimation 
+          totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
+          currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
+          className="my-4"
+        />
+      )}
       
       {/* Session Performance Chart */}
-      <SessionWpmChart wpmData={sessionWpmData} />
+      {!zenMode && (
+        <SessionWpmChart wpmData={sessionWpmData} />
+      )}
     </div>
   );
 };

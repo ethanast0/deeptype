@@ -12,6 +12,7 @@ interface UseTypingInputProps {
   isActive: boolean;
   setIsActive: React.Dispatch<React.SetStateAction<boolean>>;
   isFinished: boolean;
+  setIsFinished: React.Dispatch<React.SetStateAction<boolean>>;
   startTimer: () => void;
   stopTimer: () => void;
   stats: any;
@@ -31,7 +32,9 @@ const useTypingInput = ({
   isActive,
   setIsActive,
   isFinished,
+  setIsFinished,
   startTimer,
+  stopTimer,
   stats,
   setStats,
   inputRef,
@@ -159,7 +162,8 @@ const useTypingInput = ({
     const typedChar = input.charAt(input.length - 1);
     
     if (typedChar === ' ') {
-        if (currentCharIndex === words[currentWordIndex].characters.length) {
+        // Fix for deathMode issue with spaces
+        if (currentCharIndex === words[currentWordIndex]?.characters.length) {
             if (currentWordIndex < words.length - 1) {
                 setCurrentWordIndex(prev => prev + 1);
                 setCurrentCharIndex(0);
@@ -182,6 +186,11 @@ const useTypingInput = ({
                     
                     return newWords;
                 });
+            } else {
+                // Check if this is the last word and we're at the end of it
+                // This means the user has completed the test
+                setIsFinished(true);
+                stopTimer();
             }
         } else {
             setStats(prev => ({
@@ -202,7 +211,7 @@ const useTypingInput = ({
         const currentWord = words[currentWordIndex];
         if (!currentWord) return;
 
-        const isCorrect = typedChar === currentWord.characters[currentCharIndex].char;
+        const isCorrect = typedChar === currentWord.characters[currentCharIndex]?.char;
 
         if (deathMode && !isCorrect) {
             deathModeReset();
@@ -225,16 +234,25 @@ const useTypingInput = ({
             newWords[currentWordIndex].characters[currentCharIndex].state = isCorrect ? 'correct' : 'incorrect';
             
             if (currentCharIndex < currentWord.characters.length - 1) {
+                newWords[currentWordIndex].characters[currentCharIndex + 1].state = 'current';
                 setCurrentCharIndex(prev => prev + 1);
-            } else {
+            } else if (currentWordIndex < words.length - 1) {
                 setCurrentWordIndex(prev => prev + 1);
                 setCurrentCharIndex(0);
+                
+                if (newWords[currentWordIndex + 1]?.characters.length > 0) {
+                    newWords[currentWordIndex + 1].characters[0].state = 'current';
+                }
+            } else {
+                // Last character of last word was typed
+                setIsFinished(true);
+                stopTimer();
             }
             
             return newWords;
         });
     }
-  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, words, deathMode, deathModeReset, setCurrentCharIndex, setCurrentWordIndex, setIsActive, setStats, setWords]);
+  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset, setCurrentCharIndex, setCurrentWordIndex, setIsActive, setIsFinished, setStats, setWords]);
 
   return {
     handleInput,

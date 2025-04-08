@@ -34,6 +34,7 @@ const useTypingTest = ({
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [completedQuotes, setCompletedQuotes] = useState<number>(0);
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
+  const [zenMode, setZenMode] = useState<boolean>(false);
 
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -113,6 +114,7 @@ const useTypingTest = ({
     isActive,
     setIsActive,
     isFinished,
+    setIsFinished,
     startTimer,
     stopTimer,
     stats,
@@ -201,6 +203,13 @@ const useTypingTest = ({
     recordHistory();
   }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput]);
 
+  // Toggle zen mode
+  const toggleZenMode = useCallback(() => {
+    setZenMode(prev => !prev);
+    // Focus after toggling to ensure typing can continue
+    setTimeout(() => focusInput(), 50);
+  }, [focusInput]);
+
   return {
     words,
     stats,
@@ -215,6 +224,8 @@ const useTypingTest = ({
     focusInput,
     deathMode,
     deathModeFailures,
+    zenMode,
+    toggleZenMode,
     shortcuts: {
         focus: 'Shift + Space',
         newQuote: 'Shift + Enter',

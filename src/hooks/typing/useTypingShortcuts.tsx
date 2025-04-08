@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 
 interface UseTypingShortcutsProps {
@@ -5,13 +6,15 @@ interface UseTypingShortcutsProps {
   smartBackspace: () => void;
   focusInput: (delay?: number) => void;
   handleResetTest: () => void;
+  toggleZenMode?: () => void;
 }
 
 const useTypingShortcuts = ({
   loadNewQuote,
   smartBackspace,
   focusInput,
-  handleResetTest
+  handleResetTest,
+  toggleZenMode
 }: UseTypingShortcutsProps) => {
   
   useEffect(() => {
@@ -28,6 +31,11 @@ const useTypingShortcuts = ({
       } else if (e.key === 'Delete' && e.shiftKey) {
         e.preventDefault();
         handleResetTest();
+      } else if (e.key === 'z' && e.ctrlKey) {
+        e.preventDefault();
+        if (toggleZenMode) {
+          toggleZenMode();
+        }
       }
     };
     
@@ -36,7 +44,7 @@ const useTypingShortcuts = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace, focusInput, handleResetTest]);
+  }, [loadNewQuote, smartBackspace, focusInput, handleResetTest, toggleZenMode]);
 
   return {};
 };
