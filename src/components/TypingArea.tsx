@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import useTypingTest from '../hooks/typing';
+import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
 import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
