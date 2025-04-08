@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
@@ -16,6 +15,7 @@ interface UserStats {
   averageAccuracy: number;
   totalSessions: number;
   totalScripts: number;
+  emaWpm: number;
 }
 
 const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAccuracy = true }) => {
@@ -24,7 +24,8 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
     averageWpm: 0,
     averageAccuracy: 0,
     totalSessions: 0,
-    totalScripts: 0
+    totalScripts: 0,
+    emaWpm: 0
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +106,7 @@ const HistoricalStats: React.FC<HistoricalStatsProps> = ({ className, displayAcc
       className
     )}>
       <span>
-        <span className="font-medium text-monkey-text">{stats.averageWpm}</span>{" avg wpm"}
+        <span className="font-medium text-monkey-text">{stats.emaWpm}</span>{" global wpm"}
       </span>
 
       {displayAccuracy && (
