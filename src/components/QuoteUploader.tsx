@@ -1,19 +1,15 @@
-
 import React, { useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Upload } from 'lucide-react';
-
 interface QuoteUploaderProps {
   onQuotesLoaded: (quotes: string[]) => void;
   className?: string;
 }
-
 export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
   onQuotesLoaded,
   className
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -22,7 +18,6 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       try {
         const content = e.target?.result as string;
         const quotesData = JSON.parse(content);
-
         if (Array.isArray(quotesData) && quotesData.every(quote => typeof quote === 'string')) {
           onQuotesLoaded(quotesData);
         } else {
@@ -35,26 +30,18 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       }
     };
     reader.readAsText(file);
-
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
-
   const handleButtonClick = () => {
     fileInputRef.current?.click();
   };
-
-  return (
-    <>
+  return <>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button 
-              onClick={handleButtonClick} 
-              className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal p-2" 
-              aria-label="Upload script"
-            >
+            <button onClick={handleButtonClick} aria-label="Upload script" className="button button-accent text-gray-400 font-normal p-2 bg-zinc-950 hover:bg-zinc-800">
               <Upload size={16} />
             </button>
           </TooltipTrigger>
@@ -64,19 +51,10 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
         </Tooltip>
       </TooltipProvider>
       
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileSelection} 
-        accept=".json" 
-        className="hidden" 
-      />
-    </>
-  );
+      <input type="file" ref={fileInputRef} onChange={handleFileSelection} accept=".json" className="hidden" />
+    </>;
 };
-
-const QuoteUploader: React.FC<QuoteUploaderProps> = (props) => {
+const QuoteUploader: React.FC<QuoteUploaderProps> = props => {
   return <QuoteUploaderButton {...props} />;
 };
-
 export default QuoteUploader;

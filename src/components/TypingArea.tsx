@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -10,7 +9,6 @@ import { Toggle } from './ui/toggle';
 import { SkullIcon, SmileIcon, RepeatIcon, DeleteIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
-
 interface TypingAreaProps {
   quotes: string[];
   className?: string;
@@ -93,14 +91,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         focusInput();
       }
     };
-    
     window.addEventListener('keydown', handleKeyDown);
-    
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [loadNewQuote, resetTest, focusInput]);
-
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
     // Turn off repeat mode if death mode is turning on
@@ -110,7 +105,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput(); // Add focus here
   };
-
   const toggleRepeatMode = () => {
     setRepeatMode(prev => !prev);
     // Turn off death mode if repeat mode is turning on
@@ -120,12 +114,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput(); // Add focus here
   };
-
   const handleResetClick = () => {
     resetTest();
     focusInput(); // Add focus here
   };
-  
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
@@ -158,41 +150,27 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
-        <button onClick={handleResetClick} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm flex items-center gap-1">
+        <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-zinc-950 hover:bg-zinc-800">
           redo <DeleteIcon className="h-3.5 w-3.5" />
         </button>
-        <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
+        <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-zinc-950 hover:bg-zinc-800">
           new [shift + enter]
         </button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
         
         <div className="ml-auto flex items-center gap-2">
-          <Toggle 
-            pressed={repeatMode} 
-            onPressedChange={toggleRepeatMode} 
-            aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
-            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
-          >
+          <Toggle pressed={repeatMode} onPressedChange={toggleRepeatMode} aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900">
             <RepeatIcon className="w-4 h-4" />
           </Toggle>
           
-          <Toggle 
-            pressed={deathMode} 
-            onPressedChange={toggleDeathMode} 
-            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
-            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900"
-          >
+          <Toggle pressed={deathMode} onPressedChange={toggleDeathMode} aria-label={deathMode ? "Death Mode" : "Normal Mode"} className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-red-900">
             {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
           </Toggle>
         </div>
       </div>
 
       {/* Race Animation */}
-      <RaceAnimation 
-        totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1}
-        currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex}
-        className="my-4"
-      />
+      <RaceAnimation totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1} currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex} className="my-4" />
       
       {/* Session Performance Chart */}
       <SessionWpmChart wpmData={sessionWpmData} />
