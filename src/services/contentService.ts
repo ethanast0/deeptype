@@ -17,9 +17,9 @@ export const contentService = {
    */
   async getContentForLevel(level: number): Promise<Content[]> {
     try {
-      // Use any to bypass TypeScript type checking for the content table
+      // Use the table name as a string and cast the result
       const { data, error } = await supabase
-        .from('content' as any)
+        .from('content')
         .select('*')
         .eq('level_number', level)
         .order('quote_index', { ascending: true });
@@ -34,7 +34,8 @@ export const contentService = {
         return [];
       }
 
-      return data as Content[] || [];
+      // Cast the data to the Content interface
+      return (data || []) as Content[];
     } catch (error) {
       console.error("Unexpected error fetching content:", error);
       return [];
@@ -47,7 +48,7 @@ export const contentService = {
   async getContentById(contentId: string): Promise<Content | null> {
     try {
       const { data, error } = await supabase
-        .from('content' as any)
+        .from('content')
         .select('*')
         .eq('content_id', contentId)
         .single();
@@ -57,6 +58,7 @@ export const contentService = {
         return null;
       }
 
+      // Cast the data to the Content interface
       return data as Content;
     } catch (error) {
       console.error("Unexpected error fetching content by ID:", error);
@@ -70,7 +72,7 @@ export const contentService = {
   async getFirstQuoteForLevel(level: number): Promise<Content | null> {
     try {
       const { data, error } = await supabase
-        .from('content' as any)
+        .from('content')
         .select('*')
         .eq('level_number', level)
         .eq('quote_index', 1)
@@ -81,6 +83,7 @@ export const contentService = {
         return null;
       }
 
+      // Cast the data to the Content interface
       return data as Content;
     } catch (error) {
       console.error("Unexpected error fetching first quote:", error);
@@ -97,7 +100,7 @@ export const contentService = {
       const nextIndex = currentIndex + 1;
       
       const { data, error } = await supabase
-        .from('content' as any)
+        .from('content')
         .select('*')
         .eq('level_number', level)
         .eq('quote_index', nextIndex)
@@ -113,6 +116,7 @@ export const contentService = {
         return null;
       }
 
+      // Cast the data to the Content interface
       return data as Content;
     } catch (error) {
       console.error("Unexpected error fetching next quote:", error);

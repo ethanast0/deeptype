@@ -44,35 +44,46 @@ const HistoricalWpmPanel: React.FC<HistoricalWpmPanelProps> = ({ config: userCon
         setIsLoading(true);
         const history = await typingHistoryService.getUserHistoryWithMovingAverageWpm(user.id, windowSize);
         
+        if (history.raw.length === 0) {
+          setWpmData([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Create data points with dates
+        let dataPoints: WpmDataPoint[] = [];
+        for (let i = 0; i < history.raw.length; i++) {
+          dataPoints.push({
+            date: history.created_at && history.created_at[i] 
+              ? new Date(history.created_at[i]).toLocaleDateString() 
+              : `Point ${i+1}`,
+            wpm: history.raw[i],
+            movingAverage: history.movingAverage[i]
+          });
+        }
+        
         // Process data based on timeRange
-        let filteredHistory = history;
         const now = new Date();
+        let filteredData = [...dataPoints];
         
         if (timeRange === 'day') {
           const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          filteredHistory = history.filter(entry => 
-            new Date(entry.created_at) >= oneDayAgo
+          filteredData = dataPoints.filter(point => 
+            new Date(point.date) >= oneDayAgo
           );
         } else if (timeRange === 'week') {
           const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          filteredHistory = history.filter(entry => 
-            new Date(entry.created_at) >= oneWeekAgo
+          filteredData = dataPoints.filter(point => 
+            new Date(point.date) >= oneWeekAgo
           );
         } else if (timeRange === 'month') {
           const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          filteredHistory = history.filter(entry => 
-            new Date(entry.created_at) >= oneMonthAgo
+          filteredData = dataPoints.filter(point => 
+            new Date(point.date) >= oneMonthAgo
           );
         }
         
-        // Format data for chart
-        const formattedData = filteredHistory.map(entry => ({
-          date: new Date(entry.created_at).toLocaleDateString(),
-          wpm: entry.wpm,
-          movingAverage: entry.moving_average_wpm
-        }));
-        
-        setWpmData(formattedData);
+        setWpmData(filteredData);
       } catch (err) {
         console.error('Error fetching WPM history:', err);
       } finally {
