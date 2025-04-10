@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -11,7 +10,6 @@ import { SkullIcon, SmileIcon, RepeatIcon, DeleteIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
 import { typingContent } from '../data/typing_content';
-
 interface TypingAreaProps {
   quotes?: string[];
   className?: string;
@@ -19,7 +17,6 @@ interface TypingAreaProps {
   onQuotesLoaded?: (quotes: string[]) => void;
   onTypingStateChange?: (isTyping: boolean) => void;
 }
-
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
@@ -27,7 +24,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [level, setLevel] = useState(1);
   const [levelQuotes, setLevelQuotes] = useState<string[]>(typingContent.level_1);
   const [totalQuotes, setTotalQuotes] = useState(levelQuotes.length);
@@ -35,7 +34,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   const [deathMode, setDeathMode] = useState(false);
   const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
-  
   const {
     words,
     stats,
@@ -110,7 +108,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [loadNewQuote, resetTest, focusInput]);
-
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
     // Turn off repeat mode if death mode is turning on
@@ -120,7 +117,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput();
   };
-
   const toggleRepeatMode = () => {
     setRepeatMode(prev => !prev);
     // Turn off death mode if repeat mode is turning on
@@ -130,14 +126,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput();
   };
-
   const handleResetClick = () => {
     resetTest();
     focusInput();
   };
-
-  return (
-    <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
+  return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Level and Quote Progress Indicator */}
       <div className="w-full mb-2 flex justify-center gap-4">
         <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm">
@@ -154,61 +147,36 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
-        <Stats 
-          stats={stats} 
-          isActive={isActive} 
-          isFinished={isFinished} 
-          className="self-start" 
-          deathMode={deathMode} 
-          deathModeFailures={deathModeFailures} 
-          repeatMode={repeatMode} 
-        />
+        <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
         {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
       {/* Typing Area */}
       <div className="w-full p-4 px-0 py-0 bg-inherit">
         <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
-          {words.map((word, wordIndex) => (
-            <React.Fragment key={wordIndex}>
+          {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
               {/* Word with characters */}
               <div className="flex">
-                {word.characters.map((char, charIndex) => (
-                  <span 
-                    key={`${wordIndex}-${charIndex}`} 
-                    className={cn("character", {
-                      "text-monkey-accent": char.state === 'correct',
-                      "text-monkey-error": char.state === 'incorrect',
-                      "text-white": char.state === 'current' || char.state === 'inactive'
-                    })}
-                  >
+                {word.characters.map((char, charIndex) => <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
+              "text-monkey-accent": char.state === 'correct',
+              "text-monkey-error": char.state === 'incorrect',
+              "text-white": char.state === 'current' || char.state === 'inactive'
+            })}>
                     {char.char}
-                  </span>
-                ))}
+                  </span>)}
               </div>
               {/* Add space between words (except for the last word) */}
               {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>
-          ))}
+            </React.Fragment>)}
           
           {/* Hidden input to capture keystrokes */}
-          <input 
-            ref={inputRef} 
-            type="text" 
-            className="typing-input" 
-            onChange={handleInput}
-            autoComplete="off" 
-            autoCapitalize="off" 
-            autoCorrect="off" 
-            spellCheck="false"
-            aria-label="Typing input" 
-          />
+          <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
         </div>
       </div>
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
-        <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-inherit">
+        <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-teal-900 hover:bg-teal-800">
           redo [shift + ⌫] <DeleteIcon className="h-3.5 w-3.5" />
         </button>
         <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-inherit">
@@ -217,37 +185,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
         
         <div className="ml-auto flex items-center gap-2">
-          <Toggle 
-            pressed={repeatMode} 
-            onPressedChange={toggleRepeatMode} 
-            aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} 
-            className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900"
-          >
+          <Toggle pressed={repeatMode} onPressedChange={toggleRepeatMode} aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900">
             <RepeatIcon className="w-4 h-4" />
           </Toggle>
           
-          <Toggle 
-            pressed={deathMode} 
-            onPressedChange={toggleDeathMode} 
-            aria-label={deathMode ? "Death Mode" : "Normal Mode"} 
-            className="bg-zinc-950 hover:bg-slate-800 data-[state=on]:bg-red-900"
-          >
+          <Toggle pressed={deathMode} onPressedChange={toggleDeathMode} aria-label={deathMode ? "Death Mode" : "Normal Mode"} className="bg-zinc-950 hover:bg-slate-800 data-[state=on]:bg-red-900">
             {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
           </Toggle>
         </div>
       </div>
 
       {/* Race Animation */}
-      <RaceAnimation 
-        totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1} 
-        currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex} 
-        className="my-4" 
-      />
+      <RaceAnimation totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1} currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex} className="my-4" />
       
       {/* Session Performance Chart */}
       <SessionWpmChart wpmData={sessionWpmData} />
-    </div>
-  );
+    </div>;
 };
-
 export default TypingArea;
