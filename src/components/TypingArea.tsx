@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -6,7 +7,7 @@ import HistoricalStats from './HistoricalStats';
 import { cn } from '../lib/utils';
 import { QuoteUploaderButton } from './QuoteUploader';
 import { Toggle } from './ui/toggle';
-import { SkullIcon, SmileIcon, RepeatIcon } from 'lucide-react';
+import { SkullIcon, SmileIcon, RepeatIcon, DeleteIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
 
@@ -79,6 +80,27 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setCurrentQuoteNumber(1);
     }
   }, [quotes]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        loadNewQuote();
+      } else if (e.key === 'Backspace' && e.shiftKey) {
+        e.preventDefault();
+        resetTest();
+        focusInput();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [loadNewQuote, resetTest, focusInput]);
+
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
     // Turn off repeat mode if death mode is turning on
@@ -86,6 +108,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setRepeatMode(false);
     }
     resetTest();
+    focusInput(); // Add focus here
   };
 
   const toggleRepeatMode = () => {
@@ -94,7 +117,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     if (!repeatMode) {
       setDeathMode(false);
     }
+    resetTest();
+    focusInput(); // Add focus here
   };
+
+  const handleResetClick = () => {
+    resetTest();
+    focusInput(); // Add focus here
+  };
+  
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
@@ -127,8 +158,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
-        <button onClick={resetTest} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
-          redo
+        <button onClick={handleResetClick} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm flex items-center gap-1">
+          redo <DeleteIcon className="h-3.5 w-3.5" />
         </button>
         <button onClick={loadNewQuote} className="button button-accent bg-slate-800 hover:bg-slate-700 text-gray-400 font-normal text-sm">
           new [shift + enter]

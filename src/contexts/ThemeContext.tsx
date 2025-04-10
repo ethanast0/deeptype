@@ -14,7 +14,7 @@ interface ThemeContextType {
 
 const defaultContext: ThemeContextType = {
   theme: "dark",
-  colorMode: "zinc",
+  colorMode: "zinc", // Set zinc as default
   setTheme: () => {},
   setColorMode: () => {},
   toggleTheme: () => {},
@@ -30,7 +30,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   
   const [colorMode, setColorMode] = useState<ColorMode>(
-    () => (localStorage.getItem("colorMode") as ColorMode) || "zinc"
+    () => (localStorage.getItem("colorMode") as ColorMode) || "zinc" // Set zinc as default fallback
   );
 
   const toggleTheme = () => {
