@@ -17,6 +17,7 @@ export interface UserProgress {
   successfulQuotesCount: number;
   levelBestWpm: number;
   completedQuotes: string[]; // IDs of completed quotes
+  currentQuoteIndex: number; // Track the current quote index within the level
 }
 
 // Default progression matrix
@@ -52,6 +53,7 @@ export const gameProgressionService = {
         successfulQuotesCount: 0,
         levelBestWpm: 0,
         completedQuotes: [],
+        currentQuoteIndex: 0, // Start with the first quote
       };
     } catch (error) {
       console.error("Error fetching user progress:", error);
@@ -85,6 +87,11 @@ export const gameProgressionService = {
   // Check if max attempts reached
   isMaxAttemptsReached(attemptsUsed: number, maxAttempts: number): boolean {
     return attemptsUsed >= maxAttempts;
+  },
+
+  // Get next quote index - sequential progression
+  getNextQuoteIndex(currentIndex: number, totalQuotes: number): number {
+    return (currentIndex + 1) % totalQuotes; // Loop back to start if we reach the end
   },
 };
 

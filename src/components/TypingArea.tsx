@@ -48,19 +48,26 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput,
     currentWordIndex,
     currentCharIndex,
-    deathModeFailures
+    deathModeFailures,
+    currentQuoteIndex
   } = useTypingTest({
     quotes: levelQuotes,
     scriptId,
     deathMode,
     repeatMode,
     onQuoteComplete: completedStats => {
-      setCurrentQuoteNumber(prev => Math.min(prev + 1, totalQuotes));
+      // Update the current quote number based on the currentQuoteIndex from the hook
+      setCurrentQuoteNumber(currentQuoteIndex + 1);
       if (completedStats && completedStats.wpm > 0) {
         setSessionWpmData(prev => [...prev, completedStats.wpm]);
       }
     }
   });
+
+  // Show the actual quote number in the UI (1-based instead of 0-based index)
+  useEffect(() => {
+    setCurrentQuoteNumber(currentQuoteIndex + 1);
+  }, [currentQuoteIndex]);
 
   // Auto-focus on mount and when resetting
   useEffect(() => {
@@ -75,13 +82,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   // Update total quotes when quotes array changes
   useEffect(() => {
     setTotalQuotes(levelQuotes.length);
-  }, [levelQuotes]);
-
-  // Reset current quote number when loading new quote set
-  useEffect(() => {
-    if (levelQuotes.length > 0) {
-      setCurrentQuoteNumber(1);
-    }
   }, [levelQuotes]);
 
   // Update level quotes when level changes
@@ -138,11 +138,17 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   return (
     <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
-      {/* Level Indicator */}
-      <div className="w-full mb-2 flex justify-center">
+      {/* Level and Quote Progress Indicator */}
+      <div className="w-full mb-2 flex justify-center gap-4">
         <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm">
           <span className="text-gray-400">Level:</span>
           <span className="text-monkey-accent">{level}</span>
+        </div>
+        <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm">
+          <span className="text-gray-400">Quote:</span>
+          <span className="text-monkey-accent">{currentQuoteNumber}</span>
+          <span className="text-gray-400">of</span>
+          <span className="text-gray-400">{totalQuotes}</span>
         </div>
       </div>
       

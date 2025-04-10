@@ -52,7 +52,7 @@ const Index = () => {
           
           scriptId = newScript.id;
 
-          // Also insert quotes into script_quotes table
+          // Insert quotes into script_quotes table sequentially with index
           const quoteInserts = typingContent.level_1.map((quote, index) => ({
             script_id: scriptId,
             content: quote,
@@ -70,7 +70,7 @@ const Index = () => {
         
         setActiveScriptId(scriptId);
 
-        // Fetch quotes from script_quotes table
+        // Fetch quotes from script_quotes table in order
         const { data: quoteData, error: quotesError } = await supabase
           .from('script_quotes')
           .select('content')

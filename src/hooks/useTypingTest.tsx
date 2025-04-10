@@ -45,6 +45,7 @@ const useTypingTest = ({
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
   const [meetsCriteria, setMeetsCriteria] = useState<boolean>(false);
   const [baselineWpm, setBaselineWpm] = useState<number | null>(null);
+  const [currentQuoteIndex, setCurrentQuoteIndex] = useState<number>(0);
 
   const { user } = useAuth();
   
@@ -142,54 +143,47 @@ const useTypingTest = ({
       try {
         const { data, error } = await supabase
           .from('script_quotes')
-          .select('id, content')
-          .eq('script_id', scriptId);
+          .select('id, content, quote_index')
+          .eq('script_id', scriptId)
+          .order('quote_index', { ascending: true });
           
         if (error || !data || data.length === 0) {
           console.error('Error loading quotes or no quotes found:', error);
-          const randomIndex = Math.floor(Math.random() * quotes.length);
-          const quote = quotes[randomIndex];
+          const quote = quotes[currentQuoteIndex % quotes.length];
           setCurrentQuote(quote);
           processQuote(quote);
+          setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
         } else {
-          const availableQuotes = data.filter(quote => !processedQuotesRef.current.has(quote.id));
+          const nextQuoteIndex = currentQuoteIndex % data.length;
+          const nextQuote = data[nextQuoteIndex];
           
-          if (availableQuotes.length === 0) {
-            processedQuotesRef.current.clear();
-            setCompletedQuotes(0);
-            const randomIndex = Math.floor(Math.random() * data.length);
-            const randomQuote = data[randomIndex];
-            setCurrentQuote(randomQuote.content);
-            setCurrentQuoteId(randomQuote.id);
-            processQuote(randomQuote.content);
-          } else {
-            const randomIndex = Math.floor(Math.random() * availableQuotes.length);
-            const randomQuote = availableQuotes[randomIndex];
-            setCurrentQuote(randomQuote.content);
-            setCurrentQuoteId(randomQuote.id);
-            processQuote(randomQuote.content);
-            processedQuotesRef.current.add(randomQuote.id);
-          }
+          console.log(`Loading quote ${nextQuoteIndex + 1} of ${data.length}`);
+          
+          setCurrentQuote(nextQuote.content);
+          setCurrentQuoteId(nextQuote.id);
+          processQuote(nextQuote.content);
+          
+          setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % data.length);
         }
       } catch (error) {
         console.error('Error loading quote from database:', error);
-        const randomIndex = Math.floor(Math.random() * quotes.length);
-        const quote = quotes[randomIndex];
+        const quote = quotes[currentQuoteIndex % quotes.length];
         setCurrentQuote(quote);
         processQuote(quote);
+        setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
       }
     } else {
-      const randomIndex = Math.floor(Math.random() * quotes.length);
-      const quote = quotes[randomIndex];
+      const quote = quotes[currentQuoteIndex % quotes.length];
       setCurrentQuote(quote);
       processQuote(quote);
+      setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
     }
     
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
     setMeetsCriteria(false);
-  }, [quotes, scriptId, processQuote, resetTest, focusInput]);
+  }, [quotes, scriptId, processQuote, resetTest, focusInput, currentQuoteIndex]);
 
   const findLastCorrectPosition = useCallback(() => {
     const currentWord = words[currentWordIndex];
@@ -531,7 +525,8 @@ const useTypingTest = ({
     deathMode,
     deathModeFailures,
     meetsCriteria,
-    baselineWpm
+    baselineWpm,
+    currentQuoteIndex
   };
 };
 
