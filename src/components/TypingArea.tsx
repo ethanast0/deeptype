@@ -150,7 +150,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
       {/* Controls */}
       <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
-        <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-zinc-950 hover:bg-zinc-800">
+        <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-inherit">
           redo <DeleteIcon className="h-3.5 w-3.5" />
         </button>
         <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-zinc-950 hover:bg-zinc-800">
