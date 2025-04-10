@@ -7,12 +7,22 @@ import PanelManager from '../components/PanelManager';
 import { typingContent } from '../data/typing_content';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
+import LevelCompletionModal from '../components/LevelCompletionModal';
+import useGameProgression from '../hooks/useGameProgression';
 
 const Index = () => {
   const [quotes, setQuotes] = useState<string[]>(typingContent.level_1);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const { user } = useAuth();
+  
+  // Use the game progression hook
+  const { 
+    userProgress, 
+    levelParameters,
+    showCompletionModal,
+    setShowCompletionModal
+  } = useGameProgression();
 
   useEffect(() => {
     const setupDefaultScript = async () => {
@@ -99,6 +109,28 @@ const Index = () => {
     setQuotes(newQuotes);
   };
 
+  // Determine if we should show the level completion modal
+  const renderLevelCompletionModal = () => {
+    if (!userProgress || !showCompletionModal) return null;
+    
+    const currentLevel = userProgress.currentLevel - 1; // Show the completed level
+    const nextLevel = userProgress.currentLevel;
+    const nextLevelThreshold = userProgress.baselineWpm 
+      ? Math.ceil(userProgress.baselineWpm * (nextLevel === 1 ? 0.5 : 0.4 + (nextLevel * 0.1)))
+      : null;
+    
+    return (
+      <LevelCompletionModal 
+        open={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        levelNumber={currentLevel}
+        bestWpm={userProgress.levelBestWpm}
+        nextLevelNumber={nextLevel}
+        nextLevelThreshold={nextLevelThreshold}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-zinc-900">
       <Header />
@@ -116,6 +148,9 @@ const Index = () => {
           <PanelManager />
         </div>
       </main>
+      
+      {/* Level completion modal */}
+      {renderLevelCompletionModal()}
       
       <Footer />
     </div>

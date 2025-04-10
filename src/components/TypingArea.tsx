@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -10,6 +11,9 @@ import { SkullIcon, SmileIcon, RepeatIcon, DeleteIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
 import { typingContent } from '../data/typing_content';
+import { gameProgressionService } from '../services/gameProgressionService';
+import { toast } from '../hooks/use-toast';
+
 interface TypingAreaProps {
   quotes?: string[];
   className?: string;
@@ -17,6 +21,7 @@ interface TypingAreaProps {
   onQuotesLoaded?: (quotes: string[]) => void;
   onTypingStateChange?: (isTyping: boolean) => void;
 }
+
 const TypingArea: React.FC<TypingAreaProps> = ({
   quotes,
   className,
@@ -24,9 +29,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   onQuotesLoaded = () => {},
   onTypingStateChange = () => {}
 }) => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [level, setLevel] = useState(1);
   const [levelQuotes, setLevelQuotes] = useState<string[]>(typingContent.level_1);
   const [totalQuotes, setTotalQuotes] = useState(levelQuotes.length);
@@ -34,6 +37,33 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   const [deathMode, setDeathMode] = useState(false);
   const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
+  const [userProgress, setUserProgress] = useState<any>(null);
+  const [levelParameters, setLevelParameters] = useState<any>(null);
+
+  // Fetch user progress and level parameters
+  useEffect(() => {
+    const fetchProgressData = async () => {
+      if (!user) return;
+      
+      try {
+        // Get user's progress
+        const progress = await gameProgressionService.getUserProgress(user.id);
+        if (progress) {
+          setUserProgress(progress);
+          setLevel(progress.currentLevel);
+          
+          // Get level parameters
+          const params = await gameProgressionService.getLevelParameters(progress.currentLevel);
+          setLevelParameters(params);
+        }
+      } catch (error) {
+        console.error("Error fetching progress data:", error);
+      }
+    };
+    
+    fetchProgressData();
+  }, [user]);
+
   const {
     words,
     stats,
@@ -47,17 +77,59 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentWordIndex,
     currentCharIndex,
     deathModeFailures,
-    currentQuoteIndex
+    currentQuoteIndex,
+    meetsCriteria,
+    baselineWpm
   } = useTypingTest({
     quotes: levelQuotes,
     scriptId,
     deathMode,
     repeatMode,
-    onQuoteComplete: completedStats => {
-      // Update the current quote number based on the currentQuoteIndex from the hook
+    onQuoteComplete: async (completedStats) => {
+      // Update the current quote number
       setCurrentQuoteNumber(currentQuoteIndex + 1);
+      
+      // Add WPM to session data for chart
       if (completedStats && completedStats.wpm > 0) {
         setSessionWpmData(prev => [...prev, completedStats.wpm]);
+      }
+      
+      // Update user progress in the database
+      if (user && completedStats && scriptId && completedStats.wpm > 0) {
+        try {
+          // Check if the attempt meets level criteria
+          const isSuccessful = meetsCriteria;
+          
+          // Get the current quote ID (this would need to be passed from the hook)
+          const quoteId = "current-quote-id"; // This would need to be properly obtained
+          
+          // Update progress
+          const updatedProgress = await gameProgressionService.updateUserProgress(
+            user.id,
+            quoteId,
+            completedStats.wpm,
+            completedStats.accuracy,
+            isSuccessful
+          );
+          
+          if (updatedProgress) {
+            setUserProgress(updatedProgress);
+            
+            // If level changed, update the level state
+            if (updatedProgress.currentLevel !== level) {
+              setLevel(updatedProgress.currentLevel);
+              
+              // Get new level parameters
+              const params = await gameProgressionService.getLevelParameters(updatedProgress.currentLevel);
+              setLevelParameters(params);
+            }
+          }
+          
+          // Update current quote index in the database
+          await gameProgressionService.updateCurrentQuoteIndex(user.id, currentQuoteIndex);
+        } catch (error) {
+          console.error("Error updating progress:", error);
+        }
       }
     }
   });
@@ -108,6 +180,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [loadNewQuote, resetTest, focusInput]);
+
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
     // Turn off repeat mode if death mode is turning on
@@ -117,6 +190,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput();
   };
+
   const toggleRepeatMode = () => {
     setRepeatMode(prev => !prev);
     // Turn off death mode if repeat mode is turning on
@@ -126,16 +200,53 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     resetTest();
     focusInput();
   };
+
   const handleResetClick = () => {
     resetTest();
     focusInput();
   };
+
+  // Display level info
+  const renderLevelInfo = () => {
+    if (!userProgress || !levelParameters) return null;
+    
+    const requiredWpm = userProgress.baselineWpm 
+      ? Math.round(userProgress.baselineWpm * levelParameters.wpmThresholdMultiplier) 
+      : 'N/A';
+    
+    return (
+      <div className="level-info-tooltip absolute left-0 top-full mt-2 bg-zinc-800 p-2 rounded-md shadow-lg z-10 text-xs">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+          <span className="text-gray-400">Required WPM:</span>
+          <span className="text-monkey-accent">{requiredWpm}</span>
+          
+          <span className="text-gray-400">Required Accuracy:</span>
+          <span className="text-monkey-accent">{levelParameters.accuracyThreshold}%</span>
+          
+          <span className="text-gray-400">Successful Quotes:</span>
+          <span className="text-monkey-accent">{userProgress.successfulQuotesCount} / {levelParameters.requiredQuotes}</span>
+          
+          <span className="text-gray-400">Attempts Used:</span>
+          <span className="text-monkey-accent">{userProgress.levelAttemptsUsed} / {levelParameters.maxAttempts}</span>
+          
+          <span className="text-gray-400">Best WPM:</span>
+          <span className="text-monkey-accent">{userProgress.levelBestWpm || '-'}</span>
+        </div>
+      </div>
+    );
+  };
+
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       {/* Level and Quote Progress Indicator */}
       <div className="w-full mb-2 flex justify-center gap-4">
-        <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm">
+        <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm relative group">
           <span className="text-gray-400">Level:</span>
           <span className="text-monkey-accent">{level}</span>
+          {/* Show level info on hover */}
+          <span className="text-xs text-gray-500 cursor-help">(i)</span>
+          <div className="hidden group-hover:block">
+            {renderLevelInfo()}
+          </div>
         </div>
         <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm">
           <span className="text-gray-400">Quote:</span>
@@ -202,4 +313,5 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <SessionWpmChart wpmData={sessionWpmData} />
     </div>;
 };
+
 export default TypingArea;

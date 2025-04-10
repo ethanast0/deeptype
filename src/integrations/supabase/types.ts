@@ -42,6 +42,114 @@ export type Database = {
         }
         Relationships: []
       }
+      game_levels: {
+        Row: {
+          accuracy_threshold: number
+          created_at: string
+          id: string
+          level_number: number
+          max_attempts: number
+          required_quotes: number
+          updated_at: string
+          wpm_threshold_multiplier: number
+        }
+        Insert: {
+          accuracy_threshold: number
+          created_at?: string
+          id?: string
+          level_number: number
+          max_attempts?: number
+          required_quotes: number
+          updated_at?: string
+          wpm_threshold_multiplier: number
+        }
+        Update: {
+          accuracy_threshold?: number
+          created_at?: string
+          id?: string
+          level_number?: number
+          max_attempts?: number
+          required_quotes?: number
+          updated_at?: string
+          wpm_threshold_multiplier?: number
+        }
+        Relationships: []
+      }
+      game_progress: {
+        Row: {
+          baseline_wpm: number | null
+          completed_quotes: string[]
+          created_at: string
+          current_level: number
+          current_quote_index: number
+          id: string
+          level_attempts_used: number
+          level_best_wpm: number
+          successful_quotes_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_wpm?: number | null
+          completed_quotes?: string[]
+          created_at?: string
+          current_level?: number
+          current_quote_index?: number
+          id?: string
+          level_attempts_used?: number
+          level_best_wpm?: number
+          successful_quotes_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_wpm?: number | null
+          completed_quotes?: string[]
+          created_at?: string
+          current_level?: number
+          current_quote_index?: number
+          id?: string
+          level_attempts_used?: number
+          level_best_wpm?: number
+          successful_quotes_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      level_completion_logs: {
+        Row: {
+          baseline_wpm: number
+          completed_at: string
+          id: string
+          level_best_wpm: number
+          level_number: number
+          next_level_number: number | null
+          next_level_threshold: number | null
+          user_id: string
+        }
+        Insert: {
+          baseline_wpm: number
+          completed_at?: string
+          id?: string
+          level_best_wpm: number
+          level_number: number
+          next_level_number?: number | null
+          next_level_threshold?: number | null
+          user_id: string
+        }
+        Update: {
+          baseline_wpm?: number
+          completed_at?: string
+          id?: string
+          level_best_wpm?: number
+          level_number?: number
+          next_level_number?: number | null
+          next_level_threshold?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_scripts: {
         Row: {
           created_at: string | null
