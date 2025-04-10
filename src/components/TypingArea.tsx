@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -41,19 +40,16 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   const [levelParameters, setLevelParameters] = useState<any>(null);
   const [levelContent, setLevelContent] = useState<Content[]>([]);
 
-  // Fetch user progress and level parameters
   useEffect(() => {
     const fetchProgressData = async () => {
       if (!user) return;
       
       try {
-        // Get user's progress
         const progress = await gameProgressionService.getUserProgress(user.id);
         if (progress) {
           setUserProgress(progress);
           setLevel(progress.currentLevel);
           
-          // Get level parameters
           const params = await gameProgressionService.getLevelParameters(progress.currentLevel);
           setLevelParameters(params);
         }
@@ -65,7 +61,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     fetchProgressData();
   }, [user]);
 
-  // Load content for the current level
   useEffect(() => {
     const loadLevelContent = async () => {
       try {
@@ -74,7 +69,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           setLevelContent(content);
           setTotalQuotes(content.length);
           
-          // Extract just the text content for backward compatibility
           const textContent = content.map(item => item.content);
           setLevelQuotes(textContent);
           onQuotesLoaded(textContent);
@@ -111,28 +105,22 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     deathMode,
     repeatMode,
     onQuoteComplete: async (completedStats, contentId) => {
-      // Update the current quote number if we have content
       if (currentContent) {
         setCurrentQuoteNumber(currentContent.quote_index);
       } else {
         setCurrentQuoteNumber(currentQuoteIndex + 1);
       }
       
-      // Add WPM to session data for chart
       if (completedStats && completedStats.wpm > 0) {
         setSessionWpmData(prev => [...prev, completedStats.wpm]);
       }
       
-      // Update user progress in the database
       if (user && completedStats && completedStats.wpm > 0) {
         try {
-          // Check if the attempt meets level criteria
           const isSuccessful = meetsCriteria;
           
-          // Get the current quote ID
           const quoteId = currentContent?.id || "current-quote-id";
           
-          // Update progress
           const updatedProgress = await gameProgressionService.updateUserProgress(
             user.id,
             quoteId,
@@ -144,17 +132,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           if (updatedProgress) {
             setUserProgress(updatedProgress);
             
-            // If level changed, update the level state
             if (updatedProgress.currentLevel !== level) {
               setLevel(updatedProgress.currentLevel);
               
-              // Get new level parameters
               const params = await gameProgressionService.getLevelParameters(updatedProgress.currentLevel);
               setLevelParameters(params);
             }
           }
           
-          // Update current quote index in the database
           if (currentContent) {
             await gameProgressionService.updateCurrentQuoteIndex(user.id, currentContent.quote_index);
           } else {
@@ -167,7 +152,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   });
 
-  // Update current quote number when content changes
   useEffect(() => {
     if (currentContent) {
       setCurrentQuoteNumber(currentContent.quote_index);
@@ -176,17 +160,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   }, [currentContent, currentQuoteIndex]);
 
-  // Auto-focus on mount and when resetting
   useEffect(() => {
     focusInput();
   }, [focusInput]);
 
-  // Update typing state when active state changes
   useEffect(() => {
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
-  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && e.shiftKey) {
@@ -206,7 +187,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   const toggleDeathMode = () => {
     setDeathMode(prev => !prev);
-    // Turn off repeat mode if death mode is turning on
     if (!deathMode) {
       setRepeatMode(false);
     }
@@ -216,7 +196,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 
   const toggleRepeatMode = () => {
     setRepeatMode(prev => !prev);
-    // Turn off death mode if repeat mode is turning on
     if (!repeatMode) {
       setDeathMode(false);
     }
@@ -229,7 +208,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     focusInput();
   };
 
-  // Display level info
   const renderLevelInfo = () => {
     if (!userProgress || !levelParameters) return null;
     
@@ -260,12 +238,10 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   };
 
   return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
-      {/* Level and Quote Progress Indicator */}
       <div className="w-full mb-2 flex justify-center gap-4">
         <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm relative group">
           <span className="text-gray-400">Level:</span>
           <span className="text-monkey-accent">{level}</span>
-          {/* Show level info on hover */}
           <span className="text-xs text-gray-500 cursor-help">(i)</span>
           <div className="hidden group-hover:block">
             {renderLevelInfo()}
@@ -279,36 +255,34 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         </div>
       </div>
       
-      {/* Stats Panel */}
       <div className="w-full flex justify-between items-center p-2 px-0 py-0 my-0">
         <Stats stats={stats} isActive={isActive} isFinished={isFinished} className="self-start" deathMode={deathMode} deathModeFailures={deathModeFailures} repeatMode={repeatMode} />
         {user && <HistoricalStats className="self-end" displayAccuracy={false} />}
       </div>
       
-      {/* Typing Area */}
       <div className="w-full p-4 px-0 py-0 bg-inherit">
         <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
-          {words.map((word, wordIndex) => <React.Fragment key={wordIndex}>
-              {/* Word with characters */}
+          {words.map((word, wordIndex) => (
+            <React.Fragment key={wordIndex}>
               <div className="flex">
-                {word.characters.map((char, charIndex) => <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
-              "text-monkey-accent": char.state === 'correct',
-              "text-monkey-error": char.state === 'incorrect',
-              "text-white": char.state === 'current' || char.state === 'inactive'
-            })}>
+                {word.characters.map((char, charIndex) => (
+                  <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
+                    "text-monkey-accent": char.state === 'correct',
+                    "text-monkey-error": char.state === 'incorrect',
+                    "text-white": char.state === 'current' || char.state === 'inactive'
+                  })}>
                     {char.char}
-                  </span>)}
+                  </span>
+                ))}
               </div>
-              {/* Add space between words (except for the last word) */}
               {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>)}
+            </React.Fragment>
+          ))}
           
-          {/* Hidden input to capture keystrokes */}
           <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
         </div>
       </div>
 
-      {/* Controls */}
       <div className="w-full flex items-center gap-2 p-2 px-0 py-0 my-[8px] mx-0">
         <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-teal-900 hover:bg-teal-800">
           redo [shift + ⌫] <DeleteIcon className="h-3.5 w-3.5" />
@@ -329,10 +303,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         </div>
       </div>
 
-      {/* Race Animation */}
       <RaceAnimation totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1} currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex} className="my-4" />
       
-      {/* Session Performance Chart */}
       <SessionWpmChart wpmData={sessionWpmData} />
     </div>;
 };
