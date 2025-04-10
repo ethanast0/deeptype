@@ -21,14 +21,50 @@ export interface UserProgress {
   currentQuoteIndex: number; // Track the current quote index within the level
 }
 
+// Define types for our table rows
+interface GameLevelRow {
+  id: string;
+  level_number: number;
+  wpm_threshold_multiplier: number;
+  accuracy_threshold: number;
+  required_quotes: number;
+  max_attempts: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface GameProgressRow {
+  id: string;
+  user_id: string;
+  baseline_wpm: number | null;
+  current_level: number;
+  level_attempts_used: number;
+  successful_quotes_count: number;
+  level_best_wpm: number;
+  completed_quotes: string[];
+  current_quote_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface LevelCompletionLogRow {
+  id: string;
+  user_id: string;
+  level_number: number;
+  baseline_wpm: number;
+  level_best_wpm: number;
+  next_level_number: number | null;
+  next_level_threshold: number | null;
+  completed_at: string;
+}
+
 export const gameProgressionService = {
   // Get the progression matrix from the database
   async getProgressionMatrix(): Promise<Record<number, GameLevel>> {
     try {
       const { data, error } = await supabase
         .from('game_levels')
-        .select('*')
-        .order('level_number', { ascending: true });
+        .select('*') as { data: GameLevelRow[] | null, error: any };
         
       if (error) {
         console.error("Error fetching game levels:", error);
@@ -37,15 +73,17 @@ export const gameProgressionService = {
       
       // Convert the array to a record indexed by level number
       const levels: Record<number, GameLevel> = {};
-      data.forEach(level => {
-        levels[level.level_number] = {
-          level: level.level_number,
-          wpmThresholdMultiplier: level.wpm_threshold_multiplier,
-          accuracyThreshold: level.accuracy_threshold,
-          requiredQuotes: level.required_quotes,
-          maxAttempts: level.max_attempts
-        };
-      });
+      if (data) {
+        data.forEach(level => {
+          levels[level.level_number] = {
+            level: level.level_number,
+            wpmThresholdMultiplier: level.wpm_threshold_multiplier,
+            accuracyThreshold: level.accuracy_threshold,
+            requiredQuotes: level.required_quotes,
+            maxAttempts: level.max_attempts
+          };
+        });
+      }
       
       return levels;
     } catch (error) {
@@ -79,7 +117,7 @@ export const gameProgressionService = {
         .from('game_progress')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .single() as { data: GameProgressRow | null, error: any };
         
       if (error) {
         if (error.code === 'PGRST116') { // No rows returned
@@ -89,6 +127,8 @@ export const gameProgressionService = {
         console.error("Error fetching user progress:", error);
         return null;
       }
+      
+      if (!data) return null;
       
       return {
         userId: data.user_id,
@@ -122,7 +162,7 @@ export const gameProgressionService = {
     try {
       const { error } = await supabase
         .from('game_progress')
-        .insert(newProgress);
+        .insert(newProgress) as { error: any };
         
       if (error) {
         console.error("Error initializing user progress:", error);
@@ -208,7 +248,7 @@ export const gameProgressionService = {
           level_best_wpm: updatedProgress.levelBestWpm,
           completed_quotes: updatedProgress.completedQuotes
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId) as { error: any };
         
       if (error) {
         console.error("Error updating user progress:", error);
@@ -249,7 +289,7 @@ export const gameProgressionService = {
           level_best_wpm: progress.levelBestWpm,
           next_level_number: nextLevel,
           next_level_threshold: nextLevelThreshold
-        });
+        }) as { error: any };
       
       // Show level completion notification
       this.showLevelCompletionNotification(
@@ -270,7 +310,7 @@ export const gameProgressionService = {
           completed_quotes: [],
           current_quote_index: 0
         })
-        .eq('user_id', userId);
+        .eq('user_id', userId) as { error: any };
     } catch (error) {
       console.error("Error handling level completion:", error);
     }
@@ -340,7 +380,7 @@ export const gameProgressionService = {
       const { error } = await supabase
         .from('game_progress')
         .update({ current_quote_index: newIndex })
-        .eq('user_id', userId);
+        .eq('user_id', userId) as { error: any };
         
       if (error) {
         console.error("Error updating current quote index:", error);
