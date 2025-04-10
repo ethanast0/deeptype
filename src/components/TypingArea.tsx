@@ -266,11 +266,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             <React.Fragment key={wordIndex}>
               <div className="flex">
                 {word.characters.map((char, charIndex) => (
-                  <span key={`${wordIndex}-${charIndex}`} className={cn("character", {
-                    "text-monkey-accent": char.state === 'correct',
-                    "text-monkey-error": char.state === 'incorrect',
-                    "text-white": char.state === 'current' || char.state === 'inactive'
-                  })}>
+                  <span 
+                    key={`${wordIndex}-${charIndex}`} 
+                    className={cn("character", {
+                      "text-monkey-accent": char.state === 'correct',
+                      "text-monkey-error": char.state === 'incorrect',
+                      "text-white": char.state === 'current' || char.state === 'inactive'
+                    })}
+                  >
                     {char.char}
                   </span>
                 ))}
@@ -279,7 +282,17 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             </React.Fragment>
           ))}
           
-          <input ref={inputRef} type="text" className="typing-input" onChange={handleInput} autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck="false" aria-label="Typing input" />
+          <input 
+            ref={inputRef} 
+            type="text" 
+            className="typing-input" 
+            onChange={handleInput} 
+            autoComplete="off" 
+            autoCapitalize="off" 
+            autoCorrect="off" 
+            spellCheck="false" 
+            aria-label="Typing input" 
+          />
         </div>
       </div>
 
