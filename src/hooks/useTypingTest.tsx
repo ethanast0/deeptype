@@ -43,6 +43,8 @@ const useTypingTest = ({
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [completedQuotes, setCompletedQuotes] = useState<number>(0);
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
+  const [meetsCriteria, setMeetsCriteria] = useState<boolean>(false);
+  const [baselineWpm, setBaselineWpm] = useState<number | null>(null);
 
   const { user } = useAuth();
   
@@ -186,6 +188,7 @@ const useTypingTest = ({
     resetTest();
     focusInput();
     resultRecordedRef.current = false;
+    setMeetsCriteria(false);
   }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
@@ -451,6 +454,14 @@ const useTypingTest = ({
             const newCompletedQuotes = completedQuotes + 1;
             setCompletedQuotes(newCompletedQuotes);
             
+            if (stats.wpm > 0 && stats.accuracy >= 90) {
+              setMeetsCriteria(true);
+            }
+            
+            if (!baselineWpm || stats.wpm > baselineWpm) {
+              setBaselineWpm(stats.wpm);
+            }
+            
             if (onQuoteComplete) {
               onQuoteComplete(stats);
             }
@@ -471,7 +482,7 @@ const useTypingTest = ({
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput]);
+  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput, baselineWpm]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
@@ -518,7 +529,9 @@ const useTypingTest = ({
     loadNewQuote,
     focusInput,
     deathMode,
-    deathModeFailures
+    deathModeFailures,
+    meetsCriteria,
+    baselineWpm
   };
 };
 

@@ -4,12 +4,12 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import TypingArea from '../components/TypingArea';
 import PanelManager from '../components/PanelManager';
-import { defaultQuotes } from '../utils/typingUtils';
+import { typingContent } from '../data/typing_content';
 import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
 const Index = () => {
-  const [quotes, setQuotes] = useState<string[]>(defaultQuotes);
+  const [quotes, setQuotes] = useState<string[]>(typingContent.level_1);
   const [activeScriptId, setActiveScriptId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const { user } = useAuth();
@@ -22,7 +22,7 @@ const Index = () => {
           .from('scripts')
           .select('id')
           .eq('user_id', user.id)
-          .eq('name', 'Default')
+          .eq('name', 'Quantum Computing - Level 1')
           .maybeSingle();
           
         if (error) {
@@ -38,9 +38,9 @@ const Index = () => {
             .from('scripts')
             .insert({
               user_id: user.id,
-              name: 'Default',
-              content: JSON.stringify(defaultQuotes),
-              category: 'Default'
+              name: 'Quantum Computing - Level 1',
+              content: JSON.stringify(typingContent.level_1),
+              category: 'Quantum Computing'
             })
             .select()
             .single();
@@ -53,7 +53,7 @@ const Index = () => {
           scriptId = newScript.id;
 
           // Also insert quotes into script_quotes table
-          const quoteInserts = defaultQuotes.map((quote, index) => ({
+          const quoteInserts = typingContent.level_1.map((quote, index) => ({
             script_id: scriptId,
             content: quote,
             quote_index: index
