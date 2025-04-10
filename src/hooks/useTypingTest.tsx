@@ -10,16 +10,19 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
 import { supabase } from '../integrations/supabase/client';
+import { contentService, Content } from '../services/contentService';
 
 interface UseTypingTestProps {
+  level?: number;
   quotes?: string[];
   scriptId?: string | null;
-  onQuoteComplete?: (stats?: TypingStats) => void;
+  onQuoteComplete?: (stats?: TypingStats, contentId?: string) => void;
   deathMode?: boolean;
   repeatMode?: boolean;
 }
 
 const useTypingTest = ({ 
+  level = 1,
   quotes = defaultQuotes, 
   scriptId, 
   onQuoteComplete,
@@ -46,6 +49,7 @@ const useTypingTest = ({
   const [meetsCriteria, setMeetsCriteria] = useState<boolean>(false);
   const [baselineWpm, setBaselineWpm] = useState<number | null>(null);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState<number>(0);
+  const [currentContent, setCurrentContent] = useState<Content | null>(null);
 
   const { user } = useAuth();
   
@@ -54,6 +58,32 @@ const useTypingTest = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const resultRecordedRef = useRef<boolean>(false);
   const processedQuotesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const loadInitialContent = async () => {
+      try {
+        const content = await contentService.getFirstQuoteForLevel(level);
+        if (content) {
+          setCurrentContent(content);
+          setCurrentQuote(content.content);
+          setCurrentQuoteId(content.content_id);
+          setCurrentQuoteIndex(content.quote_index);
+          processQuote(content.content);
+        } else {
+          const quote = quotes[0];
+          setCurrentQuote(quote);
+          processQuote(quote);
+        }
+      } catch (error) {
+        console.error("Error loading initial content:", error);
+        const quote = quotes[0];
+        setCurrentQuote(quote);
+        processQuote(quote);
+      }
+    };
+
+    loadInitialContent();
+  }, [level, quotes]);
 
   const focusInput = useCallback(() => {
     if (inputRef.current) {
@@ -137,42 +167,72 @@ const useTypingTest = ({
   }, [currentWordIndex]);
 
   const loadNewQuote = useCallback(async () => {
-    setCurrentQuoteId(null);
-    
-    if (scriptId) {
-      try {
-        const { data, error } = await supabase
-          .from('script_quotes')
-          .select('id, content, quote_index')
-          .eq('script_id', scriptId)
-          .order('quote_index', { ascending: true });
-          
-        if (error || !data || data.length === 0) {
-          console.error('Error loading quotes or no quotes found:', error);
+    try {
+      if (currentContent) {
+        const nextContent = await contentService.getNextQuote(level, currentContent.quote_index);
+        
+        if (nextContent) {
+          setCurrentContent(nextContent);
+          setCurrentQuote(nextContent.content);
+          setCurrentQuoteId(nextContent.content_id);
+          setCurrentQuoteIndex(nextContent.quote_index);
+          processQuote(nextContent.content);
+        } else {
+          const firstContent = await contentService.getFirstQuoteForLevel(level);
+          if (firstContent) {
+            setCurrentContent(firstContent);
+            setCurrentQuote(firstContent.content);
+            setCurrentQuoteId(firstContent.content_id);
+            setCurrentQuoteIndex(firstContent.quote_index);
+            processQuote(firstContent.content);
+          } else {
+            const quote = quotes[currentQuoteIndex % quotes.length];
+            setCurrentQuote(quote);
+            processQuote(quote);
+            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
+          }
+        }
+      } else if (scriptId) {
+        try {
+          const { data, error } = await supabase
+            .from('script_quotes')
+            .select('id, content, quote_index')
+            .eq('script_id', scriptId)
+            .order('quote_index', { ascending: true });
+            
+          if (error || !data || data.length === 0) {
+            console.error('Error loading quotes or no quotes found:', error);
+            const quote = quotes[currentQuoteIndex % quotes.length];
+            setCurrentQuote(quote);
+            processQuote(quote);
+            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
+          } else {
+            const nextQuoteIndex = currentQuoteIndex % data.length;
+            const nextQuote = data[nextQuoteIndex];
+            
+            console.log(`Loading quote ${nextQuoteIndex + 1} of ${data.length}`);
+            
+            setCurrentQuote(nextQuote.content);
+            setCurrentQuoteId(nextQuote.id);
+            processQuote(nextQuote.content);
+            
+            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % data.length);
+          }
+        } catch (error) {
+          console.error('Error loading quote from database:', error);
           const quote = quotes[currentQuoteIndex % quotes.length];
           setCurrentQuote(quote);
           processQuote(quote);
           setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
-        } else {
-          const nextQuoteIndex = currentQuoteIndex % data.length;
-          const nextQuote = data[nextQuoteIndex];
-          
-          console.log(`Loading quote ${nextQuoteIndex + 1} of ${data.length}`);
-          
-          setCurrentQuote(nextQuote.content);
-          setCurrentQuoteId(nextQuote.id);
-          processQuote(nextQuote.content);
-          
-          setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % data.length);
         }
-      } catch (error) {
-        console.error('Error loading quote from database:', error);
+      } else {
         const quote = quotes[currentQuoteIndex % quotes.length];
         setCurrentQuote(quote);
         processQuote(quote);
         setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
       }
-    } else {
+    } catch (error) {
+      console.error("Error loading new quote:", error);
       const quote = quotes[currentQuoteIndex % quotes.length];
       setCurrentQuote(quote);
       processQuote(quote);
@@ -183,7 +243,7 @@ const useTypingTest = ({
     focusInput();
     resultRecordedRef.current = false;
     setMeetsCriteria(false);
-  }, [quotes, scriptId, processQuote, resetTest, focusInput, currentQuoteIndex]);
+  }, [currentContent, level, quotes, scriptId, currentQuoteIndex, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
     const currentWord = words[currentWordIndex];
@@ -418,12 +478,14 @@ const useTypingTest = ({
 
   useEffect(() => {
     const recordHistory = async () => {
-      if (isFinished && user && scriptId && !resultRecordedRef.current) {
+      if (isFinished && user && !resultRecordedRef.current) {
         resultRecordedRef.current = true;
         try {
           console.log('Recording typing session:', {
             userId: user.id,
-            scriptId,
+            scriptId: scriptId || undefined,
+            contentId: currentContent?.id,
+            contentIdString: currentContent?.content_id,
             wpm: stats.wpm,
             accuracy: stats.accuracy,
             elapsedTime: stats.elapsedTime
@@ -431,20 +493,30 @@ const useTypingTest = ({
           
           const roundedElapsedTime = Math.round(stats.elapsedTime);
           
-          const success = await typingHistoryService.recordSession(
-            user.id,
-            scriptId,
-            stats.wpm,
-            stats.accuracy,
-            roundedElapsedTime,
-            currentQuoteId || undefined
-          );
+          let success = false;
+          
+          if (scriptId) {
+            success = await typingHistoryService.recordSession(
+              user.id,
+              scriptId,
+              stats.wpm,
+              stats.accuracy,
+              roundedElapsedTime,
+              currentQuoteId || undefined
+            );
+          } else if (currentContent) {
+            success = await typingHistoryService.recordContentSession(
+              user.id,
+              currentContent.id,
+              stats.wpm,
+              stats.accuracy,
+              roundedElapsedTime,
+              currentContent.level_number,
+              currentContent.content_id
+            );
+          }
           
           if (success) {
-            if (currentQuoteId) {
-              await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
-            }
-            
             const newCompletedQuotes = completedQuotes + 1;
             setCompletedQuotes(newCompletedQuotes);
             
@@ -457,7 +529,7 @@ const useTypingTest = ({
             }
             
             if (onQuoteComplete) {
-              onQuoteComplete(stats);
+              onQuoteComplete(stats, currentContent?.content_id);
             }
 
             if (repeatMode) {
@@ -476,7 +548,7 @@ const useTypingTest = ({
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput, baselineWpm]);
+  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput, baselineWpm, currentContent]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
@@ -526,7 +598,8 @@ const useTypingTest = ({
     deathModeFailures,
     meetsCriteria,
     baselineWpm,
-    currentQuoteIndex
+    currentQuoteIndex,
+    currentContent
   };
 };
 

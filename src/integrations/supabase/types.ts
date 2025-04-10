@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      content: {
+        Row: {
+          content: string
+          content_id: string
+          created_at: string | null
+          id: string
+          level_number: number
+          quote_index: number
+        }
+        Insert: {
+          content: string
+          content_id: string
+          created_at?: string | null
+          id?: string
+          level_number: number
+          quote_index: number
+        }
+        Update: {
+          content?: string
+          content_id?: string
+          created_at?: string | null
+          id?: string
+          level_number?: number
+          quote_index?: number
+        }
+        Relationships: []
+      }
       custom_panels: {
         Row: {
           config: Json | null
@@ -437,6 +464,10 @@ export type Database = {
         Returns: undefined
       }
       migrate_script_content_to_quotes: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      populate_content_table: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

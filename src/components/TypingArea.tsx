@@ -10,8 +10,8 @@ import { Toggle } from './ui/toggle';
 import { SkullIcon, SmileIcon, RepeatIcon, DeleteIcon } from 'lucide-react';
 import SessionWpmChart from './SessionWpmChart';
 import RaceAnimation from './RaceAnimation';
-import { typingContent } from '../data/typing_content';
 import { gameProgressionService } from '../services/gameProgressionService';
+import { contentService, Content } from '../services/contentService';
 import { toast } from '../hooks/use-toast';
 
 interface TypingAreaProps {
@@ -31,14 +31,15 @@ const TypingArea: React.FC<TypingAreaProps> = ({
 }) => {
   const { user } = useAuth();
   const [level, setLevel] = useState(1);
-  const [levelQuotes, setLevelQuotes] = useState<string[]>(typingContent.level_1);
-  const [totalQuotes, setTotalQuotes] = useState(levelQuotes.length);
+  const [levelQuotes, setLevelQuotes] = useState<string[]>([]);
+  const [totalQuotes, setTotalQuotes] = useState(0);
   const [currentQuoteNumber, setCurrentQuoteNumber] = useState(1);
   const [deathMode, setDeathMode] = useState(false);
   const [repeatMode, setRepeatMode] = useState(false);
   const [sessionWpmData, setSessionWpmData] = useState<number[]>([]);
   const [userProgress, setUserProgress] = useState<any>(null);
   const [levelParameters, setLevelParameters] = useState<any>(null);
+  const [levelContent, setLevelContent] = useState<Content[]>([]);
 
   // Fetch user progress and level parameters
   useEffect(() => {
@@ -64,6 +65,28 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     fetchProgressData();
   }, [user]);
 
+  // Load content for the current level
+  useEffect(() => {
+    const loadLevelContent = async () => {
+      try {
+        const content = await contentService.getContentForLevel(level);
+        if (content && content.length > 0) {
+          setLevelContent(content);
+          setTotalQuotes(content.length);
+          
+          // Extract just the text content for backward compatibility
+          const textContent = content.map(item => item.content);
+          setLevelQuotes(textContent);
+          onQuotesLoaded(textContent);
+        }
+      } catch (error) {
+        console.error("Error loading level content:", error);
+      }
+    };
+    
+    loadLevelContent();
+  }, [level, onQuotesLoaded]);
+
   const {
     words,
     stats,
@@ -79,15 +102,21 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     deathModeFailures,
     currentQuoteIndex,
     meetsCriteria,
-    baselineWpm
+    baselineWpm,
+    currentContent
   } = useTypingTest({
+    level,
     quotes: levelQuotes,
     scriptId,
     deathMode,
     repeatMode,
-    onQuoteComplete: async (completedStats) => {
-      // Update the current quote number
-      setCurrentQuoteNumber(currentQuoteIndex + 1);
+    onQuoteComplete: async (completedStats, contentId) => {
+      // Update the current quote number if we have content
+      if (currentContent) {
+        setCurrentQuoteNumber(currentContent.quote_index);
+      } else {
+        setCurrentQuoteNumber(currentQuoteIndex + 1);
+      }
       
       // Add WPM to session data for chart
       if (completedStats && completedStats.wpm > 0) {
@@ -95,13 +124,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       }
       
       // Update user progress in the database
-      if (user && completedStats && scriptId && completedStats.wpm > 0) {
+      if (user && completedStats && completedStats.wpm > 0) {
         try {
           // Check if the attempt meets level criteria
           const isSuccessful = meetsCriteria;
           
-          // Get the current quote ID (this would need to be passed from the hook)
-          const quoteId = "current-quote-id"; // This would need to be properly obtained
+          // Get the current quote ID
+          const quoteId = currentContent?.id || "current-quote-id";
           
           // Update progress
           const updatedProgress = await gameProgressionService.updateUserProgress(
@@ -126,7 +155,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           }
           
           // Update current quote index in the database
-          await gameProgressionService.updateCurrentQuoteIndex(user.id, currentQuoteIndex);
+          if (currentContent) {
+            await gameProgressionService.updateCurrentQuoteIndex(user.id, currentContent.quote_index);
+          } else {
+            await gameProgressionService.updateCurrentQuoteIndex(user.id, currentQuoteIndex);
+          }
         } catch (error) {
           console.error("Error updating progress:", error);
         }
@@ -134,10 +167,14 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     }
   });
 
-  // Show the actual quote number in the UI (1-based instead of 0-based index)
+  // Update current quote number when content changes
   useEffect(() => {
-    setCurrentQuoteNumber(currentQuoteIndex + 1);
-  }, [currentQuoteIndex]);
+    if (currentContent) {
+      setCurrentQuoteNumber(currentContent.quote_index);
+    } else {
+      setCurrentQuoteNumber(currentQuoteIndex + 1);
+    }
+  }, [currentContent, currentQuoteIndex]);
 
   // Auto-focus on mount and when resetting
   useEffect(() => {
@@ -148,20 +185,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   useEffect(() => {
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
-
-  // Update total quotes when quotes array changes
-  useEffect(() => {
-    setTotalQuotes(levelQuotes.length);
-  }, [levelQuotes]);
-
-  // Update level quotes when level changes
-  useEffect(() => {
-    const newLevelQuotes = typingContent[`level_${level}` as keyof typeof typingContent] as string[];
-    if (newLevelQuotes) {
-      setLevelQuotes(newLevelQuotes);
-      onQuotesLoaded(newLevelQuotes);
-    }
-  }, [level, onQuotesLoaded]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
