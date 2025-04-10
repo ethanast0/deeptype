@@ -185,7 +185,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
         
         <div className="ml-auto flex items-center gap-2">
-          <Toggle pressed={repeatMode} onPressedChange={toggleRepeatMode} aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} className="bg-slate-800 hover:bg-slate-700 data-[state=on]:bg-green-900">
+          <Toggle pressed={repeatMode} onPressedChange={toggleRepeatMode} aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} className="bg-zinc-900 hover:bg-slate-700 data-[state=on]:bg-green-900">
             <RepeatIcon className="w-4 h-4" />
           </Toggle>
           
