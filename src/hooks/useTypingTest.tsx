@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -50,6 +51,7 @@ const useTypingTest = ({
   const [baselineWpm, setBaselineWpm] = useState<number | null>(null);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState<number>(0);
   const [currentContent, setCurrentContent] = useState<Content | null>(null);
+  const [lastTypedChar, setLastTypedChar] = useState<string | null>(null);
 
   const { user } = useAuth();
   
@@ -346,18 +348,32 @@ const useTypingTest = ({
     }
   }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
+  // Fixed handleInput to prevent the race condition with input clearing
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
+    const typedChar = input.charAt(input.length - 1);
+    
+    // Don't process empty inputs
+    if (!typedChar) return;
+    
+    // Don't process if it's the same character we just processed (prevents double processing)
+    if (typedChar === lastTypedChar) return;
+    setLastTypedChar(typedChar);
+    
+    // Clear input after we've captured the character
+    if (e.target && e.target.value) {
+      // Use setTimeout to prevent React batching issues
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
+      }, 0);
+    }
     
     if (!isActive && !isFinished) {
       setIsActive(true);
       startTimer();
     }
-    
-    e.target.value = '';
-    
-    const typedChar = input.charAt(input.length - 1);
-    if (!typedChar) return;
     
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
@@ -442,7 +458,18 @@ const useTypingTest = ({
       
       setCurrentCharIndex(prev => prev + 1);
     }
-  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset]);
+  }, [
+    currentCharIndex, 
+    currentWordIndex, 
+    isActive, 
+    isFinished, 
+    startTimer, 
+    stopTimer, 
+    words, 
+    deathMode, 
+    deathModeReset,
+    lastTypedChar
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

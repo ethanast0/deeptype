@@ -264,27 +264,25 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       
       <div className="w-full p-4 px-0 py-0 bg-inherit">
         <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
-          {words.map((word, wordIndex) => {
-            return (
-              <React.Fragment key={wordIndex}>
-                <div className="flex">
-                  {word.characters.map((char, charIndex) => (
-                    <span 
-                      key={`${wordIndex}-${charIndex}`} 
-                      className={cn("character", {
-                        "text-monkey-accent": char.state === 'correct',
-                        "text-monkey-error": char.state === 'incorrect',
-                        "text-white": char.state === 'current' || char.state === 'inactive'
-                      })}
-                    >
-                      {char.char}
-                    </span>
-                  ))}
-                </div>
-                {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-              </React.Fragment>
-            );
-          })}
+          {words.map((word, wordIndex) => (
+            <React.Fragment key={wordIndex}>
+              <div className="flex">
+                {word.characters.map((char, charIndex) => (
+                  <span 
+                    key={`${wordIndex}-${charIndex}`} 
+                    className={cn("character", {
+                      "text-monkey-accent": char.state === 'correct',
+                      "text-monkey-error": char.state === 'incorrect',
+                      "text-white": char.state === 'current' || char.state === 'inactive'
+                    })}
+                  >
+                    {char.char}
+                  </span>
+                ))}
+              </div>
+              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+            </React.Fragment>
+          ))}
           
           <input 
             ref={inputRef} 
