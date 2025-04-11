@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -237,7 +238,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     );
   };
 
-  return <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
+  return (
+    <div className={cn("typing-area-container w-full flex flex-col gap-1", className)}>
       <div className="w-full mb-2 flex justify-center gap-4">
         <div className="inline-flex gap-2 px-3 py-1 bg-zinc-800 rounded-md text-sm relative group">
           <span className="text-gray-400">Level:</span>
@@ -262,25 +264,27 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       
       <div className="w-full p-4 px-0 py-0 bg-inherit">
         <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
-          {words.map((word, wordIndex) => (
-            <React.Fragment key={wordIndex}>
-              <div className="flex">
-                {word.characters.map((char, charIndex) => (
-                  <span 
-                    key={`${wordIndex}-${charIndex}`} 
-                    className={cn("character", {
-                      "text-monkey-accent": char.state === 'correct',
-                      "text-monkey-error": char.state === 'incorrect',
-                      "text-white": char.state === 'current' || char.state === 'inactive'
-                    })}
-                  >
-                    {char.char}
-                  </span>
-                ))}
-              </div>
-              {wordIndex < words.length - 1 && <span>&nbsp;</span>}
-            </React.Fragment>
-          ))}
+          {words.map((word, wordIndex) => {
+            return (
+              <React.Fragment key={wordIndex}>
+                <div className="flex">
+                  {word.characters.map((char, charIndex) => (
+                    <span 
+                      key={`${wordIndex}-${charIndex}`} 
+                      className={cn("character", {
+                        "text-monkey-accent": char.state === 'correct',
+                        "text-monkey-error": char.state === 'incorrect',
+                        "text-white": char.state === 'current' || char.state === 'inactive'
+                      })}
+                    >
+                      {char.char}
+                    </span>
+                  ))}
+                </div>
+                {wordIndex < words.length - 1 && <span>&nbsp;</span>}
+              </React.Fragment>
+            );
+          })}
           
           <input 
             ref={inputRef} 
@@ -319,7 +323,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       <RaceAnimation totalChars={words.reduce((total, word) => total + word.characters.length + 1, 0) - 1} currentCharIndex={words.slice(0, currentWordIndex).reduce((total, word) => total + word.characters.length + 1, 0) + currentCharIndex} className="my-4" />
       
       <SessionWpmChart wpmData={sessionWpmData} />
-    </div>;
+    </div>
+  );
 };
 
 export default TypingArea;
