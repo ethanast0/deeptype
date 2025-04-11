@@ -289,7 +289,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           <input 
             ref={inputRef} 
             type="text" 
-            className="typing-input" 
+            className="typing-input opacity-0 absolute" 
             onChange={handleInput} 
             autoComplete="off" 
             autoCapitalize="off" 
