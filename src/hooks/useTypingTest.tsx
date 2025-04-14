@@ -370,6 +370,8 @@ const useTypingTest = ({
   // Improved handleInput to use controlled input and avoid race conditions
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
+    setInputValue(input); // Update the input value state immediately
+    
     const typedChar = input.charAt(input.length - 1);
     
     // Don't process empty inputs
@@ -466,9 +468,6 @@ const useTypingTest = ({
       });
       
       setCurrentCharIndex(prev => prev + 1);
-      
-      // Clear input value after processing
-      setInputValue('');
     }
   }, [
     currentCharIndex, 
