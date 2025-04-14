@@ -220,7 +220,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   }, [currentContent, currentQuoteIndex]);
 
   useEffect(() => {
-    focusInput();
+    // Add a small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      focusInput();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [focusInput]);
 
   useEffect(() => {
@@ -321,7 +326,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
       
       <div className="w-full p-4 px-0 py-0 bg-inherit">
-        <div className="typing-area flex flex-wrap text-2xl" onClick={focusInput}>
+        <div className="typing-area flex flex-wrap text-2xl relative" onClick={focusInput}>
           {words.map((word, wordIndex) => (
             <React.Fragment key={wordIndex}>
               <div className="flex">
@@ -345,8 +350,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           <input 
             ref={inputRef} 
             type="text" 
-            className="typing-input opacity-0 absolute" 
+            className="typing-input absolute h-1 w-1 opacity-0 pointer-events-auto" 
             onChange={handleInput} 
+            onBlur={() => inputRef.current?.focus()} 
             autoComplete="off" 
             autoCapitalize="off" 
             autoCorrect="off" 
