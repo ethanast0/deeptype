@@ -231,6 +231,19 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     const quoteNumber = currentContent?.quote_index || currentQuoteIndex + 1;
     setCurrentQuoteNumber(quoteNumber);
   }, [currentContent, currentQuoteIndex]);
+  
+  // Add a special focus handler for after level changes
+  useEffect(() => {
+    // When level changes, ensure we refocus after content has loaded
+    const refocusTimer = setTimeout(() => {
+      if (document.hasFocus()) {
+        focusInput();
+        console.log('Focus set after level change');
+      }
+    }, 300);
+    
+    return () => clearTimeout(refocusTimer);
+  }, [level, focusInput]);
 
   // Improved focus management
   useEffect(() => {
@@ -270,18 +283,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
-  // Improved key event handling
+  // Improved key event handling - no longer duplicating event handling from useTypingTest
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle events when the typing area should be active
+      // Only handling Shift+Backspace here since useTypingTest handles other keys
       if (document.activeElement === inputRef.current) {
-        if (e.key === 'Enter' && e.shiftKey) {
-          e.preventDefault();
-          loadNewQuote();
-        } else if (e.key === 'Backspace' && e.shiftKey) {
+        if (e.key === 'Backspace' && e.shiftKey) {
           e.preventDefault();
           resetTest();
-          focusInput();
+          // Give time for the reset to complete before focusing
+          setTimeout(() => {
+            focusInput();
+          }, 100);
         }
       }
     };
@@ -291,7 +304,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, resetTest, focusInput, inputRef]);
+  }, [resetTest, focusInput, inputRef]);
 
   // Add focus debugging
   useEffect(() => {
@@ -328,8 +341,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setRepeatMode(false);
     }
     resetTest();
-    // Ensure focus after toggling mode
-    setTimeout(focusInput, 10);
+    // Ensure focus after toggling mode with longer timeout
+    setTimeout(focusInput, 100);
   }, [deathMode, resetTest, focusInput]);
 
   const toggleRepeatMode = useCallback(() => {
@@ -338,21 +351,25 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setDeathMode(false);
     }
     resetTest();
-    // Ensure focus after toggling mode
-    setTimeout(focusInput, 10);
+    // Ensure focus after toggling mode with longer timeout
+    setTimeout(focusInput, 100);
   }, [repeatMode, resetTest, focusInput]);
 
   const handleResetClick = useCallback(() => {
     resetTest();
-    // Ensure focus after reset
-    setTimeout(focusInput, 10);
+    // Ensure focus after reset with longer timeout
+    setTimeout(focusInput, 100);
   }, [resetTest, focusInput]);
 
   // Improved container click handler
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Stop event propagation
-    focusInput();
+    
+    // Add a slight delay to ensure all state updates are complete
+    setTimeout(() => {
+      focusInput();
+    }, 100);
   }, [focusInput]);
 
   const renderLevelInfo = () => {
@@ -443,8 +460,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 setTimeout(() => {
                   if (inputRef.current && document.hasFocus()) {
                     inputRef.current.focus();
+                    console.log('Refocused after blur');
                   }
-                }, 0);
+                }, 100); // Increased timeout for more reliability
               }
             }}
             autoComplete="off" 
@@ -463,8 +481,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <button 
           onClick={() => {
             loadNewQuote();
-            // Ensure focus after loading new quote
-            setTimeout(focusInput, 10);
+            // Ensure focus after loading new quote with longer timeout
+            setTimeout(focusInput, 300);
           }} 
           className="button button-accent text-gray-400 font-normal text-sm bg-zinc-900 hover:bg-zinc-800"
         >

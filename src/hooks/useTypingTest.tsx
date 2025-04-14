@@ -53,6 +53,7 @@ const useTypingTest = ({
   const [currentContent, setCurrentContent] = useState<Content | null>(null);
   const [lastTypedChar, setLastTypedChar] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState(''); // New state for controlled input
+  const [isTransitioning, setIsTransitioning] = useState(false); // Track level/quote transitions
 
   const { user } = useAuth();
   
@@ -90,7 +91,13 @@ const useTypingTest = ({
 
   // Improved focusInput function with better error handling and logging
   const focusInput = useCallback(() => {
-    // Short timeout to ensure DOM is ready
+    // Don't try to focus during transitions
+    if (isTransitioning) {
+      console.log('Skipping focus during transition');
+      return;
+    }
+    
+    // Increased timeout to ensure DOM is ready
     setTimeout(() => {
       if (inputRef.current && document.hasFocus()) {
         try {
@@ -102,8 +109,8 @@ const useTypingTest = ({
       } else {
         console.warn('Could not focus input: element not found or document not focused');
       }
-    }, 10);
-  }, []);
+    }, 100); // Increased from 10ms to 100ms for more reliability
+  }, [isTransitioning]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
@@ -138,6 +145,7 @@ const useTypingTest = ({
     setCurrentCharIndex(0);
     startTimeRef.current = null;
     resultRecordedRef.current = false;
+    setLastTypedChar(null); // Reset last typed char to prevent input issues
     setInputValue(''); // Reset input value
     setStats({
       wpm: 0,
@@ -185,6 +193,9 @@ const useTypingTest = ({
   }, [currentWordIndex]);
 
   const loadNewQuote = useCallback(async () => {
+    // Set transitioning state to prevent focus issues
+    setIsTransitioning(true);
+    
     try {
       if (currentContent) {
         const nextContent = await contentService.getNextQuote(level, currentContent.quote_index);
@@ -258,9 +269,14 @@ const useTypingTest = ({
     }
     
     resetTest();
-    focusInput();
     resultRecordedRef.current = false;
     setMeetsCriteria(false);
+    
+    // Clear transition state and then focus
+    setTimeout(() => {
+      setIsTransitioning(false);
+      focusInput();
+    }, 200);
   }, [currentContent, level, quotes, scriptId, currentQuoteIndex, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
@@ -369,6 +385,12 @@ const useTypingTest = ({
 
   // Improved handleInput to use controlled input and avoid race conditions
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Don't process input during transitions
+    if (isTransitioning) {
+      e.preventDefault();
+      return;
+    }
+    
     const input = e.target.value;
     setInputValue(input); // Update the input value state immediately
     
@@ -479,21 +501,24 @@ const useTypingTest = ({
     words, 
     deathMode, 
     deathModeReset,
-    lastTypedChar
+    lastTypedChar,
+    isTransitioning
   ]);
 
   // Improved key event handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle events when the typing area should be active
-      if (document.activeElement === inputRef.current) {
-        if (e.key === 'Enter' && e.shiftKey) {
-          e.preventDefault();
-          loadNewQuote();
-        } else if (e.key === 'Backspace') {
-          e.preventDefault();
-          smartBackspace();
-        }
+      // Skip event handling during transitions or if the typing area isn't active
+      if (isTransitioning || document.activeElement !== inputRef.current) {
+        return;
+      }
+      
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        loadNewQuote();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        smartBackspace();
       }
     };
     
@@ -502,7 +527,7 @@ const useTypingTest = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace, inputRef]);
+  }, [loadNewQuote, smartBackspace, inputRef, isTransitioning]);
 
   useEffect(() => {
     return () => {
@@ -522,6 +547,9 @@ const useTypingTest = ({
     const recordHistory = async () => {
       if (isFinished && user && !resultRecordedRef.current) {
         resultRecordedRef.current = true;
+        // Prevent unwanted focus changes during result recording
+        setIsTransitioning(true);
+        
         try {
           console.log('Recording typing session:', {
             userId: user.id,
@@ -571,20 +599,31 @@ const useTypingTest = ({
             }
             
             if (onQuoteComplete) {
-              onQuoteComplete(stats, currentContent?.content_id);
+              // Ensure we have transition state set during onQuoteComplete callback
+              // as it may trigger level changes
+              await onQuoteComplete(stats, currentContent?.content_id);
             }
 
             if (repeatMode) {
               setTimeout(() => {
                 resetTest();
+                // Clear transition state after reset
+                setIsTransitioning(false);
                 focusInput();
               }, 500);
+            } else {
+              // Clear transition state if not in repeat mode
+              setTimeout(() => {
+                setIsTransitioning(false);
+              }, 200);
             }
           } else {
             console.error('Failed to record typing session');
+            setIsTransitioning(false);
           }
         } catch (error) {
           console.error('Error recording typing history:', error);
+          setIsTransitioning(false);
         }
       }
     };
