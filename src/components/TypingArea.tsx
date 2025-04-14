@@ -51,16 +51,35 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           setUserProgress(progress);
           setLevel(progress.currentLevel);
           
-          const params = await gameProgressionService.getLevelParameters(progress.currentLevel);
-          setLevelParameters(params);
+          try {
+            const params = await gameProgressionService.getLevelParameters(progress.currentLevel);
+            setLevelParameters(params);
+          } catch (paramError) {
+            console.error("Error fetching level parameters:", paramError);
+            toast({
+              title: "Parameter Error",
+              description: "Could not load level parameters. Using defaults.",
+              variant: "destructive"
+            });
+          }
+        } else {
+          // Handle case where no progress exists
+          console.log("No progress data found for user, using defaults");
+          setLevel(1);
         }
       } catch (error) {
         console.error("Error fetching progress data:", error);
+        toast({
+          title: "Progress Error",
+          description: "Failed to load your progress. Starting from level 1.",
+          variant: "destructive"
+        });
+        setLevel(1);
       }
     };
     
     fetchProgressData();
-  }, [user]);
+  }, [user, toast]);
 
   useEffect(() => {
     const loadLevelContent = async () => {
@@ -73,14 +92,30 @@ const TypingArea: React.FC<TypingAreaProps> = ({
           const textContent = content.map(item => item.content);
           setLevelQuotes(textContent);
           onQuotesLoaded(textContent);
+        } else {
+          // Handle empty content case
+          setLevelContent([]);
+          setTotalQuotes(0);
+          setLevelQuotes([]);
+          onQuotesLoaded([]);
+          toast({
+            title: "No content available",
+            description: `No typing content available for level ${level}`,
+            variant: "destructive"
+          });
         }
       } catch (error) {
         console.error("Error loading level content:", error);
+        toast({
+          title: "Failed to load content",
+          description: "There was an error loading the typing content. Please try again.",
+          variant: "destructive"
+        });
       }
     };
     
     loadLevelContent();
-  }, [level, onQuotesLoaded]);
+  }, [level, onQuotesLoaded, toast]);
 
   const {
     words,
@@ -120,7 +155,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         try {
           const isSuccessful = meetsCriteria;
           
-          const quoteId = currentContent?.id || "current-quote-id";
+          const quoteId = currentContent?.id || `quote-${currentQuoteIndex}`;
           
           const updatedProgress = await gameProgressionService.updateUserProgress(
             user.id,
@@ -128,23 +163,48 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             completedStats.wpm,
             completedStats.accuracy,
             isSuccessful
-          );
+          ).catch(error => {
+            console.error("Failed to update progress:", error);
+            toast({
+              title: "Progress Update Failed",
+              description: "Your progress could not be saved. Please check your connection.",
+              variant: "destructive"
+            });
+            return null;
+          });
           
           if (updatedProgress) {
             setUserProgress(updatedProgress);
             
             if (updatedProgress.currentLevel !== level) {
+              // Level up!
+              toast({
+                title: "Level Up!",
+                description: `Congratulations! You've advanced to level ${updatedProgress.currentLevel}`,
+                variant: "default"
+              });
+              
               setLevel(updatedProgress.currentLevel);
               
-              const params = await gameProgressionService.getLevelParameters(updatedProgress.currentLevel);
-              setLevelParameters(params);
+              try {
+                const params = await gameProgressionService.getLevelParameters(updatedProgress.currentLevel);
+                setLevelParameters(params);
+              } catch (paramError) {
+                console.error("Error fetching level parameters:", paramError);
+                toast({
+                  title: "Parameter Error",
+                  description: "Could not load new level parameters.",
+                  variant: "destructive"
+                });
+              }
             }
           }
           
-          if (currentContent) {
-            await gameProgressionService.updateCurrentQuoteIndex(user.id, currentContent.quote_index);
-          } else {
-            await gameProgressionService.updateCurrentQuoteIndex(user.id, currentQuoteIndex);
+          try {
+            const quoteIndex = currentContent?.quote_index || currentQuoteIndex;
+            await gameProgressionService.updateCurrentQuoteIndex(user.id, quoteIndex);
+          } catch (indexError) {
+            console.error("Failed to update quote index:", indexError);
           }
         } catch (error) {
           console.error("Error updating progress:", error);
@@ -154,11 +214,9 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   });
 
   useEffect(() => {
-    if (currentContent) {
-      setCurrentQuoteNumber(currentContent.quote_index);
-    } else {
-      setCurrentQuoteNumber(currentQuoteIndex + 1);
-    }
+    // Use a single source of truth for the current quote number
+    const quoteNumber = currentContent?.quote_index || currentQuoteIndex + 1;
+    setCurrentQuoteNumber(quoteNumber);
   }, [currentContent, currentQuoteIndex]);
 
   useEffect(() => {
