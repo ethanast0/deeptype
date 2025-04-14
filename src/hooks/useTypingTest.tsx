@@ -379,9 +379,6 @@ const useTypingTest = ({
     if (typedChar === lastTypedChar) return;
     setLastTypedChar(typedChar);
     
-    // Clear input value via state
-    setInputValue('');
-    
     if (!isActive && !isFinished) {
       setIsActive(true);
       startTimer();
@@ -469,6 +466,9 @@ const useTypingTest = ({
       });
       
       setCurrentCharIndex(prev => prev + 1);
+      
+      // Clear input value after processing
+      setInputValue('');
     }
   }, [
     currentCharIndex, 
