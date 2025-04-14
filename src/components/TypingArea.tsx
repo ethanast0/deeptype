@@ -133,7 +133,8 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     currentQuoteIndex,
     meetsCriteria,
     baselineWpm,
-    currentContent
+    currentContent,
+    inputValue
   } = useTypingTest({
     level,
     quotes: levelQuotes,
