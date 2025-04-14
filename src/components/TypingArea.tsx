@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
 import Stats from './Stats';
@@ -168,7 +168,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             toast({
               title: "Progress Update Failed",
               description: "Your progress could not be saved. Please check your connection.",
-              variant: "destructive"
+              variant: "destructive",
+              onClose: () => {
+                // Ensure focus returns to typing area after toast
+                setTimeout(focusInput, 100);
+              }
             });
             return null;
           });
@@ -181,7 +185,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
               toast({
                 title: "Level Up!",
                 description: `Congratulations! You've advanced to level ${updatedProgress.currentLevel}`,
-                variant: "default"
+                variant: "default",
+                onClose: () => {
+                  // Ensure focus returns to typing area after toast
+                  setTimeout(focusInput, 100);
+                }
               });
               
               setLevel(updatedProgress.currentLevel);
@@ -194,7 +202,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 toast({
                   title: "Parameter Error",
                   description: "Could not load new level parameters.",
-                  variant: "destructive"
+                  variant: "destructive",
+                  onClose: () => {
+                    // Ensure focus returns to typing area after toast
+                    setTimeout(focusInput, 100);
+                  }
                 });
               }
             }
@@ -219,58 +231,128 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     setCurrentQuoteNumber(quoteNumber);
   }, [currentContent, currentQuoteIndex]);
 
+  // Improved focus management
   useEffect(() => {
     // Add a small delay to ensure DOM is ready
     const timer = setTimeout(() => {
-      focusInput();
+      if (document.hasFocus()) {
+        focusInput();
+        console.log('Initial focus set on typing area');
+      }
     }, 100);
     
     return () => clearTimeout(timer);
   }, [focusInput]);
 
+  // Ensure focus after state changes
+  useEffect(() => {
+    const refocusTimer = setTimeout(() => {
+      if (document.hasFocus() && !isFinished) {
+        focusInput();
+      }
+    }, 100);
+    
+    return () => clearTimeout(refocusTimer);
+  }, [
+    currentWordIndex, 
+    currentCharIndex, 
+    isActive, 
+    isFinished, 
+    currentQuoteIndex,
+    level,
+    deathMode,
+    repeatMode,
+    focusInput
+  ]);
+
   useEffect(() => {
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
+  // Improved key event handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.shiftKey) {
-        e.preventDefault();
-        loadNewQuote();
-      } else if (e.key === 'Backspace' && e.shiftKey) {
-        e.preventDefault();
-        resetTest();
-        focusInput();
+      // Only handle events when the typing area should be active
+      if (document.activeElement === inputRef.current) {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          loadNewQuote();
+        } else if (e.key === 'Backspace' && e.shiftKey) {
+          e.preventDefault();
+          resetTest();
+          focusInput();
+        }
       }
     };
+    
     window.addEventListener('keydown', handleKeyDown);
+    
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, resetTest, focusInput]);
+  }, [loadNewQuote, resetTest, focusInput, inputRef]);
 
-  const toggleDeathMode = () => {
+  // Add focus debugging
+  useEffect(() => {
+    const logFocus = () => {
+      console.log('Document active element:', document.activeElement);
+      console.log('Input ref is focused:', document.activeElement === inputRef.current);
+    };
+    
+    // Log focus state every 5 seconds in development
+    let interval: number | null = null;
+    if (process.env.NODE_ENV === 'development') {
+      interval = window.setInterval(logFocus, 5000) as unknown as number;
+    }
+    
+    // Also log on focus/blur events
+    const handleFocus = () => console.log('Window focus event');
+    const handleBlur = () => console.log('Window blur event');
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      if (interval !== null) {
+        clearInterval(interval);
+      }
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [inputRef]);
+
+  const toggleDeathMode = useCallback(() => {
     setDeathMode(prev => !prev);
     if (!deathMode) {
       setRepeatMode(false);
     }
     resetTest();
-    focusInput();
-  };
+    // Ensure focus after toggling mode
+    setTimeout(focusInput, 10);
+  }, [deathMode, resetTest, focusInput]);
 
-  const toggleRepeatMode = () => {
+  const toggleRepeatMode = useCallback(() => {
     setRepeatMode(prev => !prev);
     if (!repeatMode) {
       setDeathMode(false);
     }
     resetTest();
-    focusInput();
-  };
+    // Ensure focus after toggling mode
+    setTimeout(focusInput, 10);
+  }, [repeatMode, resetTest, focusInput]);
 
-  const handleResetClick = () => {
+  const handleResetClick = useCallback(() => {
     resetTest();
+    // Ensure focus after reset
+    setTimeout(focusInput, 10);
+  }, [resetTest, focusInput]);
+
+  // Improved container click handler
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Stop event propagation
     focusInput();
-  };
+  }, [focusInput]);
 
   const renderLevelInfo = () => {
     if (!userProgress || !levelParameters) return null;
@@ -326,7 +408,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       </div>
       
       <div className="w-full p-4 px-0 py-0 bg-inherit">
-        <div className="typing-area flex flex-wrap text-2xl relative" onClick={focusInput}>
+        <div className="typing-area flex flex-wrap text-2xl relative" onClick={handleContainerClick}>
           {words.map((word, wordIndex) => (
             <React.Fragment key={wordIndex}>
               <div className="flex">
@@ -347,12 +429,23 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             </React.Fragment>
           ))}
           
+          {/* Use controlled input instead of uncontrolled */}
           <input 
             ref={inputRef} 
             type="text" 
+            value={inputValue}
             className="typing-input absolute h-1 w-1 opacity-0 pointer-events-auto" 
             onChange={handleInput} 
-            onBlur={() => inputRef.current?.focus()} 
+            onBlur={(e) => {
+              // Only refocus if the new focus target is outside the typing area
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setTimeout(() => {
+                  if (inputRef.current && document.hasFocus()) {
+                    inputRef.current.focus();
+                  }
+                }, 0);
+              }
+            }}
             autoComplete="off" 
             autoCapitalize="off" 
             autoCorrect="off" 
@@ -366,10 +459,23 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-teal-900 hover:bg-teal-800">
           redo [shift + ⌫] <DeleteIcon className="h-3.5 w-3.5" />
         </button>
-        <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-zinc-900 hover:bg-zinc-800">
+        <button 
+          onClick={() => {
+            loadNewQuote();
+            // Ensure focus after loading new quote
+            setTimeout(focusInput, 10);
+          }} 
+          className="button button-accent text-gray-400 font-normal text-sm bg-zinc-900 hover:bg-zinc-800"
+        >
           new [shift + enter]
         </button>
-        <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
+        <QuoteUploaderButton 
+          onQuotesLoaded={(newQuotes) => {
+            onQuotesLoaded(newQuotes);
+            // Ensure focus returns after quotes are loaded
+            setTimeout(focusInput, 100);
+          }} 
+        />
         
         <div className="ml-auto flex items-center gap-2">
           <Toggle pressed={repeatMode} onPressedChange={toggleRepeatMode} aria-label={repeatMode ? "Repeat Mode On" : "Repeat Mode Off"} className="bg-zinc-900 hover:bg-slate-700 data-[state=on]:bg-green-900">

@@ -52,6 +52,7 @@ const useTypingTest = ({
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState<number>(0);
   const [currentContent, setCurrentContent] = useState<Content | null>(null);
   const [lastTypedChar, setLastTypedChar] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState(''); // New state for controlled input
 
   const { user } = useAuth();
   
@@ -87,10 +88,21 @@ const useTypingTest = ({
     loadInitialContent();
   }, [level, quotes]);
 
+  // Improved focusInput function with better error handling and logging
   const focusInput = useCallback(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    // Short timeout to ensure DOM is ready
+    setTimeout(() => {
+      if (inputRef.current && document.hasFocus()) {
+        try {
+          inputRef.current.focus();
+          console.log('Input focused successfully');
+        } catch (error) {
+          console.error('Error focusing input:', error);
+        }
+      } else {
+        console.warn('Could not focus input: element not found or document not focused');
+      }
+    }, 10);
   }, []);
 
   const startTimer = useCallback(() => {
@@ -126,6 +138,7 @@ const useTypingTest = ({
     setCurrentCharIndex(0);
     startTimeRef.current = null;
     resultRecordedRef.current = false;
+    setInputValue(''); // Reset input value
     setStats({
       wpm: 0,
       accuracy: 100,
@@ -143,7 +156,10 @@ const useTypingTest = ({
         }))
       }));
     });
-  }, [currentQuote, stopTimer]);
+    
+    // Focus input after reset
+    focusInput();
+  }, [currentQuote, stopTimer, focusInput]);
 
   const deathModeReset = useCallback(() => {
     if (deathMode) {
@@ -346,9 +362,12 @@ const useTypingTest = ({
         });
       }
     }
-  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
+    
+    // Ensure input is focused after backspace
+    focusInput();
+  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition, focusInput]);
 
-  // Fixed handleInput to prevent the race condition with input clearing
+  // Improved handleInput to use controlled input and avoid race conditions
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     const typedChar = input.charAt(input.length - 1);
@@ -356,19 +375,12 @@ const useTypingTest = ({
     // Don't process empty inputs
     if (!typedChar) return;
     
-    // Don't process if it's the same character we just processed (prevents double processing)
+    // Don't process if it's the same character we just processed
     if (typedChar === lastTypedChar) return;
     setLastTypedChar(typedChar);
     
-    // Clear input after we've captured the character
-    if (e.target && e.target.value) {
-      // Use setTimeout to prevent React batching issues
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.value = '';
-        }
-      }, 0);
-    }
+    // Clear input value via state
+    setInputValue('');
     
     if (!isActive && !isFinished) {
       setIsActive(true);
@@ -471,14 +483,18 @@ const useTypingTest = ({
     lastTypedChar
   ]);
 
+  // Improved key event handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.shiftKey) {
-        e.preventDefault();
-        loadNewQuote();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        smartBackspace();
+      // Only handle events when the typing area should be active
+      if (document.activeElement === inputRef.current) {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          loadNewQuote();
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          smartBackspace();
+        }
       }
     };
     
@@ -487,7 +503,7 @@ const useTypingTest = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace]);
+  }, [loadNewQuote, smartBackspace, inputRef]);
 
   useEffect(() => {
     return () => {
@@ -626,7 +642,8 @@ const useTypingTest = ({
     meetsCriteria,
     baselineWpm,
     currentQuoteIndex,
-    currentContent
+    currentContent,
+    inputValue, // Expose the input value for controlled input
   };
 };
 

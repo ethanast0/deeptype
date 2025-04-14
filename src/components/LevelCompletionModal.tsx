@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,7 @@ interface LevelCompletionModalProps {
   bestWpm: number;
   nextLevelNumber: number;
   nextLevelThreshold: number | null;
+  onAfterClose?: () => void; // New prop for focus management
 }
 
 const LevelCompletionModal: React.FC<LevelCompletionModalProps> = ({
@@ -18,10 +19,32 @@ const LevelCompletionModal: React.FC<LevelCompletionModalProps> = ({
   levelNumber,
   bestWpm,
   nextLevelNumber,
-  nextLevelThreshold
+  nextLevelThreshold,
+  onAfterClose
 }) => {
+  // Track if we need to call onAfterClose
+  const shouldCallAfterClose = useRef(false);
+
+  // Handle modal closing and focus management
+  useEffect(() => {
+    if (!open && shouldCallAfterClose.current) {
+      shouldCallAfterClose.current = false;
+      if (onAfterClose) {
+        // Small delay to ensure DOM is updated
+        setTimeout(onAfterClose, 10);
+      }
+    } else if (open) {
+      shouldCallAfterClose.current = true;
+    }
+  }, [open, onAfterClose]);
+
+  const handleClose = () => {
+    onClose();
+    // We'll handle the focus in the effect above
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
@@ -63,7 +86,7 @@ const LevelCompletionModal: React.FC<LevelCompletionModalProps> = ({
         <DialogFooter>
           <Button 
             className="bg-monkey-accent hover:bg-monkey-accent-dark text-black w-full" 
-            onClick={onClose}
+            onClick={handleClose}
           >
             Continue to Level {nextLevelNumber}
           </Button>
