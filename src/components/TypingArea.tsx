@@ -153,7 +153,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <button onClick={handleResetClick} className="button button-accent text-gray-400 font-normal text-sm flex items-center gap-1 bg-slate-900 hover:bg-slate-800">
           redo <DeleteIcon className="h-3.5 w-3.5" />
         </button>
-        <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-zinc-900 hover:bg-zinc-800">next [shift + enter]</button>
+        <button onClick={loadNewQuote} className="button button-accent text-gray-400 font-normal text-sm bg-inherit rounded-md">next [shift + enter]</button>
         <QuoteUploaderButton onQuotesLoaded={onQuotesLoaded} />
         
         <div className="ml-auto flex items-center gap-2">
