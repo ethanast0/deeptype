@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import useTypingTest from '../hooks/useTypingTest';
@@ -79,7 +78,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     };
     
     fetchProgressData();
-  }, [user, toast]);
+  }, [user]);
 
   useEffect(() => {
     const loadLevelContent = async () => {
@@ -115,7 +114,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     };
     
     loadLevelContent();
-  }, [level, onQuotesLoaded, toast]);
+  }, [level, onQuotesLoaded]);
 
   const {
     words,
@@ -169,11 +168,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             toast({
               title: "Progress Update Failed",
               description: "Your progress could not be saved. Please check your connection.",
-              variant: "destructive",
-              onClose: () => {
-                // Ensure focus returns to typing area after toast
-                setTimeout(focusInput, 100);
-              }
+              variant: "destructive"
             });
             return null;
           });
@@ -186,11 +181,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
               toast({
                 title: "Level Up!",
                 description: `Congratulations! You've advanced to level ${updatedProgress.currentLevel}`,
-                variant: "default",
-                onClose: () => {
-                  // Ensure focus returns to typing area after toast
-                  setTimeout(focusInput, 100);
-                }
+                variant: "default"
               });
               
               setLevel(updatedProgress.currentLevel);
@@ -203,11 +194,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
                 toast({
                   title: "Parameter Error",
                   description: "Could not load new level parameters.",
-                  variant: "destructive",
-                  onClose: () => {
-                    // Ensure focus returns to typing area after toast
-                    setTimeout(focusInput, 100);
-                  }
+                  variant: "destructive"
                 });
               }
             }
@@ -227,14 +214,11 @@ const TypingArea: React.FC<TypingAreaProps> = ({
   });
 
   useEffect(() => {
-    // Use a single source of truth for the current quote number
     const quoteNumber = currentContent?.quote_index || currentQuoteIndex + 1;
     setCurrentQuoteNumber(quoteNumber);
   }, [currentContent, currentQuoteIndex]);
-  
-  // Add a special focus handler for after level changes
+
   useEffect(() => {
-    // When level changes, ensure we refocus after content has loaded
     const refocusTimer = setTimeout(() => {
       if (document.hasFocus()) {
         focusInput();
@@ -245,9 +229,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     return () => clearTimeout(refocusTimer);
   }, [level, focusInput]);
 
-  // Improved focus management
   useEffect(() => {
-    // Add a small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       if (document.hasFocus()) {
         focusInput();
@@ -258,7 +240,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     return () => clearTimeout(timer);
   }, [focusInput]);
 
-  // Ensure focus after state changes
   useEffect(() => {
     const refocusTimer = setTimeout(() => {
       if (document.hasFocus() && !isFinished) {
@@ -283,15 +264,12 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     onTypingStateChange(isActive);
   }, [isActive, onTypingStateChange]);
 
-  // Improved key event handling - no longer duplicating event handling from useTypingTest
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handling Shift+Backspace here since useTypingTest handles other keys
       if (document.activeElement === inputRef.current) {
         if (e.key === 'Backspace' && e.shiftKey) {
           e.preventDefault();
           resetTest();
-          // Give time for the reset to complete before focusing
           setTimeout(() => {
             focusInput();
           }, 100);
@@ -306,20 +284,17 @@ const TypingArea: React.FC<TypingAreaProps> = ({
     };
   }, [resetTest, focusInput, inputRef]);
 
-  // Add focus debugging
   useEffect(() => {
     const logFocus = () => {
       console.log('Document active element:', document.activeElement);
       console.log('Input ref is focused:', document.activeElement === inputRef.current);
     };
     
-    // Log focus state every 5 seconds in development
     let interval: number | null = null;
     if (process.env.NODE_ENV === 'development') {
       interval = window.setInterval(logFocus, 5000) as unknown as number;
     }
     
-    // Also log on focus/blur events
     const handleFocus = () => console.log('Window focus event');
     const handleBlur = () => console.log('Window blur event');
     
@@ -341,7 +316,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setRepeatMode(false);
     }
     resetTest();
-    // Ensure focus after toggling mode with longer timeout
     setTimeout(focusInput, 100);
   }, [deathMode, resetTest, focusInput]);
 
@@ -351,22 +325,18 @@ const TypingArea: React.FC<TypingAreaProps> = ({
       setDeathMode(false);
     }
     resetTest();
-    // Ensure focus after toggling mode with longer timeout
     setTimeout(focusInput, 100);
   }, [repeatMode, resetTest, focusInput]);
 
   const handleResetClick = useCallback(() => {
     resetTest();
-    // Ensure focus after reset with longer timeout
     setTimeout(focusInput, 100);
   }, [resetTest, focusInput]);
 
-  // Improved container click handler
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent default behavior
-    e.stopPropagation(); // Stop event propagation
+    e.preventDefault();
+    e.stopPropagation();
     
-    // Add a slight delay to ensure all state updates are complete
     setTimeout(() => {
       focusInput();
     }, 100);
@@ -447,7 +417,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             </React.Fragment>
           ))}
           
-          {/* Use controlled input instead of uncontrolled */}
           <input 
             ref={inputRef} 
             type="text" 
@@ -455,14 +424,13 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             className="typing-input absolute h-1 w-1 opacity-0 pointer-events-auto" 
             onChange={handleInput} 
             onBlur={(e) => {
-              // Only refocus if the new focus target is outside the typing area
               if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                 setTimeout(() => {
                   if (inputRef.current && document.hasFocus()) {
                     inputRef.current.focus();
                     console.log('Refocused after blur');
                   }
-                }, 100); // Increased timeout for more reliability
+                }, 100);
               }
             }}
             autoComplete="off" 
@@ -481,7 +449,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <button 
           onClick={() => {
             loadNewQuote();
-            // Ensure focus after loading new quote with longer timeout
             setTimeout(focusInput, 300);
           }} 
           className="button button-accent text-gray-400 font-normal text-sm bg-zinc-900 hover:bg-zinc-800"
@@ -491,7 +458,6 @@ const TypingArea: React.FC<TypingAreaProps> = ({
         <QuoteUploaderButton 
           onQuotesLoaded={(newQuotes) => {
             onQuotesLoaded(newQuotes);
-            // Ensure focus returns after quotes are loaded
             setTimeout(focusInput, 100);
           }} 
         />

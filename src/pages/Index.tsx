@@ -177,7 +177,10 @@ const Index = () => {
         nextLevelThreshold={nextLevelThreshold}
         onAfterClose={() => {
           // Ensure typing area is refocused after modal closes
-          document.querySelector('.typing-input')?.focus();
+          const inputElement = document.querySelector('.typing-input');
+          if (inputElement instanceof HTMLElement) {
+            inputElement.focus();
+          }
         }}
       />
     );
