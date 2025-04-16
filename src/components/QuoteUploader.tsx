@@ -41,7 +41,7 @@ export const QuoteUploaderButton: React.FC<QuoteUploaderProps> = ({
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={handleButtonClick} aria-label="Upload script" className="button button-accent text-gray-400 font-normal p-2 bg-zinc-900 hover:bg-zinc-800">
+            <button onClick={handleButtonClick} aria-label="Upload script" className="button button-accent text-gray-400 font-normal p-2 bg-zinc-950 hover:bg-zinc-800">
               <Upload size={16} />
             </button>
           </TooltipTrigger>

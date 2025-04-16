@@ -1,5 +1,4 @@
-
-export const typingContent = {
+{
   "level_1": [
     "imagine your light switch can be both on and off simultaneously that is essentially what a qubit does unlike your standard computer bit",
     "traditional computers think in yes or no while quantum computers think in maybe and possibly and all the options between",
@@ -61,5 +60,3 @@ export const typingContent = {
     "quantum complexity classes like BQP contain problems solvable efficiently on quantum computers that are believed impossible to solve efficiently classically even with unlimited parallelism suggesting fundamental computational distinctions not reducible to processing power"
   ]
 }
-
-export default typingContent;

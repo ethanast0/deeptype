@@ -46,46 +46,35 @@ const AccuracyChartPanel: React.FC<AccuracyChartPanelProps> = ({ config: userCon
         setIsLoading(true);
         const history = await typingHistoryService.getUserHistoryWithMovingAverageAccuracy(user.id, windowSize);
         
-        if (history.raw.length === 0) {
-          setAccuracyData([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Create data points with dates
-        let dataPoints: AccuracyDataPoint[] = [];
-        for (let i = 0; i < history.raw.length; i++) {
-          dataPoints.push({
-            date: history.created_at && history.created_at[i] 
-              ? new Date(history.created_at[i]).toLocaleDateString() 
-              : `Point ${i+1}`,
-            accuracy: history.raw[i],
-            movingAverage: history.movingAverage[i]
-          });
-        }
-        
         // Process data based on timeRange
+        let filteredHistory = history;
         const now = new Date();
-        let filteredData = [...dataPoints];
         
         if (timeRange === 'day') {
           const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          filteredData = dataPoints.filter(point => 
-            new Date(point.date) >= oneDayAgo
+          filteredHistory = history.filter(entry => 
+            new Date(entry.created_at) >= oneDayAgo
           );
         } else if (timeRange === 'week') {
           const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          filteredData = dataPoints.filter(point => 
-            new Date(point.date) >= oneWeekAgo
+          filteredHistory = history.filter(entry => 
+            new Date(entry.created_at) >= oneWeekAgo
           );
         } else if (timeRange === 'month') {
           const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          filteredData = dataPoints.filter(point => 
-            new Date(point.date) >= oneMonthAgo
+          filteredHistory = history.filter(entry => 
+            new Date(entry.created_at) >= oneMonthAgo
           );
         }
         
-        setAccuracyData(filteredData);
+        // Format data for chart
+        const formattedData = filteredHistory.map(entry => ({
+          date: new Date(entry.created_at).toLocaleDateString(),
+          accuracy: entry.accuracy,
+          movingAverage: entry.moving_average_accuracy
+        }));
+        
+        setAccuracyData(formattedData);
       } catch (err) {
         console.error('Error fetching accuracy history:', err);
       } finally {

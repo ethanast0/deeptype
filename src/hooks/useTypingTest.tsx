@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Character, 
@@ -11,19 +10,16 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { typingHistoryService } from '../services/typingHistoryService';
 import { supabase } from '../integrations/supabase/client';
-import { contentService, Content } from '../services/contentService';
 
 interface UseTypingTestProps {
-  level?: number;
   quotes?: string[];
   scriptId?: string | null;
-  onQuoteComplete?: (stats?: TypingStats, contentId?: string) => void;
+  onQuoteComplete?: (stats?: TypingStats) => void;
   deathMode?: boolean;
   repeatMode?: boolean;
 }
 
 const useTypingTest = ({ 
-  level = 1,
   quotes = defaultQuotes, 
   scriptId, 
   onQuoteComplete,
@@ -47,13 +43,6 @@ const useTypingTest = ({
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [completedQuotes, setCompletedQuotes] = useState<number>(0);
   const [deathModeFailures, setDeathModeFailures] = useState<number>(0);
-  const [meetsCriteria, setMeetsCriteria] = useState<boolean>(false);
-  const [baselineWpm, setBaselineWpm] = useState<number | null>(null);
-  const [currentQuoteIndex, setCurrentQuoteIndex] = useState<number>(0);
-  const [currentContent, setCurrentContent] = useState<Content | null>(null);
-  const [lastTypedChar, setLastTypedChar] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState(''); // New state for controlled input
-  const [isTransitioning, setIsTransitioning] = useState(false); // Track level/quote transitions
 
   const { user } = useAuth();
   
@@ -63,54 +52,11 @@ const useTypingTest = ({
   const resultRecordedRef = useRef<boolean>(false);
   const processedQuotesRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
-    const loadInitialContent = async () => {
-      try {
-        const content = await contentService.getFirstQuoteForLevel(level);
-        if (content) {
-          setCurrentContent(content);
-          setCurrentQuote(content.content);
-          setCurrentQuoteId(content.content_id);
-          setCurrentQuoteIndex(content.quote_index);
-          processQuote(content.content);
-        } else {
-          const quote = quotes[0];
-          setCurrentQuote(quote);
-          processQuote(quote);
-        }
-      } catch (error) {
-        console.error("Error loading initial content:", error);
-        const quote = quotes[0];
-        setCurrentQuote(quote);
-        processQuote(quote);
-      }
-    };
-
-    loadInitialContent();
-  }, [level, quotes]);
-
-  // Improved focusInput function with better error handling and logging
   const focusInput = useCallback(() => {
-    // Don't try to focus during transitions
-    if (isTransitioning) {
-      console.log('Skipping focus during transition');
-      return;
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
-    
-    // Increased timeout to ensure DOM is ready
-    setTimeout(() => {
-      if (inputRef.current && document.hasFocus()) {
-        try {
-          inputRef.current.focus();
-          console.log('Input focused successfully');
-        } catch (error) {
-          console.error('Error focusing input:', error);
-        }
-      } else {
-        console.warn('Could not focus input: element not found or document not focused');
-      }
-    }, 100); // Increased from 10ms to 100ms for more reliability
-  }, [isTransitioning]);
+  }, []);
 
   const startTimer = useCallback(() => {
     if (timerRef.current !== null) return;
@@ -145,8 +91,6 @@ const useTypingTest = ({
     setCurrentCharIndex(0);
     startTimeRef.current = null;
     resultRecordedRef.current = false;
-    setLastTypedChar(null); // Reset last typed char to prevent input issues
-    setInputValue(''); // Reset input value
     setStats({
       wpm: 0,
       accuracy: 100,
@@ -164,10 +108,7 @@ const useTypingTest = ({
         }))
       }));
     });
-    
-    // Focus input after reset
-    focusInput();
-  }, [currentQuote, stopTimer, focusInput]);
+  }, [currentQuote, stopTimer]);
 
   const deathModeReset = useCallback(() => {
     if (deathMode) {
@@ -193,91 +134,59 @@ const useTypingTest = ({
   }, [currentWordIndex]);
 
   const loadNewQuote = useCallback(async () => {
-    // Set transitioning state to prevent focus issues
-    setIsTransitioning(true);
+    setCurrentQuoteId(null);
     
-    try {
-      if (currentContent) {
-        const nextContent = await contentService.getNextQuote(level, currentContent.quote_index);
-        
-        if (nextContent) {
-          setCurrentContent(nextContent);
-          setCurrentQuote(nextContent.content);
-          setCurrentQuoteId(nextContent.content_id);
-          setCurrentQuoteIndex(nextContent.quote_index);
-          processQuote(nextContent.content);
-        } else {
-          const firstContent = await contentService.getFirstQuoteForLevel(level);
-          if (firstContent) {
-            setCurrentContent(firstContent);
-            setCurrentQuote(firstContent.content);
-            setCurrentQuoteId(firstContent.content_id);
-            setCurrentQuoteIndex(firstContent.quote_index);
-            processQuote(firstContent.content);
-          } else {
-            const quote = quotes[currentQuoteIndex % quotes.length];
-            setCurrentQuote(quote);
-            processQuote(quote);
-            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
-          }
-        }
-      } else if (scriptId) {
-        try {
-          const { data, error } = await supabase
-            .from('script_quotes')
-            .select('id, content, quote_index')
-            .eq('script_id', scriptId)
-            .order('quote_index', { ascending: true });
-            
-          if (error || !data || data.length === 0) {
-            console.error('Error loading quotes or no quotes found:', error);
-            const quote = quotes[currentQuoteIndex % quotes.length];
-            setCurrentQuote(quote);
-            processQuote(quote);
-            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
-          } else {
-            const nextQuoteIndex = currentQuoteIndex % data.length;
-            const nextQuote = data[nextQuoteIndex];
-            
-            console.log(`Loading quote ${nextQuoteIndex + 1} of ${data.length}`);
-            
-            setCurrentQuote(nextQuote.content);
-            setCurrentQuoteId(nextQuote.id);
-            processQuote(nextQuote.content);
-            
-            setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % data.length);
-          }
-        } catch (error) {
-          console.error('Error loading quote from database:', error);
-          const quote = quotes[currentQuoteIndex % quotes.length];
+    if (scriptId) {
+      try {
+        const { data, error } = await supabase
+          .from('script_quotes')
+          .select('id, content')
+          .eq('script_id', scriptId);
+          
+        if (error || !data || data.length === 0) {
+          console.error('Error loading quotes or no quotes found:', error);
+          const randomIndex = Math.floor(Math.random() * quotes.length);
+          const quote = quotes[randomIndex];
           setCurrentQuote(quote);
           processQuote(quote);
-          setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
+        } else {
+          const availableQuotes = data.filter(quote => !processedQuotesRef.current.has(quote.id));
+          
+          if (availableQuotes.length === 0) {
+            processedQuotesRef.current.clear();
+            setCompletedQuotes(0);
+            const randomIndex = Math.floor(Math.random() * data.length);
+            const randomQuote = data[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+          } else {
+            const randomIndex = Math.floor(Math.random() * availableQuotes.length);
+            const randomQuote = availableQuotes[randomIndex];
+            setCurrentQuote(randomQuote.content);
+            setCurrentQuoteId(randomQuote.id);
+            processQuote(randomQuote.content);
+            processedQuotesRef.current.add(randomQuote.id);
+          }
         }
-      } else {
-        const quote = quotes[currentQuoteIndex % quotes.length];
+      } catch (error) {
+        console.error('Error loading quote from database:', error);
+        const randomIndex = Math.floor(Math.random() * quotes.length);
+        const quote = quotes[randomIndex];
         setCurrentQuote(quote);
         processQuote(quote);
-        setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
       }
-    } catch (error) {
-      console.error("Error loading new quote:", error);
-      const quote = quotes[currentQuoteIndex % quotes.length];
+    } else {
+      const randomIndex = Math.floor(Math.random() * quotes.length);
+      const quote = quotes[randomIndex];
       setCurrentQuote(quote);
       processQuote(quote);
-      setCurrentQuoteIndex(prevIndex => (prevIndex + 1) % quotes.length);
     }
     
     resetTest();
+    focusInput();
     resultRecordedRef.current = false;
-    setMeetsCriteria(false);
-    
-    // Clear transition state and then focus
-    setTimeout(() => {
-      setIsTransitioning(false);
-      focusInput();
-    }, 200);
-  }, [currentContent, level, quotes, scriptId, currentQuoteIndex, processQuote, resetTest, focusInput]);
+  }, [quotes, scriptId, processQuote, resetTest, focusInput]);
 
   const findLastCorrectPosition = useCallback(() => {
     const currentWord = words[currentWordIndex];
@@ -378,35 +287,20 @@ const useTypingTest = ({
         });
       }
     }
-    
-    // Ensure input is focused after backspace
-    focusInput();
-  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition, focusInput]);
+  }, [currentCharIndex, currentWordIndex, words, findLastCorrectPosition]);
 
-  // Improved handleInput to use controlled input and avoid race conditions
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    // Don't process input during transitions
-    if (isTransitioning) {
-      e.preventDefault();
-      return;
-    }
-    
     const input = e.target.value;
-    setInputValue(input); // Update the input value state immediately
-    
-    const typedChar = input.charAt(input.length - 1);
-    
-    // Don't process empty inputs
-    if (!typedChar) return;
-    
-    // Don't process if it's the same character we just processed
-    if (typedChar === lastTypedChar) return;
-    setLastTypedChar(typedChar);
     
     if (!isActive && !isFinished) {
       setIsActive(true);
       startTimer();
     }
+    
+    e.target.value = '';
+    
+    const typedChar = input.charAt(input.length - 1);
+    if (!typedChar) return;
     
     const currentWord = words[currentWordIndex];
     if (!currentWord) return;
@@ -491,28 +385,10 @@ const useTypingTest = ({
       
       setCurrentCharIndex(prev => prev + 1);
     }
-  }, [
-    currentCharIndex, 
-    currentWordIndex, 
-    isActive, 
-    isFinished, 
-    startTimer, 
-    stopTimer, 
-    words, 
-    deathMode, 
-    deathModeReset,
-    lastTypedChar,
-    isTransitioning
-  ]);
+  }, [currentCharIndex, currentWordIndex, isActive, isFinished, startTimer, stopTimer, words, deathMode, deathModeReset]);
 
-  // Improved key event handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Skip event handling during transitions or if the typing area isn't active
-      if (isTransitioning || document.activeElement !== inputRef.current) {
-        return;
-      }
-      
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         loadNewQuote();
@@ -527,7 +403,7 @@ const useTypingTest = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [loadNewQuote, smartBackspace, inputRef, isTransitioning]);
+  }, [loadNewQuote, smartBackspace]);
 
   useEffect(() => {
     return () => {
@@ -545,17 +421,12 @@ const useTypingTest = ({
 
   useEffect(() => {
     const recordHistory = async () => {
-      if (isFinished && user && !resultRecordedRef.current) {
+      if (isFinished && user && scriptId && !resultRecordedRef.current) {
         resultRecordedRef.current = true;
-        // Prevent unwanted focus changes during result recording
-        setIsTransitioning(true);
-        
         try {
           console.log('Recording typing session:', {
             userId: user.id,
-            scriptId: scriptId || undefined,
-            contentId: currentContent?.id,
-            contentIdString: currentContent?.content_id,
+            scriptId,
             wpm: stats.wpm,
             accuracy: stats.accuracy,
             elapsedTime: stats.elapsedTime
@@ -563,73 +434,44 @@ const useTypingTest = ({
           
           const roundedElapsedTime = Math.round(stats.elapsedTime);
           
-          let success = false;
-          
-          if (scriptId) {
-            success = await typingHistoryService.recordSession(
-              user.id,
-              scriptId,
-              stats.wpm,
-              stats.accuracy,
-              roundedElapsedTime,
-              currentQuoteId || undefined
-            );
-          } else if (currentContent) {
-            success = await typingHistoryService.recordContentSession(
-              user.id,
-              currentContent.id,
-              stats.wpm,
-              stats.accuracy,
-              roundedElapsedTime,
-              currentContent.level_number,
-              currentContent.content_id
-            );
-          }
+          const success = await typingHistoryService.recordSession(
+            user.id,
+            scriptId,
+            stats.wpm,
+            stats.accuracy,
+            roundedElapsedTime,
+            currentQuoteId || undefined
+          );
           
           if (success) {
+            if (currentQuoteId) {
+              await updateQuoteStats(currentQuoteId, stats.wpm, stats.accuracy);
+            }
+            
             const newCompletedQuotes = completedQuotes + 1;
             setCompletedQuotes(newCompletedQuotes);
             
-            if (stats.wpm > 0 && stats.accuracy >= 90) {
-              setMeetsCriteria(true);
-            }
-            
-            if (!baselineWpm || stats.wpm > baselineWpm) {
-              setBaselineWpm(stats.wpm);
-            }
-            
             if (onQuoteComplete) {
-              // Ensure we have transition state set during onQuoteComplete callback
-              // as it may trigger level changes
-              await onQuoteComplete(stats, currentContent?.content_id);
+              onQuoteComplete(stats);
             }
 
             if (repeatMode) {
               setTimeout(() => {
                 resetTest();
-                // Clear transition state after reset
-                setIsTransitioning(false);
                 focusInput();
               }, 500);
-            } else {
-              // Clear transition state if not in repeat mode
-              setTimeout(() => {
-                setIsTransitioning(false);
-              }, 200);
             }
           } else {
             console.error('Failed to record typing session');
-            setIsTransitioning(false);
           }
         } catch (error) {
           console.error('Error recording typing history:', error);
-          setIsTransitioning(false);
         }
       }
     };
     
     recordHistory();
-  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput, baselineWpm, currentContent]);
+  }, [isFinished, user, scriptId, stats, currentQuoteId, completedQuotes, onQuoteComplete, repeatMode, resetTest, focusInput]);
 
   const updateQuoteStats = async (quoteId: string, wpm: number, accuracy: number) => {
     try {
@@ -676,12 +518,7 @@ const useTypingTest = ({
     loadNewQuote,
     focusInput,
     deathMode,
-    deathModeFailures,
-    meetsCriteria,
-    baselineWpm,
-    currentQuoteIndex,
-    currentContent,
-    inputValue, // Expose the input value for controlled input
+    deathModeFailures
   };
 };
 
