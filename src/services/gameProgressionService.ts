@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { toast } from "../hooks/use-toast";
 
@@ -112,6 +111,7 @@ export const gameProgressionService = {
   // Get user progress
   async getUserProgress(userId: string): Promise<UserProgress | null> {
     try {
+      console.log("Fetching progress for user:", userId);
       // Get the user's progress from the database
       const { data, error } = await supabase
         .from('game_progress')
@@ -121,6 +121,7 @@ export const gameProgressionService = {
         
       if (error) {
         if (error.code === 'PGRST116') { // No rows returned
+          console.log("No existing progress found, initializing new progress");
           // Create a new progress record for this user
           return this.initializeUserProgress(userId);
         }
@@ -129,6 +130,8 @@ export const gameProgressionService = {
       }
       
       if (!data) return null;
+      
+      console.log("Progress data fetched:", data);
       
       return {
         userId: data.user_id,
@@ -390,6 +393,27 @@ export const gameProgressionService = {
       return true;
     } catch (error) {
       console.error("Error updating current quote index:", error);
+      return false;
+    }
+  },
+
+  // Delete a user's progress
+  async deleteUserProgress(userId: string): Promise<boolean> {
+    try {
+      console.log("Deleting progress for user:", userId);
+      const { error } = await supabase
+        .from('game_progress')
+        .delete()
+        .eq('user_id', userId);
+        
+      if (error) {
+        console.error("Error deleting user progress:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting user progress:", error);
       return false;
     }
   }

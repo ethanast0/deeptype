@@ -10,7 +10,7 @@ interface LevelCompletionModalProps {
   bestWpm: number;
   nextLevelNumber: number;
   nextLevelThreshold: number | null;
-  onAfterClose?: () => void; // New prop for focus management
+  onAfterClose?: () => void; // Add callback for post-close handling
 }
 
 const LevelCompletionModal: React.FC<LevelCompletionModalProps> = ({
@@ -30,15 +30,18 @@ const LevelCompletionModal: React.FC<LevelCompletionModalProps> = ({
     if (!open && shouldCallAfterClose.current) {
       shouldCallAfterClose.current = false;
       if (onAfterClose) {
+        console.log("Level completion modal closed, calling onAfterClose");
         // Small delay to ensure DOM is updated
-        setTimeout(onAfterClose, 10);
+        setTimeout(onAfterClose, 100);
       }
     } else if (open) {
+      console.log("Level completion modal opened");
       shouldCallAfterClose.current = true;
     }
   }, [open, onAfterClose]);
 
   const handleClose = () => {
+    console.log("Level completion modal close requested");
     onClose();
     // We'll handle the focus in the effect above
   };
