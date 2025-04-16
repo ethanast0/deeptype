@@ -161,7 +161,7 @@ const TypingArea: React.FC<TypingAreaProps> = ({
             <RepeatIcon className="w-4 h-4" />
           </Toggle>
           
-          <Toggle pressed={deathMode} onPressedChange={toggleDeathMode} aria-label={deathMode ? "Death Mode" : "Normal Mode"} className="bg-zinc-900 hover:bg-zinc-800">
+          <Toggle pressed={deathMode} onPressedChange={toggleDeathMode} aria-label={deathMode ? "Death Mode" : "Normal Mode"} className="bg-zinc-800 hover:bg-zinc-700">
             {deathMode ? <SkullIcon className="w-4 h-4" /> : <SmileIcon className="w-4 h-4" />}
           </Toggle>
         </div>
